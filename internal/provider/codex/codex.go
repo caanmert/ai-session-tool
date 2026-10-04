@@ -18,6 +18,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io/fs"
 	"os"
 	"os/exec"
@@ -201,6 +202,16 @@ func readNames(path string) map[string]string {
 		return nil
 	})
 	return names
+}
+
+// Fingerprint changes when session names change, since names are stored
+// outside the rollouts.
+func (p *Provider) Fingerprint() string {
+	info, err := os.Stat(filepath.Join(p.root, "session_index.jsonl"))
+	if err != nil {
+		return "no-names"
+	}
+	return fmt.Sprintf("names:%d:%d", info.Size(), info.ModTime().UnixNano())
 }
 
 // Live is not implemented: Codex keeps no registry of running processes.

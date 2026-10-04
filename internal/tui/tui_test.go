@@ -317,3 +317,86 @@ func TestQuit(t *testing.T) {
 		t.Error("q should quit")
 	}
 }
+
+func TestCachedLoadThenSync(t *testing.T) {
+	full, err := provider.Scan(context.Background(), fixtureProviders(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	cached := provider.ScanResult{Sessions: full.Sessions[2:3]} // a stale cache with one session
+
+	h := &harness{t: t}
+	h.m = New(Deps{Providers: fixtureProviders(t), Now: func() time.Time { return testNow }, Theme: ui.New(nil, ui.Never)})
+	h.send(tea.WindowSizeMsg{Width: 120, Height: 30})
+
+	next := h.send(scanMsg{res: cached, cached: true})
+	if next == nil || !h.m.loading {
+		t.Fatal("a cached load must be followed by a sync")
+	}
+	if view := h.m.View(); !strings.Contains(view, "1 sessions") || !strings.Contains(view, "Dark mode") {
+		t.Errorf("cached sessions should show at once:\n%s", view)
+	}
+	h.send(scanMsg{res: full})
+	if h.m.loading || len(h.m.view) != 8 {
+		t.Errorf("after sync: loading %v, %d rows", h.m.loading, len(h.m.view))
+	}
+	if !strings.HasPrefix(h.selected(), "22222222") {
+		t.Errorf("selection should stay on the session shown from cache: %s", h.selected())
+	}
+
+	// An empty cache (first run) keeps "scanning" until the sync lands.
+	h2 := &harness{t: t}
+	h2.m = New(Deps{Providers: fixtureProviders(t), Theme: ui.New(nil, ui.Never)})
+	h2.send(tea.WindowSizeMsg{Width: 120, Height: 30})
+	h2.send(scanMsg{cached: true})
+	if h2.m.scanned || !strings.Contains(h2.m.View(), "scanning sessions") {
+		t.Error("empty cache should not show an empty list")
+	}
+}
+
+func TestFilterMatchesConversationText(t *testing.T) {
+	var asked []string
+	h := &harness{t: t}
+	h.m = New(Deps{
+		Providers: fixtureProviders(t),
+		Now:       func() time.Time { return testNow },
+		Theme:     ui.New(nil, ui.Never),
+		Search: func(_ context.Context, words string) (map[string]bool, error) {
+			asked = append(asked, words)
+			if words == "delay" {
+				return map[string]bool{"codex/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa": true}, nil
+			}
+			return nil, nil
+		},
+	})
+	h.send(tea.WindowSizeMsg{Width: 120, Height: 30})
+	h.send(h.m.scan()())
+
+	h.keys("/delay") // only in a reply, not in any title or prompt
+	if len(h.m.view) != 0 {
+		t.Fatalf("metadata alone should not match: %d rows", len(h.m.view))
+	}
+	cmd := h.send(searchDueMsg{"delay"}) // the debounce fired
+	h.send(cmd())
+	if len(asked) != 1 || len(h.m.view) != 1 || !strings.HasPrefix(h.selected(), "aaaaaaaa") {
+		t.Fatalf("asked %v, rows %d, selected %s", asked, len(h.m.view), h.selected())
+	}
+	if !strings.Contains(h.m.View(), "1 of 8 sessions (1 by conversation)") {
+		t.Errorf("header should explain the match:\n%s", h.m.View())
+	}
+
+	// A stale result (the query moved on) is ignored.
+	h.keys("x")
+	h.send(searchMsg{text: "delay", hits: map[string]bool{"codex/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa": true}})
+	if len(h.m.view) != 0 {
+		t.Errorf("stale search result applied: %d rows", len(h.m.view))
+	}
+
+	// Structured parts still apply to conversation matches.
+	h.key(tea.KeyEsc)
+	h.keys("/t:claude delay")
+	h.send(searchMsg{text: "delay", hits: map[string]bool{"codex/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa": true}})
+	if len(h.m.view) != 0 {
+		t.Errorf("t:claude must exclude a codex conversation match: %d rows", len(h.m.view))
+	}
+}

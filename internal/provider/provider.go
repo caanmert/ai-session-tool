@@ -69,6 +69,14 @@ type Provider interface {
 	NewCmd(cwd string) *exec.Cmd
 }
 
+// Fingerprinter is implemented by providers whose parsed sessions also
+// depend on files other than the transcripts (Codex keeps session names in
+// a separate index). A change in the fingerprint invalidates every cached
+// session of that tool.
+type Fingerprinter interface {
+	Fingerprint() string
+}
+
 // ScanResult is the outcome of scanning every provider.
 type ScanResult struct {
 	Sessions []model.Session
@@ -135,7 +143,7 @@ func Scan(ctx context.Context, providers []Provider) (ScanResult, error) {
 	close(ch)
 	wg.Wait()
 
-	attachLive(ctx, providers, res.Sessions)
+	AttachLive(ctx, providers, res.Sessions)
 	SortByUpdated(res.Sessions)
 	sort.Slice(res.Warnings, func(i, j int) bool {
 		if res.Warnings[i].Path != res.Warnings[j].Path {
@@ -146,7 +154,8 @@ func Scan(ctx context.Context, providers []Provider) (ScanResult, error) {
 	return res, nil
 }
 
-func attachLive(ctx context.Context, providers []Provider, sessions []model.Session) {
+// AttachLive sets Live on every session whose agent is running now.
+func AttachLive(ctx context.Context, providers []Provider, sessions []model.Session) {
 	live := map[model.Tool]map[string]model.LiveState{}
 	for _, p := range providers {
 		states, err := p.Live(ctx)
@@ -160,6 +169,7 @@ func attachLive(ctx context.Context, providers []Provider, sessions []model.Sess
 		live[p.Tool()] = m
 	}
 	for i := range sessions {
+		sessions[i].Live = nil
 		if st, ok := live[sessions[i].Tool][sessions[i].ID]; ok {
 			sessions[i].Live = &st
 		}

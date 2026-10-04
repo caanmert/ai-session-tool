@@ -35,6 +35,14 @@ type Deps struct {
 	Exec func(*exec.Cmd, tea.ExecCallback) tea.Cmd
 	// Copy puts text on the clipboard.
 	Copy func(string) error
+	// Load returns cached sessions quickly so the list paints at once
+	// (optional). Sync reads transcripts that changed and returns every
+	// session; it defaults to a full scan of Providers.
+	Load func(context.Context) (provider.ScanResult, error)
+	Sync func(context.Context) (provider.ScanResult, error)
+	// Search returns the sessions whose conversation contains every word,
+	// keyed "tool/id" (optional; without it the filter matches metadata).
+	Search func(ctx context.Context, words string) (map[string]bool, error)
 }
 
 // Run starts the TUI and blocks until the user quits.
@@ -80,6 +88,8 @@ type Model struct {
 	filter    textinput.Model
 	filtering bool
 	query     query
+	hits      map[string]bool // sessions whose conversation matches query.text()
+	hitsFor   string          // the text hits belong to
 
 	preview viewport.Model
 	focus   focus
@@ -96,6 +106,7 @@ type Model struct {
 type previewEntry struct {
 	msgs     []model.Message
 	err      error
+	updated  time.Time      // session UpdatedAt the transcript was read at
 	rendered map[int]string // by width
 }
 
@@ -109,6 +120,10 @@ func New(d Deps) Model {
 	}
 	if d.Theme == nil {
 		d.Theme = ui.New(io.Discard, ui.Never)
+	}
+	if d.Sync == nil {
+		providers := d.Providers
+		d.Sync = func(ctx context.Context) (provider.ScanResult, error) { return provider.Scan(ctx, providers) }
 	}
 	sp := spinner.New(spinner.WithSpinner(spinner.Dot))
 	ti := textinput.New()
@@ -127,9 +142,15 @@ func New(d Deps) Model {
 // Messages.
 type (
 	scanMsg struct {
-		res provider.ScanResult
-		err error
+		res    provider.ScanResult
+		err    error
+		cached bool // from Load: a Sync follows
 	}
+	searchMsg struct {
+		text string
+		hits map[string]bool
+	}
+	searchDueMsg  struct{ text string } // debounced: search if the query still says text
 	transcriptMsg struct {
 		id   string
 		msgs []model.Message
@@ -141,15 +162,33 @@ type (
 )
 
 func (m Model) Init() tea.Cmd {
+	if m.d.Load != nil {
+		load := m.d.Load
+		return tea.Batch(m.spinner.Tick, func() tea.Msg {
+			res, err := load(context.Background())
+			return scanMsg{res: res, err: err, cached: true}
+		})
+	}
 	return tea.Batch(m.spinner.Tick, m.scan())
 }
 
 func (m Model) scan() tea.Cmd {
-	providers := m.d.Providers
+	sync := m.d.Sync
 	return func() tea.Msg {
-		res, err := provider.Scan(context.Background(), providers)
-		return scanMsg{res, err}
+		res, err := sync(context.Background())
+		return scanMsg{res: res, err: err}
 	}
+}
+
+func key(s model.Session) string { return string(s.Tool) + "/" + s.ID }
+
+// searchSoon schedules a conversation search for the current query words.
+func (m *Model) searchSoon() tea.Cmd {
+	text := m.query.text()
+	if m.d.Search == nil || text == "" || text == m.hitsFor {
+		return nil
+	}
+	return tea.Tick(150*time.Millisecond, func(time.Time) tea.Msg { return searchDueMsg{text} })
 }
 
 func (m Model) loadTranscript(s model.Session) tea.Cmd {
@@ -175,8 +214,12 @@ func (m Model) current() (model.Session, bool) {
 // same session when it is still visible.
 func (m *Model) applyFilter() {
 	m.view = m.view[:0]
+	text := m.query.text()
 	for i, s := range m.sessions {
-		if m.query.match(s) {
+		if !m.query.matchFields(s) {
+			continue
+		}
+		if m.query.matchWords(s) || text != "" && text == m.hitsFor && m.hits[key(s)] {
 			m.view = append(m.view, i)
 		}
 	}
@@ -342,16 +385,56 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, cmd
 
 	case scanMsg:
-		m.loading, m.scanned = false, true
+		var next tea.Cmd
+		if msg.cached {
+			next = m.scan() // now bring it up to date
+		} else {
+			m.loading = false
+		}
 		if msg.err != nil {
-			m.err = msg.err
+			if msg.cached {
+				return m, next // no usable cache: wait for the scan
+			}
+			m.err, m.scanned = msg.err, true
 			return m, m.flash("scan failed: "+msg.err.Error(), true)
 		}
-		m.err = nil
+		if msg.cached && len(msg.res.Sessions) == 0 {
+			return m, next // first run: keep "scanning…" until the sync lands
+		}
+		m.err, m.scanned = nil, true
 		m.sessions = msg.res.Sessions
 		m.warnings = len(msg.res.Warnings)
-		m.cache = map[string]*previewEntry{}
+		// Keep previews of sessions that did not change.
+		fresh := map[string]*previewEntry{}
+		for _, s := range m.sessions {
+			if e, ok := m.cache[s.ID]; ok && e != nil && e.updated.Equal(s.UpdatedAt) {
+				fresh[s.ID] = e
+			}
+		}
+		m.cache = fresh
 		m.shownID = ""
+		m.hitsFor = "" // conversation text may have changed
+		m.applyFilter()
+		return m, tea.Batch(next, m.selectionChanged(), m.searchSoon())
+
+	case searchDueMsg:
+		if msg.text != m.query.text() {
+			return m, nil
+		}
+		search := m.d.Search
+		return m, func() tea.Msg {
+			hits, err := search(context.Background(), msg.text)
+			if err != nil {
+				hits = nil
+			}
+			return searchMsg{msg.text, hits}
+		}
+
+	case searchMsg:
+		if msg.text != m.query.text() {
+			return m, nil
+		}
+		m.hits, m.hitsFor = msg.hits, msg.text
 		m.applyFilter()
 		return m, m.selectionChanged()
 
@@ -367,7 +450,13 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, m.loadTranscript(s)
 
 	case transcriptMsg:
-		m.cache[msg.id] = &previewEntry{msgs: msg.msgs, err: msg.err}
+		e := &previewEntry{msgs: msg.msgs, err: msg.err}
+		for _, s := range m.sessions {
+			if s.ID == msg.id {
+				e.updated = s.UpdatedAt
+			}
+		}
+		m.cache[msg.id] = e
 		if msg.id == m.selected {
 			m.shownID = "" // force a re-render with the transcript
 			m.refreshPreview()
@@ -424,7 +513,7 @@ func (m Model) updateFilter(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	if q := parseQuery(m.filter.Value()); fmt.Sprint(q) != fmt.Sprint(m.query) {
 		m.query = q
 		m.applyFilter()
-		return m, tea.Batch(cmd, m.selectionChanged())
+		return m, tea.Batch(cmd, m.selectionChanged(), m.searchSoon())
 	}
 	return m, cmd
 }

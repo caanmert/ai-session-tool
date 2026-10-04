@@ -92,6 +92,29 @@ func runDoctor(ctx context.Context, app *App, verbose bool) error {
 			fmt.Fprintf(w, "    … %d more (use -v)\n", len(res.Warnings)-len(shown))
 		}
 	}
+
+	if t.Color {
+		fmt.Fprintf(w, "\n%s\n", t.Bold("● index"))
+	} else {
+		fmt.Fprintf(w, "\n[index]\n")
+	}
+	row := func(k, v string) { fmt.Fprintf(w, "  %s %s\n", t.Faint(fmt.Sprintf("%-12s", k)), v) }
+	ix := app.index()
+	if ix == nil {
+		row("status", t.Warn("disabled"))
+		return nil
+	}
+	if _, err := ix.Sync(ctx, app.Providers()); err != nil {
+		row("status", t.Error("sync failed: "+err.Error()))
+		return nil
+	}
+	st, err := ix.Stats(ctx)
+	if err != nil {
+		return err
+	}
+	row("path", ix.Path())
+	row("size", fmt.Sprintf("%.1f MB", float64(st.Bytes)/(1<<20)))
+	row("sessions", fmt.Sprintf("%d %s", st.Sessions, t.Faint(fmt.Sprintf("(%d transcripts tracked)", st.Files))))
 	return nil
 }
 

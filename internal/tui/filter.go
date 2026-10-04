@@ -52,7 +52,13 @@ func (q query) empty() bool {
 	return len(q.words) == 0 && q.tool == "" && q.project == "" && q.branch == "" && !q.liveOnly
 }
 
-func (q query) match(s model.Session) bool {
+// text is the free words, for a conversation search.
+func (q query) text() string { return strings.Join(q.words, " ") }
+
+func (q query) match(s model.Session) bool { return q.matchFields(s) && q.matchWords(s) }
+
+// matchFields checks the t:, p:, b: and is: parts.
+func (q query) matchFields(s model.Session) bool {
 	if q.tool != "" && !strings.HasPrefix(string(s.Tool), q.tool) {
 		return false
 	}
@@ -62,9 +68,11 @@ func (q query) match(s model.Session) bool {
 	if q.branch != "" && !strings.Contains(strings.ToLower(s.GitBranch), q.branch) {
 		return false
 	}
-	if q.liveOnly && s.Live == nil {
-		return false
-	}
+	return !q.liveOnly || s.Live != nil
+}
+
+// matchWords checks the free words against the session's metadata.
+func (q query) matchWords(s model.Session) bool {
 	if len(q.words) == 0 {
 		return true
 	}

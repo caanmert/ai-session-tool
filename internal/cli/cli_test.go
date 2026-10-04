@@ -3,6 +3,8 @@ package cli
 import (
 	"bytes"
 	"context"
+	"encoding/json"
+	"errors"
 	"flag"
 	"os"
 	"path/filepath"
@@ -24,8 +26,15 @@ func TestMain(m *testing.M) {
 	os.Exit(m.Run())
 }
 
-// run executes ais with args against the fixture transcripts.
+// run executes ais with args against the fixture transcripts, with a
+// fresh index.
 func run(t *testing.T, args ...string) (stdout string, err error) {
+	t.Helper()
+	return runWith(t, filepath.Join(t.TempDir(), "index.db"), args...)
+}
+
+// runWith is run with a given index path, to share an index between runs.
+func runWith(t *testing.T, indexPath string, args ...string) (stdout string, err error) {
 	t.Helper()
 	t.Setenv("HOME", t.TempDir()) // keep ~ abbreviation out of golden output
 	root, absErr := filepath.Abs("../../testdata")
@@ -43,8 +52,10 @@ func run(t *testing.T, args ...string) (stdout string, err error) {
 				codex.New(filepath.Join(root, "codex")),
 			}
 		},
-		Version: "test",
+		Version:   "test",
+		IndexPath: func() (string, error) { return indexPath, nil },
 	}
+	t.Cleanup(func() { app.Close() })
 	cmd := NewRootCmd(app)
 	cmd.SetArgs(args)
 	err = cmd.ExecuteContext(context.Background())
@@ -206,5 +217,91 @@ func TestUnknownSession(t *testing.T) {
 		if _, err := run(t, args...); err == nil || !strings.Contains(err.Error(), "no session matches") {
 			t.Errorf("%v: err = %v", args, err)
 		}
+	}
+}
+
+func TestSearch(t *testing.T) {
+	out, err := run(t, "search", "webhook", "retr")
+	if err != nil {
+		t.Fatal(err)
+	}
+	golden(t, "search.txt", out)
+
+	// Metadata-only match: no snippet line.
+	out, err = run(t, "search", "infra")
+	if err != nil || out != "dddddddd  codex   infra  2w    Bump terraform to 1.9\n" {
+		t.Errorf("metadata match: %q, %v", out, err)
+	}
+
+	out, err = run(t, "search", "--json", "delay")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var results []struct {
+		Session struct{ ID string } `json:"session"`
+		Snippet string              `json:"snippet"`
+	}
+	if err := json.Unmarshal([]byte(out), &results); err != nil {
+		t.Fatal(err)
+	}
+	if len(results) != 1 || results[0].Session.ID != "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa" ||
+		!strings.Contains(results[0].Snippet, "delay") || strings.ContainsAny(results[0].Snippet, "\x02\x03") {
+		t.Errorf("json results: %+v", results)
+	}
+
+	if out, err := run(t, "search", "--tool", "claude", "webhook"); err != nil || out != "" {
+		t.Errorf("filtered search: %q, %v", out, err)
+	}
+	if out, err := run(t, "search", "--json", "nothing-like-this"); err != nil || strings.TrimSpace(out) != "[]" {
+		t.Errorf("empty json search: %q, %v", out, err)
+	}
+}
+
+func TestSearchHighlightsInColor(t *testing.T) {
+	out, err := run(t, "--color=always", "search", "delay")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.ContainsAny(out, "\x02\x03") || !escapes.MatchString(out) {
+		t.Errorf("colored search output should use escapes, not raw markers: %q", out)
+	}
+	if plain := escapes.ReplaceAllString(out, ""); !strings.Contains(plain, "logs the attempt and delay") {
+		t.Errorf("snippet missing: %q", plain)
+	}
+}
+
+func TestNoIndex(t *testing.T) {
+	indexed, err := run(t, "ls")
+	if err != nil {
+		t.Fatal(err)
+	}
+	direct, err := run(t, "--no-index", "ls")
+	if err != nil || direct != indexed {
+		t.Errorf("--no-index ls differs (err %v):\n%s\n---\n%s", err, direct, indexed)
+	}
+	for _, args := range [][]string{{"--no-index", "search", "x"}, {"--no-index", "reindex"}} {
+		if _, err := run(t, args...); !errors.Is(err, errNoIndex) {
+			t.Errorf("%v: err = %v", args, err)
+		}
+	}
+}
+
+func TestIndexPersistsAndReindexes(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "index.db")
+	first, err := runWith(t, path, "ls")
+	if err != nil {
+		t.Fatal(err)
+	}
+	second, err := runWith(t, path, "ls") // served from the existing index
+	if err != nil || second != first {
+		t.Errorf("second run differs (err %v)", err)
+	}
+	out, err := runWith(t, path, "reindex")
+	if err != nil || !strings.Contains(out, "indexed 8 sessions from 11 transcripts") {
+		t.Errorf("reindex: %q, %v", out, err)
+	}
+	out, err = runWith(t, path, "doctor")
+	if err != nil || !strings.Contains(out, "[index]") || !strings.Contains(out, "sessions     8 (11 transcripts tracked)") {
+		t.Errorf("doctor index section: %q, %v", out, err)
 	}
 }

@@ -24,6 +24,7 @@ func run() int {
 	defer stop()
 
 	app := cli.DefaultApp(version)
+	defer app.Close()
 	if err := cli.NewRootCmd(app).ExecuteContext(ctx); err != nil {
 		fmt.Fprintln(os.Stderr, ui.New(os.Stderr, ui.Auto).Error("ais:"), err)
 		return 1

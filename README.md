@@ -8,7 +8,7 @@ Both tools save every conversation on disk, but finding and resuming one is clum
 
 `ais` reads both stores and gives you one list across all your projects. From that list you can resume any session in its own project directory.
 
-> **Status:** early. Claude Code and Codex CLI sessions both work in the interactive browser and with `ls` / `show` / `resume` / `doctor`. A search index is next (see [Roadmap](#roadmap)).
+> **Status:** early. Claude Code and Codex CLI sessions both work in the interactive browser and with `ls` / `show` / `search` / `resume` / `doctor`. Tags, rename and archive are next (see [Roadmap](#roadmap)).
 
 ## Install
 
@@ -23,7 +23,7 @@ Requires Go 1.24+. Prebuilt macOS binaries are published on each tagged release.
 Run `ais` with no arguments in a terminal:
 
 - the list shows every session, newest first; the pane below previews the selected one (your prompts, replies rendered as Markdown, tool calls)
-- `/` filters as you type: words match the title, prompts, project, branch, id and model; `t:codex`, `p:api`, `b:main` and `is:live` narrow by tool, project, branch and running sessions
+- `/` filters as you type: words match the title, project, branch, id and model, and anything said in the conversation; `t:codex`, `p:api`, `b:main` and `is:live` narrow by tool, project, branch and running sessions
 - `enter` resumes the session in its own project directory, `f` forks it, `n` starts a new one in the same project. When the agent exits you are back in the list
 - `y` copies the resume command, `tab` scrolls the preview, `r` rescans, `?` lists every key, `q` quits
 
@@ -38,6 +38,9 @@ ais ls -p api --since 7d     # filter by project path and recency
 ais ls --live                # only sessions whose agent is running right now
 ais ls --json | jq .         # scriptable output
 
+ais search webhook retry     # full-text: titles, prompts, replies and tool calls, best match first
+ais search '"exact phrase"' --tool codex --json
+
 ais show 3f2a                # details + transcript (any unique id prefix works)
 ais show 3f2a --tools        # include tool output
 ais show 3f2a --info         # details only
@@ -47,6 +50,7 @@ ais resume 3f2a --fork       # continue in a new session, keep the original (`--
 ais resume 3f2a --print      # print the command instead: cd '/path' && claude --resume …
 
 ais doctor                   # where ais looks, how many sessions it found, parse warnings
+ais reindex                  # rebuild the index from scratch (always safe)
 ```
 
 On a terminal, output is colored. Each tool has its own color, recent sessions stand out, and `show` draws a session card with replies rendered as Markdown (code blocks, lists, emphasis). Piped or redirected output stays plain text, so `grep`, `awk` and `--json` scripts keep working. Use `--color=always|never|auto` to override; `NO_COLOR` is honored. Light and dark terminal backgrounds are detected; set `AIS_THEME=dark` or `light` if your terminal doesn't report its background.
@@ -84,6 +88,12 @@ Codex specifics:
 
 Lines it can't parse are skipped and reported by `ais doctor`.
 
+### Index
+
+Parsed sessions are cached in a SQLite index (pure Go, no cgo) at `~/Library/Caches/ais/index.db` on macOS (`~/.cache/ais` on Linux; override with `AIS_CACHE_DIR`). Each run re-reads only transcripts whose size or modification time changed, so the list appears instantly even with thousands of sessions. On 2,000 sessions (600 MB of transcripts) the first build took 9 s and later runs about 0.1 s. A direct scan takes 3.6 s every time. The index also holds the conversation text for `ais search` and the browser's filter.
+
+It is only a cache: delete it or run `ais reindex` at any time. `--no-index` reads transcripts directly.
+
 Resuming runs the agent **in the session's original directory**, because `claude --resume` only finds sessions of the current project. On macOS and Linux, `ais` replaces itself with the agent process, so the agent gets the terminal exactly as if you had started it yourself.
 
 ## Roadmap
@@ -91,7 +101,7 @@ Resuming runs the agent **in the session's original directory**, because `claude
 1. [x] Scaffold: Go module, Cobra CLI, lint, CI, goreleaser
 2. [x] Claude Code adapter: `ls`, `show`, `resume`, `doctor`
 3. [x] Codex adapter
-4. [ ] SQLite index (incremental) + full-text `ais search`
+4. [x] SQLite index (incremental) + full-text `ais search`
 5. [x] Bubble Tea TUI: list + preview, filter, resume / fork / new
 6. [ ] Tags, rename, pin, archive/trash + restore
 7. [ ] Token/cost stats by day, project, model

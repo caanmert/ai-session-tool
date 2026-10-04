@@ -164,6 +164,11 @@ func (t *Theme) Live(s string) string   { return t.fg(colorLive, s) }
 // Bold renders s in bold.
 func (t *Theme) Bold(s string) string { return t.render(t.r.NewStyle().Bold(true), s) }
 
+// Highlight marks matched text, e.g. in search snippets.
+func (t *Theme) Highlight(s string) string {
+	return t.render(t.r.NewStyle().Bold(true).Foreground(colorWarn), s)
+}
+
 // Italic renders s faint and italic.
 func (t *Theme) Italic(s string) string {
 	return t.render(t.r.NewStyle().Italic(true).Foreground(colorFaint), s)

@@ -66,6 +66,15 @@ func (m Model) header() string {
 		count := fmt.Sprintf("%d sessions", len(m.sessions))
 		if !m.query.empty() {
 			count = fmt.Sprintf("%d of %d sessions", len(m.view), len(m.sessions))
+			byText := 0
+			for _, i := range m.view {
+				if !m.query.matchWords(m.sessions[i]) {
+					byText++
+				}
+			}
+			if byText > 0 {
+				count += fmt.Sprintf(" (%d by conversation)", byText)
+			}
 		}
 		info = t.Faint(count+"  ·  ") + t.Tool(model.ToolClaude, fmt.Sprintf("claude %d", claude)) +
 			t.Faint("  ") + t.Tool(model.ToolCodex, fmt.Sprintf("codex %d", codex))
