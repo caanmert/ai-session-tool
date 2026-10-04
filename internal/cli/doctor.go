@@ -28,23 +28,31 @@ func newDoctorCmd(app *App) *cobra.Command {
 }
 
 func runDoctor(ctx context.Context, app *App, verbose bool) error {
-	w := app.Out
-	fmt.Fprintf(w, "ais %s\n", app.Version)
+	w, t := app.Out, app.theme()
+	fmt.Fprintf(w, "%s %s\n", t.Bold("ais"), t.Faint(app.Version))
 	for _, p := range app.Providers() {
-		fmt.Fprintf(w, "\n[%s]\n", p.Tool())
-		row := func(k, v string) { fmt.Fprintf(w, "  %-12s %s\n", k, v) }
+		if t.Color {
+			fmt.Fprintf(w, "\n%s\n", t.Bold(t.Tool(p.Tool(), "● "+string(p.Tool()))))
+		} else {
+			fmt.Fprintf(w, "\n[%s]\n", p.Tool())
+		}
+		row := func(k, v string) { fmt.Fprintf(w, "  %s %s\n", t.Faint(fmt.Sprintf("%-12s", k)), v) }
 
 		root := p.Root()
 		if _, err := os.Stat(root); err != nil {
-			row("root", root+"  (not found)")
+			row("root", root+t.Warn("  (not found)"))
 		} else {
 			row("root", root)
 		}
-		row("binary", binaryInfo(ctx, string(p.Tool())))
+		if path, version, err := binaryInfo(ctx, string(p.Tool())); err != nil {
+			row("binary", t.Warn("not on PATH (resume will fail)"))
+		} else {
+			row("binary", path+t.Faint(version))
+		}
 
 		files, err := p.Discover(ctx)
 		if err != nil {
-			row("transcripts", "error: "+err.Error())
+			row("transcripts", t.Error("error: "+err.Error()))
 			continue
 		}
 		res, err := provider.Scan(ctx, []provider.Provider{p})
@@ -62,15 +70,23 @@ func runDoctor(ctx context.Context, app *App, verbose bool) error {
 		if res.Hidden > 0 {
 			skipped += fmt.Sprintf(", %d subagent/internal", res.Hidden)
 		}
-		row("sessions", fmt.Sprintf("%d (%s skipped)", len(res.Sessions), skipped))
-		row("live", fmt.Sprint(live))
-		row("warnings", fmt.Sprint(len(res.Warnings)))
+		row("sessions", t.Bold(fmt.Sprint(len(res.Sessions)))+t.Faint(" ("+skipped+" skipped)"))
+		liveText := fmt.Sprint(live)
+		if live > 0 {
+			liveText = t.Live(liveText)
+		}
+		row("live", liveText)
+		if len(res.Warnings) == 0 {
+			row("warnings", t.OK("0"))
+		} else {
+			row("warnings", t.Warn(fmt.Sprint(len(res.Warnings))))
+		}
 		shown := res.Warnings
 		if !verbose && len(shown) > 10 {
 			shown = shown[:10]
 		}
 		for _, warn := range shown {
-			fmt.Fprintf(w, "    %s\n", warn)
+			fmt.Fprintf(w, "    %s\n", t.Faint(warn.String()))
 		}
 		if len(shown) < len(res.Warnings) {
 			fmt.Fprintf(w, "    … %d more (use -v)\n", len(res.Warnings)-len(shown))
@@ -79,17 +95,18 @@ func runDoctor(ctx context.Context, app *App, verbose bool) error {
 	return nil
 }
 
-// binaryInfo reports where a tool's executable is and its version.
-func binaryInfo(ctx context.Context, name string) string {
-	path, err := exec.LookPath(name)
+// binaryInfo finds a tool's executable and its version, formatted as
+// "  (version)" or "" when it can't be read.
+func binaryInfo(ctx context.Context, name string) (path, version string, err error) {
+	path, err = exec.LookPath(name)
 	if err != nil {
-		return "not on PATH (resume will fail)"
+		return "", "", err
 	}
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
-	out, err := exec.CommandContext(ctx, path, "--version").Output()
-	if err != nil {
-		return path
+	out, verr := exec.CommandContext(ctx, path, "--version").Output()
+	if verr != nil {
+		return path, "", nil
 	}
-	return fmt.Sprintf("%s  (%s)", path, strings.TrimSpace(string(out)))
+	return path, "  (" + strings.TrimSpace(string(out)) + ")", nil
 }

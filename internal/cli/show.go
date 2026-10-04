@@ -79,6 +79,13 @@ func runShow(ctx context.Context, app *App, id string, o showOptions) error {
 		}{s, msgs})
 	}
 
+	if t := app.theme(); t.Color {
+		prettyDetails(app.Out, t, app.Now(), s, p)
+		if !o.info {
+			prettyTranscript(app.Out, t, s.Tool, msgs, o)
+		}
+		return nil
+	}
 	printDetails(app.Out, app.Now(), s, p)
 	if o.info {
 		return nil
@@ -101,17 +108,11 @@ func printDetails(w io.Writer, now time.Time, s model.Session, p provider.Provid
 	}
 	row("project", cwd)
 	row("started", s.StartedAt.Local().Format("2006-01-02 15:04"))
-	ago := age(now, s.UpdatedAt)
-	if ago == "now" {
-		ago = "just now"
-	} else {
-		ago += " ago"
-	}
-	row("updated", fmt.Sprintf("%s (%s)", s.UpdatedAt.Local().Format("2006-01-02 15:04"), ago))
+	row("updated", fmt.Sprintf("%s (%s)", s.UpdatedAt.Local().Format("2006-01-02 15:04"), ago(now, s.UpdatedAt)))
 	if s.Model != "" || s.Version != "" {
 		row("model", strings.TrimSpace(s.Model+"  "+versionLabel(s.Version)))
 	}
-	row("messages", fmt.Sprintf("%d prompts, %d replies", s.UserTurns, s.AssistantTurns))
+	row("messages", plural(s.UserTurns, "prompt", "prompts")+", "+plural(s.AssistantTurns, "reply", "replies"))
 	u := s.Usage
 	row("tokens", fmt.Sprintf("%s total (input %s, output %s, cache read %s, cache write %s)",
 		tokens(u.Total()), tokens(u.Input), tokens(u.Output), tokens(u.CacheRead), tokens(u.CacheWrite)))
@@ -119,6 +120,33 @@ func printDetails(w io.Writer, now time.Time, s model.Session, p provider.Provid
 	if cmd, err := p.ResumeCmd(s, false); err == nil {
 		row("resume", launch.ShellLine(cmd))
 	}
+}
+
+// plural renders a count with the right noun form: "1 prompt", "2 prompts".
+func plural(n int, one, many string) string {
+	if n == 1 {
+		return fmt.Sprintf("%d %s", n, one)
+	}
+	return fmt.Sprintf("%d %s", n, many)
+}
+
+// ago renders "just now" or "<age> ago".
+func ago(now, t time.Time) string {
+	if a := age(now, t); a != "now" {
+		return a + " ago"
+	}
+	return "just now"
+}
+
+// visible reports whether a transcript message is shown with options o.
+func visible(m model.Message, o showOptions) bool {
+	switch m.Kind {
+	case model.KindThinking:
+		return o.thinking && strings.TrimSpace(m.Text) != ""
+	case model.KindToolResult:
+		return o.tools
+	}
+	return true
 }
 
 func versionLabel(v string) string {
@@ -131,15 +159,8 @@ func versionLabel(v string) string {
 func printTranscript(w io.Writer, tool model.Tool, msgs []model.Message, o showOptions) {
 	var lastRole model.Role
 	for _, m := range msgs {
-		switch m.Kind {
-		case model.KindThinking:
-			if !o.thinking || strings.TrimSpace(m.Text) == "" {
-				continue
-			}
-		case model.KindToolResult:
-			if !o.tools {
-				continue
-			}
+		if !visible(m, o) {
+			continue
 		}
 		if m.Role != lastRole && m.Kind != model.KindToolResult {
 			who := "you"

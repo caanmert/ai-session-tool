@@ -6,6 +6,7 @@ import (
 	"flag"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"testing"
 	"time"
@@ -26,6 +27,7 @@ func TestMain(m *testing.M) {
 // run executes ais with args against the fixture transcripts.
 func run(t *testing.T, args ...string) (stdout string, err error) {
 	t.Helper()
+	t.Setenv("HOME", t.TempDir()) // keep ~ abbreviation out of golden output
 	root, absErr := filepath.Abs("../../testdata")
 	if absErr != nil {
 		t.Fatal(absErr)
@@ -129,6 +131,46 @@ func TestShow(t *testing.T) {
 		t.Fatal(err)
 	}
 	golden(t, "show.txt", out)
+}
+
+var escapes = regexp.MustCompile(`\x1b\[[0-9;?]*[A-Za-z]`)
+
+func TestColorListMatchesPlainLayout(t *testing.T) {
+	plain, err := run(t, "ls")
+	if err != nil {
+		t.Fatal(err)
+	}
+	colored, err := run(t, "--color=always", "ls")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !escapes.MatchString(colored) {
+		t.Fatal("--color=always produced no escape sequences")
+	}
+	if got := escapes.ReplaceAllString(colored, ""); got != plain {
+		t.Errorf("colored ls differs from plain ls once escapes are removed:\n%s\n---\n%s", got, plain)
+	}
+	never, err := run(t, "--color=never", "ls")
+	if err != nil || never != plain {
+		t.Errorf("--color=never should equal plain output (err %v)", err)
+	}
+}
+
+func TestColorFlagValidation(t *testing.T) {
+	if _, err := run(t, "--color=sometimes", "ls"); err == nil || !strings.Contains(err.Error(), "invalid --color") {
+		t.Errorf("err = %v", err)
+	}
+}
+
+func TestShowPretty(t *testing.T) {
+	out, err := run(t, "--color=always", "show", "aaaa", "--tools", "--thinking")
+	if err != nil {
+		t.Fatal(err)
+	}
+	text := escapes.ReplaceAllString(out, "")
+	// The file row holds a machine-specific absolute path; mask it.
+	text = regexp.MustCompile(`(?m)^(│ file\s+).*?(\s*│)$`).ReplaceAllString(text, "${1}<path>${2}")
+	golden(t, "show_pretty.txt", text)
 }
 
 func TestShowCodex(t *testing.T) {

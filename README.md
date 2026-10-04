@@ -38,6 +38,8 @@ ais resume 3f2a --print      # print the command instead: cd '/path' && claude -
 ais doctor                   # where ais looks, how many sessions it found, parse warnings
 ```
 
+On a terminal, output is colored. Each tool has its own color, recent sessions stand out, and `show` draws a session card with replies rendered as Markdown (code blocks, lists, emphasis). Piped or redirected output stays plain text, so `grep`, `awk` and `--json` scripts keep working. Use `--color=always|never|auto` to override; `NO_COLOR` is honored.
+
 Example:
 
 ```

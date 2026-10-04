@@ -47,6 +47,21 @@ func Truncate(s string, n int) string {
 	return string(r[:n-1]) + "…"
 }
 
+// TruncateMiddle shortens s to at most n runes by replacing its middle
+// with "…", which keeps both ends of a path readable.
+func TruncateMiddle(s string, n int) string {
+	r := []rune(s)
+	if len(r) <= n {
+		return s
+	}
+	if n < 3 {
+		return Truncate(s, n)
+	}
+	head := (n - 1) / 2
+	tail := n - 1 - head
+	return string(r[:head]) + "…" + string(r[len(r)-tail:])
+}
+
 // FirstNonEmpty returns the first non-empty value.
 func FirstNonEmpty(vals ...string) string {
 	for _, v := range vals {

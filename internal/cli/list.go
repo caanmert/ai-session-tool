@@ -5,13 +5,13 @@ import (
 	"encoding/json"
 	"fmt"
 	"strings"
-	"text/tabwriter"
 	"time"
 
 	"github.com/spf13/cobra"
 
 	"github.com/caanmert/ai-session-tool/internal/model"
 	"github.com/caanmert/ai-session-tool/internal/textutil"
+	"github.com/caanmert/ai-session-tool/internal/ui"
 )
 
 type listOptions struct {
@@ -97,32 +97,37 @@ func runList(ctx context.Context, app *App, o listOptions) error {
 }
 
 func printTable(app *App, now time.Time, sessions []model.Session) {
-	const fixed = 2 + 8 + 2 + 6 + 2 + 14 + 2 + 14 + 2 + 10 + 2 + 5 + 2 + 7 + 2 // all columns but the title
+	t := app.theme()
+	cols := []ui.Column{
+		{Header: " "}, {Header: "ID"}, {Header: "TOOL"}, {Header: "PROJECT"}, {Header: "BRANCH"},
+		{Header: "UPDATED"}, {Header: "MSGS", Right: true}, {Header: "TOKENS", Right: true}, {Header: "TITLE"},
+	}
+	const fixed = 1 + 8 + 6 + 14 + 14 + 7 + 4 + 6 + 8*2 // every column but the title, plus gaps
 	titleWidth := 80
-	if w := width(app.Out); w > 0 {
-		titleWidth = max(w-fixed, 20)
+	if t.Width > 0 {
+		titleWidth = max(t.Width-fixed, 20)
 	}
 
-	tw := tabwriter.NewWriter(app.Out, 0, 0, 2, ' ', 0)
-	fmt.Fprintln(tw, " \tID\tTOOL\tPROJECT\tBRANCH\tUPDATED\tMSGS\tTOKENS\tTITLE")
+	rows := make([][]ui.Cell, 0, len(sessions))
 	for _, s := range sessions {
 		dot := " "
 		if s.Live != nil {
 			dot = "●"
 		}
-		fmt.Fprintf(tw, "%s\t%s\t%s\t%s\t%s\t%s\t%d\t%s\t%s\n",
-			dot,
-			shortID(s.ID),
-			s.Tool,
-			textutil.Truncate(s.Project(), 14),
-			textutil.Truncate(s.GitBranch, 14),
-			age(now, s.UpdatedAt),
-			s.MessageCount(),
-			tokens(s.Usage.Total()),
-			textutil.Truncate(s.Title, titleWidth),
-		)
+		updated := s.UpdatedAt
+		rows = append(rows, []ui.Cell{
+			{Text: dot, Style: t.Live},
+			{Text: shortID(s.ID), Style: t.ID},
+			{Text: string(s.Tool), Style: func(x string) string { return t.Tool(s.Tool, x) }},
+			{Text: textutil.Truncate(s.Project(), 14), Style: t.Bold},
+			{Text: textutil.Truncate(s.GitBranch, 14), Style: t.Branch},
+			{Text: age(now, updated), Style: func(x string) string { return t.Age(now, updated, x) }},
+			{Text: fmt.Sprint(s.MessageCount()), Style: t.Faint},
+			{Text: tokens(s.Usage.Total()), Style: t.Faint},
+			{Text: textutil.Truncate(s.Title, titleWidth)},
+		})
 	}
-	tw.Flush()
+	_ = t.Table(app.Out, cols, rows)
 }
 
 // shortID is the id prefix shown in tables; any unique prefix resolves.

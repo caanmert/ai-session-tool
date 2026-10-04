@@ -37,3 +37,12 @@ func TestParseTime(t *testing.T) {
 		t.Errorf("ParseTime = %v, %v", ts, ok)
 	}
 }
+
+func TestTruncateMiddle(t *testing.T) {
+	if got := TruncateMiddle("/a/very/long/path/file.jsonl", 15); got != "/a/very…e.jsonl" {
+		t.Errorf("TruncateMiddle = %q", got)
+	}
+	if got := TruncateMiddle("short", 10); got != "short" {
+		t.Errorf("TruncateMiddle = %q", got)
+	}
+}

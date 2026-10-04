@@ -2,13 +2,9 @@ package cli
 
 import (
 	"fmt"
-	"io"
-	"os"
 	"strconv"
 	"strings"
 	"time"
-
-	"golang.org/x/term"
 )
 
 // age renders how long ago t was, compactly: "now", "5m", "3h", "4d", "2w",
@@ -46,19 +42,6 @@ func tokens(n int64) string {
 
 func trimZero(f float64) string {
 	return strings.TrimSuffix(strconv.FormatFloat(f, 'f', 1, 64), ".0")
-}
-
-// width returns the terminal width of w, or 0 when w is not a terminal.
-func width(w io.Writer) int {
-	f, ok := w.(*os.File)
-	if !ok || !term.IsTerminal(int(f.Fd())) {
-		return 0
-	}
-	cols, _, err := term.GetSize(int(f.Fd()))
-	if err != nil {
-		return 0
-	}
-	return cols
 }
 
 // parseSince accepts a duration like 30m, 12h, 7d, 2w or a date 2006-01-02

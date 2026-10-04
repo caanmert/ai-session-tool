@@ -9,6 +9,7 @@ import (
 	"syscall"
 
 	"github.com/caanmert/ai-session-tool/internal/cli"
+	"github.com/caanmert/ai-session-tool/internal/ui"
 )
 
 // version is set at build time by goreleaser (-ldflags "-X main.version=...").
@@ -24,7 +25,7 @@ func run() int {
 
 	app := cli.DefaultApp(version)
 	if err := cli.NewRootCmd(app).ExecuteContext(ctx); err != nil {
-		fmt.Fprintln(os.Stderr, "ais:", err)
+		fmt.Fprintln(os.Stderr, ui.New(os.Stderr, ui.Auto).Error("ais:"), err)
 		return 1
 	}
 	return 0
