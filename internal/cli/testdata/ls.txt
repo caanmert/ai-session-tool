@@ -1,0 +1,4 @@
+   ID        TOOL    PROJECT  BRANCH     UPDATED  MSGS  TOKENS  TITLE
+   22222222  claude  web      main       57m      3     2k      Dark mode
+   11111111  claude  api      feat/auth  22h      5     4.2k    Fix auth token refresh
+   44444444  claude  api      main       2d       1     3.5k    /review src/auth
