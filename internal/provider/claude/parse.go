@@ -8,11 +8,11 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
-	"time"
 
 	"github.com/caanmert/ai-session-tool/internal/jsonl"
 	"github.com/caanmert/ai-session-tool/internal/model"
 	"github.com/caanmert/ai-session-tool/internal/provider"
+	"github.com/caanmert/ai-session-tool/internal/textutil"
 )
 
 // record is the subset of a transcript line we read. Unknown types and
@@ -117,7 +117,7 @@ func (p *Provider) Parse(ctx context.Context, f provider.FileRef) (model.Session
 			return nil
 		}
 
-		if ts, ok := parseTime(r.Timestamp); ok {
+		if ts, ok := textutil.ParseTime(r.Timestamp); ok {
 			if s.StartedAt.IsZero() || ts.Before(s.StartedAt) {
 				s.StartedAt = ts
 			}
@@ -198,9 +198,9 @@ func (p *Provider) Parse(ctx context.Context, f provider.FileRef) (model.Session
 			s.UserTurns++
 			if firstRaw == "" {
 				firstRaw = text
-				s.FirstPrompt = truncate(collapse(text), maxPromptRunes)
+				s.FirstPrompt = textutil.Truncate(textutil.Collapse(text), maxPromptRunes)
 			}
-			s.LastPrompt = truncate(collapse(text), maxPromptRunes)
+			s.LastPrompt = textutil.Truncate(textutil.Collapse(text), maxPromptRunes)
 		case promptCommand:
 			if firstCommand == "" {
 				firstCommand = text
@@ -227,14 +227,14 @@ func (p *Provider) Parse(ctx context.Context, f provider.FileRef) (model.Session
 	if s.StartedAt.IsZero() {
 		s.StartedAt = s.UpdatedAt
 	}
-	s.Title = firstNonEmpty(
-		firstLine(customTitle),
-		firstLine(s.Summary),
-		firstLine(firstRaw),
-		firstLine(firstCommand),
+	s.Title = textutil.FirstNonEmpty(
+		textutil.FirstLine(customTitle),
+		textutil.FirstLine(s.Summary),
+		textutil.FirstLine(firstRaw),
+		textutil.FirstLine(firstCommand),
 		"(untitled)",
 	)
-	s.Title = truncate(s.Title, maxTitleRunes)
+	s.Title = textutil.Truncate(s.Title, maxTitleRunes)
 	return s, warns, nil
 }
 
@@ -322,7 +322,7 @@ func (p *Provider) Transcript(ctx context.Context, s model.Session) ([]model.Mes
 		if json.Unmarshal(r.Message, &m) != nil {
 			return nil
 		}
-		ts, _ := parseTime(r.Timestamp)
+		ts, _ := textutil.ParseTime(r.Timestamp)
 		blocks := content(m.Content)
 
 		if r.Type == "user" {
@@ -368,11 +368,11 @@ func toolInputSummary(input json.RawMessage) string {
 	}
 	for _, key := range []string{"command", "file_path", "path", "pattern", "url", "query", "description", "prompt"} {
 		if v, ok := in[key].(string); ok && v != "" {
-			return truncate(collapse(v), 160)
+			return textutil.Truncate(textutil.Collapse(v), 160)
 		}
 	}
 	compact, _ := json.Marshal(in)
-	return truncate(string(compact), 160)
+	return textutil.Truncate(string(compact), 160)
 }
 
 func toolResultText(raw json.RawMessage) string {
@@ -383,43 +383,4 @@ func toolResultText(raw json.RawMessage) string {
 		}
 	}
 	return strings.Join(parts, "\n")
-}
-
-func parseTime(s string) (time.Time, bool) {
-	if s == "" {
-		return time.Time{}, false
-	}
-	t, err := time.Parse(time.RFC3339Nano, s)
-	if err != nil {
-		return time.Time{}, false
-	}
-	return t.UTC(), true
-}
-
-func collapse(s string) string { return strings.Join(strings.Fields(s), " ") }
-
-func firstLine(s string) string {
-	for _, l := range strings.Split(s, "\n") {
-		if l = strings.TrimSpace(l); l != "" {
-			return l
-		}
-	}
-	return ""
-}
-
-func truncate(s string, n int) string {
-	r := []rune(s)
-	if len(r) <= n {
-		return s
-	}
-	return string(r[:n-1]) + "…"
-}
-
-func firstNonEmpty(vals ...string) string {
-	for _, v := range vals {
-		if v != "" {
-			return v
-		}
-	}
-	return ""
 }

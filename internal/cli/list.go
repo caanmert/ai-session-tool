@@ -11,6 +11,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/caanmert/ai-session-tool/internal/model"
+	"github.com/caanmert/ai-session-tool/internal/textutil"
 )
 
 type listOptions struct {
@@ -113,12 +114,12 @@ func printTable(app *App, now time.Time, sessions []model.Session) {
 			dot,
 			shortID(s.ID),
 			s.Tool,
-			truncate(s.Project(), 14),
-			truncate(s.GitBranch, 14),
+			textutil.Truncate(s.Project(), 14),
+			textutil.Truncate(s.GitBranch, 14),
 			age(now, s.UpdatedAt),
 			s.MessageCount(),
 			tokens(s.Usage.Total()),
-			truncate(s.Title, titleWidth),
+			textutil.Truncate(s.Title, titleWidth),
 		)
 	}
 	tw.Flush()

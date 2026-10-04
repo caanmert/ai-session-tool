@@ -1,0 +1,2 @@
+{"timestamp":"2026-08-01T08:00:00.000Z","type":"session_meta","payload":{"session_id":"12121212-1212-4121-8121-121212121212","id":"12121212-1212-4121-8121-121212121212","timestamp":"2026-08-01T08:00:00.000Z","cwd":"/Users/dev/code/old","originator":"codex_cli_rs","cli_version":"0.150.0","source":"cli","model_provider":"openai","base_instructions":null}}
+{"timestamp":"2026-08-01T08:00:01.000Z","type":"event_msg","payload":{"type":"user_message","message":"Archived prompt"}}

@@ -1,0 +1,2 @@
+{"timestamp":"2026-09-21T10:00:00.000Z","type":"session_meta","payload":{"session_id":"cccccccc-cccc-4ccc-8ccc-cccccccccccc","id":"cccccccc-cccc-4ccc-8ccc-cccccccccccc","timestamp":"2026-09-21T10:00:00.000Z","cwd":"/Users/dev/code/cli","originator":"codex_cli_rs","cli_version":"0.150.0","source":"cli","model_provider":"openai","base_instructions":null}}
+{"timestamp":"2026-09-21T10:00:01.000Z","type":"event_msg","payload":{"type":"user_message","message":"Plain copy wins"}}

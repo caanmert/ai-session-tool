@@ -12,6 +12,7 @@ import (
 
 	"github.com/caanmert/ai-session-tool/internal/provider"
 	"github.com/caanmert/ai-session-tool/internal/provider/claude"
+	"github.com/caanmert/ai-session-tool/internal/provider/codex"
 )
 
 var update = flag.Bool("update", false, "rewrite golden files")
@@ -25,7 +26,7 @@ func TestMain(m *testing.M) {
 // run executes ais with args against the fixture transcripts.
 func run(t *testing.T, args ...string) (stdout string, err error) {
 	t.Helper()
-	root, absErr := filepath.Abs("../../testdata/claude")
+	root, absErr := filepath.Abs("../../testdata")
 	if absErr != nil {
 		t.Fatal(absErr)
 	}
@@ -33,9 +34,12 @@ func run(t *testing.T, args ...string) (stdout string, err error) {
 	app := &App{
 		Out: &out,
 		Err: &bytes.Buffer{},
-		Now: func() time.Time { return time.Date(2026, 10, 1, 9, 0, 0, 0, time.UTC) },
+		Now: func() time.Time { return time.Date(2026, 10, 3, 12, 0, 0, 0, time.UTC) },
 		Providers: func() []provider.Provider {
-			return []provider.Provider{claude.New(root)}
+			return []provider.Provider{
+				claude.New(filepath.Join(root, "claude")),
+				codex.New(filepath.Join(root, "codex")),
+			}
 		},
 		Version: "test",
 	}
@@ -83,13 +87,15 @@ func TestListFilters(t *testing.T) {
 		args []string
 		want []string // id prefixes, in order
 	}{
-		{[]string{"ls", "-p", "web"}, []string{"22222222"}},
-		{[]string{"ls", "--since", "12h"}, []string{"22222222"}},
-		{[]string{"ls", "--since", "1d"}, []string{"22222222", "11111111"}},
-		{[]string{"ls", "--since", "2026-09-29"}, []string{"22222222", "11111111"}},
-		{[]string{"ls", "--tool", "codex"}, nil},
+		{[]string{"ls"}, []string{"aaaaaaaa", "99999999", "22222222", "11111111", "44444444", "cccccccc", "bbbbbbbb", "dddddddd"}},
+		{[]string{"ls", "--tool", "codex"}, []string{"aaaaaaaa", "99999999", "cccccccc", "bbbbbbbb", "dddddddd"}},
+		{[]string{"ls", "--tool", "claude"}, []string{"22222222", "11111111", "44444444"}},
+		{[]string{"ls", "-p", "web"}, []string{"22222222", "bbbbbbbb"}},
+		{[]string{"ls", "--since", "1d"}, []string{"aaaaaaaa"}},
+		{[]string{"ls", "--since", "3d"}, []string{"aaaaaaaa", "99999999", "22222222"}},
+		{[]string{"ls", "--since", "2026-09-29"}, []string{"aaaaaaaa", "99999999", "22222222", "11111111"}},
 		{[]string{"ls", "--live"}, nil},
-		{[]string{"ls", "-n", "1"}, []string{"22222222"}},
+		{[]string{"ls", "-n", "1"}, []string{"aaaaaaaa"}},
 	}
 	for _, tt := range tests {
 		out, err := run(t, tt.args...)
@@ -125,19 +131,36 @@ func TestShow(t *testing.T) {
 	golden(t, "show.txt", out)
 }
 
-func TestResumePrint(t *testing.T) {
-	out, err := run(t, "resume", "2222", "--fork", "--print")
+func TestShowCodex(t *testing.T) {
+	out, err := run(t, "show", "aaaa", "--tools")
 	if err != nil {
 		t.Fatal(err)
 	}
-	want := "cd /Users/dev/code/web && claude --resume 22222222-2222-4222-8222-222222222222 --fork-session\n"
-	if out != want {
-		t.Errorf("got %q, want %q", out, want)
+	golden(t, "show_codex.txt", out)
+}
+
+func TestResumePrint(t *testing.T) {
+	tests := []struct {
+		args []string
+		want string
+	}{
+		{[]string{"resume", "2222", "--fork", "--print"}, "cd /Users/dev/code/web && claude --resume 22222222-2222-4222-8222-222222222222 --fork-session\n"},
+		{[]string{"resume", "aaaa", "--print"}, "cd /Users/dev/code/api && codex resume aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa\n"},
+		{[]string{"resume", "9999", "--fork", "--print"}, "cd /Users/dev/code/docs && codex fork 99999999-9999-4999-8999-999999999999\n"},
+	}
+	for _, tt := range tests {
+		out, err := run(t, tt.args...)
+		if err != nil {
+			t.Fatalf("%v: %v", tt.args, err)
+		}
+		if out != tt.want {
+			t.Errorf("%v: got %q, want %q", tt.args, out, tt.want)
+		}
 	}
 }
 
 func TestUnknownSession(t *testing.T) {
-	for _, args := range [][]string{{"resume", "9999"}, {"show", "x"}} {
+	for _, args := range [][]string{{"resume", "0000"}, {"show", "x"}} {
 		if _, err := run(t, args...); err == nil || !strings.Contains(err.Error(), "no session matches") {
 			t.Errorf("%v: err = %v", args, err)
 		}
@@ -158,8 +181,5 @@ func TestFormatting(t *testing.T) {
 		if got := tokens(n); got != want {
 			t.Errorf("tokens(%d) = %s, want %s", n, got, want)
 		}
-	}
-	if got := truncate("héllo world", 5); got != "héll…" {
-		t.Errorf("truncate = %q", got)
 	}
 }

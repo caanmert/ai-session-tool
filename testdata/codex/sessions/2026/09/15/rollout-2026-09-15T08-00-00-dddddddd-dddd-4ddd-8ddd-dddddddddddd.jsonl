@@ -1,0 +1,5 @@
+{"timestamp":"2026-09-15T08:00:00.000Z","type":"session_meta","payload":{"session_id":"dddddddd-dddd-4ddd-8ddd-dddddddddddd","id":"dddddddd-dddd-4ddd-8ddd-dddddddddddd","timestamp":"2026-09-15T08:00:00.000Z","cwd":"/Users/dev/code/infra","originator":"codex_cli_rs","cli_version":"0.20.0","source":"cli","model_provider":"openai","base_instructions":null}}
+{"timestamp":"2026-09-15T08:00:01.000Z","type":"response_item","payload":{"type":"message","role":"user","content":[{"type":"input_text","text":"<user_instructions>be terse</user_instructions>"}]}}
+{"timestamp":"2026-09-15T08:00:02.000Z","type":"response_item","payload":{"type":"message","role":"user","content":[{"type":"input_text","text":"Context from my IDE\n## My request for Codex:\nBump terraform to 1.9"}]}}
+{"timestamp":"2026-09-15T08:00:09.000Z","type":"response_item","payload":{"type":"message","role":"assistant","content":[{"type":"output_text","text":"Bumped."}]}}
+{"timestamp":"2026-09-15T08:00:10.000Z","type":"event_msg","payload":{"type":"token_count","input_tokens":900,"cached_input_tokens":100,"output_tokens":50,"reasoning_output_tokens":0,"total_tokens":950}}

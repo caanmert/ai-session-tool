@@ -58,7 +58,11 @@ func runDoctor(ctx context.Context, app *App, verbose bool) error {
 			}
 		}
 		row("transcripts", fmt.Sprint(len(files)))
-		row("sessions", fmt.Sprintf("%d (%d empty skipped)", len(res.Sessions), res.Empty))
+		skipped := fmt.Sprintf("%d empty", res.Empty)
+		if res.Hidden > 0 {
+			skipped += fmt.Sprintf(", %d subagent/internal", res.Hidden)
+		}
+		row("sessions", fmt.Sprintf("%d (%s skipped)", len(res.Sessions), skipped))
 		row("live", fmt.Sprint(live))
 		row("warnings", fmt.Sprint(len(res.Warnings)))
 		shown := res.Warnings

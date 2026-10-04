@@ -20,6 +20,10 @@ import (
 // example a session that was opened and closed without a prompt).
 var ErrEmpty = errors.New("no conversation in transcript")
 
+// ErrHidden means a transcript is not a user-facing session, e.g. one
+// written by a subagent or an internal background task.
+var ErrHidden = errors.New("not a user-facing session")
+
 // ErrUnsupported means the provider cannot perform the requested action.
 var ErrUnsupported = errors.New("not supported by this tool")
 
@@ -52,7 +56,8 @@ type Provider interface {
 	// Discover lists transcript files. A missing root is not an error.
 	Discover(ctx context.Context) ([]FileRef, error)
 	// Parse summarises one transcript. It returns ErrEmpty for files with no
-	// conversation and collects malformed lines as warnings.
+	// conversation, ErrHidden for subagent and other internal transcripts,
+	// and collects malformed lines as warnings.
 	Parse(ctx context.Context, f FileRef) (model.Session, []Warning, error)
 	// Transcript loads the renderable messages of a session.
 	Transcript(ctx context.Context, s model.Session) ([]model.Message, error)
@@ -69,6 +74,7 @@ type ScanResult struct {
 	Sessions []model.Session
 	Warnings []Warning
 	Empty    int // transcripts skipped because they held no conversation
+	Hidden   int // transcripts skipped because they are subagent or internal
 }
 
 // Scan discovers and parses every transcript of every provider in parallel,
@@ -106,6 +112,8 @@ func Scan(ctx context.Context, providers []Provider) (ScanResult, error) {
 				switch {
 				case errors.Is(err, ErrEmpty):
 					res.Empty++
+				case errors.Is(err, ErrHidden):
+					res.Hidden++
 				case err != nil:
 					res.Warnings = append(res.Warnings, Warning{Path: j.f.Path, Msg: err.Error()})
 				default:

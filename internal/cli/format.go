@@ -48,21 +48,6 @@ func trimZero(f float64) string {
 	return strings.TrimSuffix(strconv.FormatFloat(f, 'f', 1, 64), ".0")
 }
 
-// truncate shortens s to at most n runes, ending with "…" when cut.
-func truncate(s string, n int) string {
-	if n <= 0 {
-		return ""
-	}
-	r := []rune(s)
-	if len(r) <= n {
-		return s
-	}
-	if n == 1 {
-		return "…"
-	}
-	return string(r[:n-1]) + "…"
-}
-
 // width returns the terminal width of w, or 0 when w is not a terminal.
 func width(w io.Writer) int {
 	f, ok := w.(*os.File)

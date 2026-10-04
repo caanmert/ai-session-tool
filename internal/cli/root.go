@@ -11,6 +11,7 @@ import (
 
 	"github.com/caanmert/ai-session-tool/internal/provider"
 	"github.com/caanmert/ai-session-tool/internal/provider/claude"
+	"github.com/caanmert/ai-session-tool/internal/provider/codex"
 )
 
 // App holds the dependencies commands use, so tests can swap them.
@@ -37,6 +38,7 @@ func DefaultApp(version string) *App {
 func DefaultProviders() []provider.Provider {
 	return []provider.Provider{
 		claude.New(claude.DefaultRoot()),
+		codex.New(codex.DefaultRoot()),
 	}
 }
 

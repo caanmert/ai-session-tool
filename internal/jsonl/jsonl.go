@@ -2,7 +2,7 @@
 //
 // Transcript lines can be several megabytes (tool output is stored inline),
 // so this uses bufio.Reader instead of bufio.Scanner, whose default token
-// limit is 64 KiB.
+// limit is 64 KiB. Files ending in ".zst" are decompressed transparently.
 package jsonl
 
 import (
@@ -11,6 +11,9 @@ import (
 	"errors"
 	"io"
 	"os"
+	"strings"
+
+	"github.com/klauspost/compress/zstd"
 )
 
 // Each calls fn for every non-blank line of r with its 1-based line number.
@@ -46,10 +49,37 @@ func Each(r io.Reader, fn func(lineNo int, line []byte) error) error {
 
 // EachFile is Each over the file at path.
 func EachFile(path string, fn func(lineNo int, line []byte) error) error {
-	f, err := os.Open(path)
+	r, err := Open(path)
 	if err != nil {
 		return err
 	}
-	defer f.Close()
-	return Each(f, fn)
+	defer r.Close()
+	return Each(r, fn)
+}
+
+// Open opens path for reading, decompressing it when it ends in ".zst".
+func Open(path string) (io.ReadCloser, error) {
+	f, err := os.Open(path)
+	if err != nil {
+		return nil, err
+	}
+	if !strings.HasSuffix(path, ".zst") {
+		return f, nil
+	}
+	dec, err := zstd.NewReader(f, zstd.WithDecoderConcurrency(1))
+	if err != nil {
+		f.Close()
+		return nil, err
+	}
+	return zstdFile{dec, f}, nil
+}
+
+type zstdFile struct {
+	*zstd.Decoder
+	f *os.File
+}
+
+func (z zstdFile) Close() error {
+	z.Decoder.Close()
+	return z.f.Close()
 }
