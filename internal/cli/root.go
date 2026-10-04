@@ -17,6 +17,7 @@ import (
 	"github.com/caanmert/ai-session-tool/internal/index"
 	"github.com/caanmert/ai-session-tool/internal/meta"
 	"github.com/caanmert/ai-session-tool/internal/model"
+	"github.com/caanmert/ai-session-tool/internal/pricing"
 	"github.com/caanmert/ai-session-tool/internal/provider"
 	"github.com/caanmert/ai-session-tool/internal/provider/claude"
 	"github.com/caanmert/ai-session-tool/internal/provider/codex"
@@ -40,6 +41,8 @@ type App struct {
 	// DataDir locates ais's own data: annotations and the trash. Nil
 	// disables both.
 	DataDir func() (string, error)
+	// ConfigPath locates the config file (prices). Nil uses built-ins.
+	ConfigPath func() (string, error)
 
 	color   ui.Mode
 	themes  map[io.Writer]*ui.Theme
@@ -167,8 +170,9 @@ func DefaultApp(version string) *App {
 		Interactive: func() bool {
 			return term.IsTerminal(int(os.Stdin.Fd())) && term.IsTerminal(int(os.Stdout.Fd()))
 		},
-		IndexPath: index.DefaultPath,
-		DataDir:   meta.DefaultDir,
+		IndexPath:  index.DefaultPath,
+		DataDir:    meta.DefaultDir,
+		ConfigPath: pricing.ConfigPath,
 	}
 }
 
@@ -228,6 +232,7 @@ preview, then resume or fork with one key. Piped, it prints the recent list.`,
 		newFlagCmd(app, "unarchive", "Show an archived session in lists again", func(st *meta.Store, ctx context.Context, s model.Session) error { return st.SetArchived(ctx, s, false) }),
 		newTrashCmd(app),
 		newRestoreCmd(app),
+		newStatsCmd(app),
 	)
 	return root
 }
@@ -256,6 +261,7 @@ func (a *App) tuiDeps() tui.Deps {
 	if st, err := a.store(); err == nil {
 		d.Actions = &actions{app: a, st: st}
 	}
+	d.Prices, _ = a.prices()
 	if ix := a.index(); ix != nil {
 		d.Load = func(ctx context.Context) (provider.ScanResult, error) {
 			return a.annotate(ctx)(ix.Load(ctx, providers))

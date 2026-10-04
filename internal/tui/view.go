@@ -21,9 +21,12 @@ func (m Model) View() string {
 	parts = append(parts, m.list(listH)...)
 	if previewH > 0 {
 		parts = append(parts, m.separator())
-		if m.help {
+		switch {
+		case m.help:
 			parts = append(parts, fit(m.helpView(), previewH)...)
-		} else {
+		case m.statsBy != "":
+			parts = append(parts, fit(m.statsView(previewH), previewH)...)
+		default:
 			m.preview.Width, m.preview.Height = m.width, previewH
 			parts = append(parts, fit(m.preview.View(), previewH)...)
 		}
@@ -178,15 +181,18 @@ func (m Model) list(n int) []string {
 func (m Model) separator() string {
 	t := m.d.Theme
 	label := " preview "
-	if m.help {
+	switch {
+	case m.help:
 		label = " keys "
+	case m.statsBy != "":
+		label = " stats · by " + m.statsBy + " "
 	}
-	if m.focus == focusPreview && !m.help {
+	if m.focus == focusPreview && !m.help && m.statsBy == "" {
 		label = " preview · scrolling (tab to go back) "
 	}
 	left := "──"
 	rest := max(m.width-ui.Width(left+label), 0)
-	if m.focus == focusPreview && !m.help {
+	if m.focus == focusPreview && !m.help && m.statsBy == "" {
 		return t.Faint(left) + t.Bold(label) + t.Faint(strings.Repeat("─", rest))
 	}
 	return t.Faint(left + label + strings.Repeat("─", rest))
@@ -218,7 +224,7 @@ func (m Model) footer() string {
 	hints := []hint{
 		key("enter", "resume", 0), key("f", "fork", 3), key("n", "new", 5), key("y", "copy", 6),
 		key("r", "rename", 4), key("t", "tag", 4), key("p", "pin", 5), key("d", "trash", 6),
-		key("/", "filter", 1), key("tab", "preview", 7), key("?", "keys", 2), key("q", "quit", 2),
+		key("/", "filter", 1), key("s", "stats", 6), key("tab", "preview", 7), key("?", "keys", 2), key("q", "quit", 2),
 	}
 	if !m.query.empty() {
 		hints = append([]hint{{t.Faint("filter: ") + m.filter.Value(), 0}, key("esc", "clear", 1)}, hints...)
@@ -252,6 +258,7 @@ func (m Model) helpView() string {
 		k("f", "fork: continue in a new session, keep the original"),
 		k("n", "new session in the same project and tool"),
 		k("y", "copy the resume command"),
+		k("s", "stats: usage by day, model, project; again to cycle"),
 		k("ctrl+r", "rescan"),
 		"", " " + t.Bold("Organize"),
 		k("r", "rename (empty restores the tool's title)"),

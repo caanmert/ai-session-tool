@@ -26,7 +26,7 @@ import (
 
 // schemaVersion invalidates the whole index when the schema or what the
 // parsers extract changes.
-const schemaVersion = 1
+const schemaVersion = 2 // 2: usage breakdown per slot and model
 
 // maxBodyBytes caps the conversation text indexed per session.
 const maxBodyBytes = 1 << 20

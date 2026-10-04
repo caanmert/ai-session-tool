@@ -88,6 +88,7 @@ func runList(ctx context.Context, app *App, o listOptions) error {
 	}
 
 	if o.json {
+		sessions = withoutBreakdown(sessions)
 		enc := json.NewEncoder(app.Out)
 		enc.SetIndent("", "  ")
 		return enc.Encode(sessions)
@@ -153,4 +154,15 @@ func hasTags(s model.Session, tags []string) bool {
 		}
 	}
 	return true
+}
+
+// withoutBreakdown drops per-slot usage from JSON listings (ais stats
+// reports usage over time).
+func withoutBreakdown(sessions []model.Session) []model.Session {
+	out := make([]model.Session, len(sessions))
+	for i, s := range sessions {
+		s.Breakdown = nil
+		out[i] = s
+	}
+	return out
 }

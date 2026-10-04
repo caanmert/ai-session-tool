@@ -1,0 +1,13 @@
+Usage since Sep 3, 2026 · 6 sessions · ≈ $0.04+
+
+MODEL              SESSIONS  INPUT  OUTPUT  CACHE READ  CACHE WRITE  TOTAL  ≈ COST
+gpt-5.5-codex             1     5k    1.2k         15k            0  21.2k       —
+claude-opus-5-5           2    130     900          3k         3.5k   7.5k   $0.04
+gpt-5.4                   1   1.5k     200          1k          500   3.2k       —
+claude-sonnet-5-5         1      5     150        1.4k          400     2k  <$0.01
+(unknown)                 1    800      50         100            0    950       —
+claude-haiku-4-5          1      5      50           0          100    155  <$0.01
+total                     6   7.4k    2.5k       20.5k         4.5k    35k  $0.04+
+
++ excludes models without a price: (unknown), gpt-5.4, gpt-5.5-codex (add them under [prices] in $DATA/no-config.toml)
+≈ cost at API list prices; on a subscription you pay a flat fee instead

@@ -70,6 +70,7 @@ func runShow(ctx context.Context, app *App, id string, o showOptions) error {
 	}
 
 	if o.json {
+		s.Breakdown = nil // ais stats reports usage over time
 		enc := json.NewEncoder(app.Out)
 		enc.SetIndent("", "  ")
 		return enc.Encode(struct {

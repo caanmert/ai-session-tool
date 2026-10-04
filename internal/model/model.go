@@ -16,11 +16,15 @@ const (
 )
 
 // Usage is the token usage of a session, summed over every API response.
+// The buckets are disjoint: Input excludes cached tokens.
 type Usage struct {
 	Input      int64 `json:"input"`
 	Output     int64 `json:"output"`
 	CacheRead  int64 `json:"cacheRead"`
 	CacheWrite int64 `json:"cacheWrite"`
+	// CacheWrite1h is the part of CacheWrite written with a one-hour TTL,
+	// which is priced higher than the default five minutes.
+	CacheWrite1h int64 `json:"cacheWrite1h,omitempty"`
 }
 
 // Total returns all tokens processed, cache reads and writes included.
@@ -31,11 +35,50 @@ func (u Usage) Total() int64 {
 // Add returns the element-wise sum of u and o.
 func (u Usage) Add(o Usage) Usage {
 	return Usage{
-		Input:      u.Input + o.Input,
-		Output:     u.Output + o.Output,
-		CacheRead:  u.CacheRead + o.CacheRead,
-		CacheWrite: u.CacheWrite + o.CacheWrite,
+		Input:        u.Input + o.Input,
+		Output:       u.Output + o.Output,
+		CacheRead:    u.CacheRead + o.CacheRead,
+		CacheWrite:   u.CacheWrite + o.CacheWrite,
+		CacheWrite1h: u.CacheWrite1h + o.CacheWrite1h,
 	}
+}
+
+// IsZero reports whether no tokens were used.
+func (u Usage) IsZero() bool { return u == Usage{} }
+
+// UsageEntry is the usage of one model in one 15-minute slot (UTC), the
+// unit stats are built from: slots bucket cleanly into local days, weeks
+// and months in every time zone.
+type UsageEntry struct {
+	Slot  time.Time `json:"slot"`
+	Model string    `json:"model,omitempty"`
+	Usage Usage     `json:"usage"`
+}
+
+// SlotOf truncates t to its 15-minute usage slot.
+func SlotOf(t time.Time) time.Time { return t.UTC().Truncate(15 * time.Minute) }
+
+// AddUsage adds u to the entry for (slot, model) in entries, keeping them
+// ordered by slot then model.
+func AddUsage(entries []UsageEntry, slot time.Time, modelName string, u Usage) []UsageEntry {
+	if u.IsZero() {
+		return entries
+	}
+	for i := range entries {
+		if entries[i].Slot.Equal(slot) && entries[i].Model == modelName {
+			entries[i].Usage = entries[i].Usage.Add(u)
+			return entries
+		}
+	}
+	entries = append(entries, UsageEntry{Slot: slot, Model: modelName, Usage: u})
+	for i := len(entries) - 1; i > 0; i-- {
+		a, b := entries[i-1], entries[i]
+		if a.Slot.Before(b.Slot) || a.Slot.Equal(b.Slot) && a.Model <= b.Model {
+			break
+		}
+		entries[i-1], entries[i] = b, a
+	}
+	return entries
 }
 
 // Session is one resumable conversation, summarised from its transcript.
@@ -62,6 +105,8 @@ type Session struct {
 	Model   string `json:"model,omitempty"`
 	Version string `json:"version,omitempty"`
 	Usage   Usage  `json:"usage"`
+	// Breakdown splits Usage by time slot and model, for stats.
+	Breakdown []UsageEntry `json:"breakdown,omitempty"`
 
 	Live *LiveState `json:"live,omitempty"`
 

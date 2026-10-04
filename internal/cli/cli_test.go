@@ -52,7 +52,7 @@ func runIn(t *testing.T, indexPath, dataDir string, args ...string) (stdout stri
 // env is a test environment: transcripts under root, an index and a data
 // directory, and optional stdin.
 type env struct {
-	root, index, data, stdin string
+	root, index, data, stdin, config string
 }
 
 // newEnv copies the fixtures so tests may change them (the trash moves files).
@@ -101,12 +101,23 @@ func (e *env) run(t *testing.T, args ...string) (stdout string, err error) {
 		Version:   "test",
 		IndexPath: func() (string, error) { return e.index, nil },
 		DataDir:   func() (string, error) { return e.data, nil },
+		ConfigPath: func() (string, error) {
+			if e.config != "" {
+				return e.config, nil
+			}
+			return filepath.Join(e.data, "no-config.toml"), nil
+		},
 	}
 	t.Cleanup(func() { app.Close() })
 	cmd := NewRootCmd(app)
 	cmd.SetArgs(args)
 	err = cmd.ExecuteContext(context.Background())
-	return strings.ReplaceAll(out.String(), e.root, "$ROOT"), err
+	stdout = strings.ReplaceAll(out.String(), e.root, "$ROOT")
+	stdout = strings.ReplaceAll(stdout, e.data, "$DATA")
+	if e.config != "" {
+		stdout = strings.ReplaceAll(stdout, e.config, "$CONFIG")
+	}
+	return stdout, err
 }
 
 // must runs a command that has to succeed.
@@ -488,5 +499,53 @@ func TestTrashCodexUsesCodex(t *testing.T) {
 		"archive aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa\ndelete aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa --force\n"
 	if string(calls) != want {
 		t.Errorf("codex calls:\n%s\nwant:\n%s", calls, want)
+	}
+}
+
+func TestStats(t *testing.T) {
+	e := newEnv(t)
+	golden(t, "stats.txt", e.must(t, "stats"))
+	golden(t, "stats_model.txt", e.must(t, "stats", "--by", "model"))
+
+	if got := e.must(t, "stats", "--by", "tool", "--tool", "claude"); !regexp.MustCompile(`(?m)^claude\s+3\s`).MatchString(got) || strings.Contains(got, "codex") {
+		t.Errorf("--tool claude:\n%s", got)
+	}
+	if got := e.must(t, "stats", "--since", "2d"); !strings.Contains(got, "Fri Oct 2") || strings.Contains(got, "Sep") {
+		t.Errorf("--since 2d:\n%s", got)
+	}
+
+	var rep struct {
+		By    string `json:"by"`
+		Total struct {
+			Sessions int     `json:"sessions"`
+			Cost     float64 `json:"cost"`
+			Complete bool    `json:"complete"`
+		} `json:"total"`
+		Unpriced []string `json:"unpricedModels"`
+	}
+	if err := json.Unmarshal([]byte(e.must(t, "stats", "--by", "project", "--json")), &rep); err != nil {
+		t.Fatal(err)
+	}
+	if rep.By != "project" || rep.Total.Sessions != 6 || rep.Total.Complete || len(rep.Unpriced) != 3 {
+		t.Errorf("json report: %+v", rep)
+	}
+
+	// Pricing the Codex models in the config completes the estimate.
+	e.config = filepath.Join(t.TempDir(), "config.toml")
+	cfg := "[prices.\"gpt-5\"]\ninput = 1.25\noutput = 10\ncache_read = 0.125\n"
+	if err := os.WriteFile(e.config, []byte(cfg), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	got := e.must(t, "stats", "--by", "model")
+	if !strings.Contains(got, "excludes models without a price: (unknown) (add them under [prices] in $CONFIG)") ||
+		!regexp.MustCompile(`(?m)^gpt-5\.5-codex .* \$0\.02$`).MatchString(got) {
+		t.Errorf("with the gpt-5 family priced, only the model-less old rollout stays unpriced:\n%s", got)
+	}
+
+	if _, err := e.run(t, "stats", "--by", "hour"); err == nil {
+		t.Error("unknown --by accepted")
+	}
+	if out, err := e.run(t, "stats", "--since", "1m"); err != nil || out != "" {
+		t.Errorf("no usage in the window: %q, %v", out, err)
 	}
 }

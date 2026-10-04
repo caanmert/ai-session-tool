@@ -332,3 +332,46 @@ func writeLines(t *testing.T, path string, lines ...map[string]any) {
 		t.Fatal(err)
 	}
 }
+
+func TestUsageBreakdownFromRunningTotals(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "rollout-2026-10-03T08-00-00-tot.jsonl")
+	total := func(ts string, in, cached, out int64) map[string]any {
+		return map[string]any{"timestamp": ts, "type": "event_msg", "payload": map[string]any{"type": "token_count",
+			"info": map[string]any{"total_token_usage": map[string]any{"input_tokens": in, "cached_input_tokens": cached, "output_tokens": out}}}}
+	}
+	ctxModel := func(ts, m string) map[string]any {
+		return map[string]any{"timestamp": ts, "type": "turn_context", "payload": map[string]any{"cwd": "/p", "model": m}}
+	}
+	writeLines(t, path,
+		map[string]any{"timestamp": "2026-10-03T08:00:00Z", "type": "session_meta", "payload": map[string]any{"id": "tot", "cwd": "/p"}},
+		map[string]any{"timestamp": "2026-10-03T08:00:01Z", "type": "event_msg", "payload": map[string]any{"type": "user_message", "message": "go"}},
+		ctxModel("2026-10-03T08:00:02Z", "gpt-a"),
+		total("2026-10-03T08:01:00Z", 1000, 200, 100),
+		total("2026-10-03T08:01:00Z", 1000, 200, 100), // repeated total (rate-limit update): no new usage
+		ctxModel("2026-10-03T08:30:00Z", "gpt-b"),
+		total("2026-10-03T08:31:00Z", 3000, 1200, 300),
+		total("2026-10-03T08:40:00Z", 10, 0, 1), // totals restarted: new baseline, nothing counted
+		total("2026-10-03T08:41:00Z", 110, 0, 11),
+	)
+	s, _, err := New(dir).Parse(context.Background(), provider.FileRef{Path: path})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var got []string
+	var sum model.Usage
+	for _, e := range s.Breakdown {
+		got = append(got, fmt.Sprintf("%s %s %v", e.Slot.Format("15:04"), e.Model, e.Usage))
+		sum = sum.Add(e.Usage)
+	}
+	want := []string{
+		"08:00 gpt-a {800 100 200 0 0}",
+		"08:30 gpt-b {1100 210 1000 0 0}", // 1000 in + 200 out from the second step, then 100 in + 10 out after the restart
+	}
+	if strings.Join(got, " | ") != strings.Join(want, " | ") {
+		t.Errorf("breakdown:\n%s\nwant:\n%s", strings.Join(got, "\n"), strings.Join(want, "\n"))
+	}
+	if sum != s.Usage {
+		t.Errorf("breakdown sums to %v, session usage is %v", sum, s.Usage)
+	}
+}

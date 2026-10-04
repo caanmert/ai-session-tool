@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
+	"time"
 
 	"github.com/caanmert/ai-session-tool/internal/jsonl"
 	"github.com/caanmert/ai-session-tool/internal/model"
@@ -43,15 +44,29 @@ type apiUsage struct {
 	OutputTokens             int64 `json:"output_tokens"`
 	CacheCreationInputTokens int64 `json:"cache_creation_input_tokens"`
 	CacheReadInputTokens     int64 `json:"cache_read_input_tokens"`
+	CacheCreation            *struct {
+		Ephemeral1h int64 `json:"ephemeral_1h_input_tokens"`
+	} `json:"cache_creation"`
 }
 
 func (u apiUsage) toModel() model.Usage {
-	return model.Usage{
+	m := model.Usage{
 		Input:      u.InputTokens,
 		Output:     u.OutputTokens,
 		CacheRead:  u.CacheReadInputTokens,
 		CacheWrite: u.CacheCreationInputTokens,
 	}
+	if u.CacheCreation != nil {
+		m.CacheWrite1h = min(u.CacheCreation.Ephemeral1h, m.CacheWrite)
+	}
+	return m
+}
+
+// response is the usage of one API response.
+type response struct {
+	usage model.Usage
+	at    time.Time
+	model string
 }
 
 type block struct {
@@ -101,9 +116,9 @@ func (p *Provider) Parse(ctx context.Context, f provider.FileRef) (model.Session
 		customTitle  string
 		firstRaw     string // first prompt with line breaks, for the title
 		firstCommand string
-		usageByID    = map[string]model.Usage{}
+		usageByID    = map[string]response{}
 		idOrder      []string
-		anonUsage    model.Usage
+		anonUsage    []response
 		assistantIDs = map[string]bool{}
 	)
 
@@ -117,7 +132,8 @@ func (p *Provider) Parse(ctx context.Context, f provider.FileRef) (model.Session
 			return nil
 		}
 
-		if ts, ok := textutil.ParseTime(r.Timestamp); ok {
+		ts, hasTime := textutil.ParseTime(r.Timestamp)
+		if hasTime {
 			if s.StartedAt.IsZero() || ts.Before(s.StartedAt) {
 				s.StartedAt = ts
 			}
@@ -162,13 +178,14 @@ func (p *Provider) Parse(ctx context.Context, f provider.FileRef) (model.Session
 			// One API response is written as several records (one per content
 			// block) that repeat the same usage; count each response once.
 			if m.Usage != nil {
+				resp := response{usage: m.Usage.toModel(), at: ts, model: m.Model}
 				if m.ID == "" {
-					anonUsage = anonUsage.Add(m.Usage.toModel())
+					anonUsage = append(anonUsage, resp)
 				} else {
 					if _, seen := usageByID[m.ID]; !seen {
 						idOrder = append(idOrder, m.ID)
 					}
-					usageByID[m.ID] = m.Usage.toModel()
+					usageByID[m.ID] = resp
 				}
 			}
 			if r.IsSidechain {
@@ -216,13 +233,20 @@ func (p *Provider) Parse(ctx context.Context, f provider.FileRef) (model.Session
 		return model.Session{}, warns, provider.ErrEmpty
 	}
 
-	for _, id := range idOrder {
-		s.Usage = s.Usage.Add(usageByID[id])
-	}
-	s.Usage = s.Usage.Add(anonUsage)
-
 	if s.UpdatedAt.IsZero() {
 		s.UpdatedAt = f.ModTime.UTC()
+	}
+	responses := anonUsage
+	for _, id := range idOrder {
+		responses = append(responses, usageByID[id])
+	}
+	for _, r := range responses {
+		at := r.at
+		if at.IsZero() {
+			at = s.UpdatedAt
+		}
+		s.Usage = s.Usage.Add(r.usage)
+		s.Breakdown = model.AddUsage(s.Breakdown, model.SlotOf(at), r.model, r.usage)
 	}
 	if s.StartedAt.IsZero() {
 		s.StartedAt = s.UpdatedAt

@@ -112,8 +112,8 @@ type scan struct {
 	updated    time.Time
 	model      string
 	lastCWD    string
-	usage      *model.Usage // from token_usage_record (cumulative per thread)
-	usageEvent *model.Usage // from token_count events (cumulative per thread)
+	usage      cumulative // from token_usage_record (thread totals)
+	usageEvent cumulative // from token_count events (thread totals)
 	warns      []provider.Warning
 }
 
@@ -315,8 +315,7 @@ func (sc *scan) record(l line, ts time.Time) error {
 			return err
 		}
 		if rec.Thread != nil {
-			u := rec.Thread.toModel()
-			sc.usage = &u
+			sc.usage.observe(rec.Thread.toModel(), sc.at(ts), sc.model)
 		}
 	case "event_msg":
 		return sc.event(l.Payload, ts)
@@ -414,9 +413,44 @@ func (sc *scan) event(payload json.RawMessage, ts time.Time) error {
 		default:
 			return nil
 		}
-		sc.usageEvent = &u
+		sc.usageEvent.observe(u, sc.at(ts), sc.model)
 	}
 	return nil
+}
+
+// at is when a usage record happened: its own timestamp, else the latest
+// one seen so far.
+func (sc *scan) at(ts time.Time) time.Time {
+	if ts.IsZero() {
+		return sc.updated
+	}
+	return ts
+}
+
+// cumulative turns a series of running thread totals into per-slot,
+// per-model usage: each step's increase is attributed to the model in use
+// when it was recorded.
+type cumulative struct {
+	seen    bool
+	prev    model.Usage
+	total   model.Usage
+	entries []model.UsageEntry
+}
+
+func (c *cumulative) observe(cur model.Usage, at time.Time, modelName string) {
+	c.seen = true
+	d := model.Usage{
+		Input:      cur.Input - c.prev.Input,
+		Output:     cur.Output - c.prev.Output,
+		CacheRead:  cur.CacheRead - c.prev.CacheRead,
+		CacheWrite: cur.CacheWrite - c.prev.CacheWrite,
+	}
+	c.prev = cur
+	if d.Input < 0 || d.Output < 0 || d.CacheRead < 0 || d.CacheWrite < 0 {
+		return // the totals restarted: count from the new baseline
+	}
+	c.total = c.total.Add(d)
+	c.entries = model.AddUsage(c.entries, model.SlotOf(at), modelName, d)
 }
 
 func (sc *scan) responseItem(payload json.RawMessage, ts time.Time) error {
@@ -648,12 +682,13 @@ func (p *Provider) Parse(ctx context.Context, f provider.FileRef) (model.Session
 		return model.Session{}, sc.warns, provider.ErrEmpty
 	}
 
-	switch {
-	case sc.usage != nil:
-		s.Usage = *sc.usage
-	case sc.usageEvent != nil:
-		s.Usage = *sc.usageEvent
+	// Prefer per-response usage records; older rollouts only have
+	// token_count events.
+	usage := sc.usage
+	if !usage.seen {
+		usage = sc.usageEvent
 	}
+	s.Usage, s.Breakdown = usage.total, usage.entries
 	s.StartedAt, s.UpdatedAt = sc.started, sc.updated
 	if s.UpdatedAt.IsZero() {
 		s.UpdatedAt = f.ModTime.UTC()

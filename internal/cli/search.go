@@ -94,6 +94,7 @@ func runSearch(ctx context.Context, app *App, q, tool string, limit int, asJSON 
 	if asJSON {
 		for i := range results {
 			results[i].Snippet = stripMarks(results[i].Snippet)
+			results[i].Session.Breakdown = nil
 		}
 		if results == nil {
 			results = []result{}

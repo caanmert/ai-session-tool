@@ -19,6 +19,7 @@ import (
 
 	"github.com/caanmert/ai-session-tool/internal/launch"
 	"github.com/caanmert/ai-session-tool/internal/model"
+	"github.com/caanmert/ai-session-tool/internal/pricing"
 	"github.com/caanmert/ai-session-tool/internal/provider"
 	"github.com/caanmert/ai-session-tool/internal/render"
 	"github.com/caanmert/ai-session-tool/internal/ui"
@@ -45,6 +46,8 @@ type Deps struct {
 	Search func(ctx context.Context, words string) (map[string]bool, error)
 	// Actions rename, tag, pin, archive and trash (optional).
 	Actions Actions
+	// Prices estimate cost in the stats view; nil uses built-in prices.
+	Prices *pricing.Table
 }
 
 // Run starts the TUI and blocks until the user quits.
@@ -106,6 +109,8 @@ type Model struct {
 
 	prompt promptKind      // a question in the footer
 	input  textinput.Model // its answer
+
+	statsBy string // "" shows the preview; else the stats grouping
 }
 
 type previewEntry struct {
@@ -560,6 +565,8 @@ func (m Model) updateKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		switch {
 		case m.help:
 			m.help = false
+		case m.statsBy != "":
+			m.statsBy = ""
 		case m.focus == focusPreview:
 			m.focus = focusList
 		case !m.query.empty():
@@ -578,6 +585,10 @@ func (m Model) updateKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m, m.startPrompt(promptTag)
 	case "d", "delete":
 		return m, m.startPrompt(promptTrash)
+	case "s":
+		m.statsBy = nextStatsMode(m.statsBy)
+		m.help = false
+		return m, nil
 	case "p":
 		return m, m.toggle("pin")
 	case "a":

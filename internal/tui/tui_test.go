@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"testing"
 	"time"
@@ -569,5 +570,41 @@ func TestLiveSessionsCannotBeTrashed(t *testing.T) {
 	h.keys("d")
 	if h.m.prompt != promptNone || !strings.Contains(h.m.status, "running") || len(acts.calls) != 0 {
 		t.Errorf("live session: prompt %v, status %q", h.m.prompt, h.m.status)
+	}
+}
+
+func TestStatsPanel(t *testing.T) {
+	h := start(t, fixtureProviders(t), 120, 34)
+	h.keys("s")
+	view := h.m.View()
+	totalRow := regexp.MustCompile(`(?m)^\s+total\s+(\d+)\s+(\S+)\s+(\S+)`)
+	if !strings.Contains(view, "── stats · by day") || !strings.Contains(view, "Last 30 days of all sessions") {
+		t.Fatalf("stats panel:\n%s", view)
+	}
+	if m := totalRow.FindStringSubmatch(view); m == nil || m[1] != "6" || m[2] != "35k" || m[3] != "$0.04+" {
+		t.Errorf("total row %v in:\n%s", m, view)
+	}
+
+	h.keys("/t:claude")
+	h.key(tea.KeyEnter)
+	view = h.m.View()
+	if m := totalRow.FindStringSubmatch(view); !strings.Contains(view, "the filtered sessions") || m == nil || m[1] != "3" || m[2] != "9.6k" || m[3] != "$0.04" {
+		t.Errorf("stats should follow the filter, total %v:\n%s", m, view)
+	}
+
+	for _, want := range []string{"by model", "by project"} {
+		h.keys("s")
+		if !strings.Contains(h.m.View(), "── stats · "+want) {
+			t.Errorf("s should cycle to %s", want)
+		}
+	}
+	h.keys("s")
+	if h.m.statsBy != "" || strings.Contains(h.m.View(), "── stats") {
+		t.Error("s after project should go back to the preview")
+	}
+	h.keys("s")
+	h.key(tea.KeyEsc)
+	if h.m.statsBy != "" {
+		t.Error("esc should close the stats")
 	}
 }

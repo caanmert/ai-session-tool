@@ -103,6 +103,17 @@ func runDoctor(ctx context.Context, app *App, verbose bool) error {
 		}
 	}
 
+	section("config")
+	prices, cfgPath := app.prices()
+	if cfgPath == "" {
+		row("path", t.Faint("none"))
+	} else if _, err := os.Stat(cfgPath); err != nil {
+		row("path", cfgPath+t.Faint("  (not created; optional)"))
+	} else {
+		row("path", cfgPath)
+	}
+	row("prices", fmt.Sprintf("%d models", len(prices.Models())))
+
 	section("data")
 	if st, err := app.store(); err != nil {
 		row("status", t.Warn(err.Error()))

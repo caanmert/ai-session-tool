@@ -270,3 +270,51 @@ func TestResumeCmd(t *testing.T) {
 		t.Fatal("expected error when cwd is unknown")
 	}
 }
+
+func TestUsageBreakdown(t *testing.T) {
+	p := fixture(t)
+	s, _, err := parseFile(t, p, "-Users-dev-code-api/11111111-1111-4111-8111-111111111111.jsonl")
+	if err != nil {
+		t.Fatal(err)
+	}
+	// The sidechain (subagent) ran on Haiku; the rest on Opus. All of it
+	// falls in the 10:00 slot.
+	want := []string{
+		"2026-09-30T10:00:00Z claude-haiku-4-5 {5 50 0 100 0}",
+		"2026-09-30T10:00:00Z claude-opus-5-5 {30 500 3000 500 0}",
+	}
+	var got []string
+	var sum model.Usage
+	for _, e := range s.Breakdown {
+		got = append(got, fmt.Sprintf("%s %s %v", e.Slot.Format(time.RFC3339), e.Model, e.Usage))
+		sum = sum.Add(e.Usage)
+	}
+	if strings.Join(got, "\n") != strings.Join(want, "\n") {
+		t.Errorf("breakdown:\n%s\nwant:\n%s", strings.Join(got, "\n"), strings.Join(want, "\n"))
+	}
+	if sum != s.Usage {
+		t.Errorf("breakdown sums to %v, session usage is %v", sum, s.Usage)
+	}
+}
+
+func TestOneHourCacheWrites(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "66666666-6666-4666-8666-666666666666.jsonl")
+	lines := `{"type":"user","cwd":"/p","timestamp":"2026-10-01T10:00:00Z","message":{"role":"user","content":"hi"}}
+{"type":"assistant","timestamp":"2026-10-01T10:00:05Z","message":{"id":"m1","model":"claude-opus-5-5","content":[{"type":"text","text":"a"}],"usage":{"input_tokens":2,"output_tokens":10,"cache_read_input_tokens":0,"cache_creation_input_tokens":900,"cache_creation":{"ephemeral_5m_input_tokens":0,"ephemeral_1h_input_tokens":900}}}}
+{"type":"assistant","timestamp":"2026-10-01T10:20:00Z","message":{"id":"m2","model":"claude-opus-5-5","content":[{"type":"text","text":"b"}],"usage":{"input_tokens":1,"output_tokens":5,"cache_read_input_tokens":900,"cache_creation_input_tokens":100,"cache_creation":{"ephemeral_5m_input_tokens":100,"ephemeral_1h_input_tokens":0}}}}
+`
+	if err := os.WriteFile(path, []byte(lines), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	s, _, err := New(dir).Parse(context.Background(), provider.FileRef{Path: path})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if s.Usage != (model.Usage{Input: 3, Output: 15, CacheRead: 900, CacheWrite: 1000, CacheWrite1h: 900}) {
+		t.Errorf("usage = %+v", s.Usage)
+	}
+	if len(s.Breakdown) != 2 || !s.Breakdown[1].Slot.Equal(mustTime("2026-10-01T10:15:00Z")) {
+		t.Errorf("two 15-minute slots expected: %+v", s.Breakdown)
+	}
+}
