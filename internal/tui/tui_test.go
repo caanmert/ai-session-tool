@@ -34,7 +34,9 @@ func fixtureProviders(t *testing.T) []provider.Provider {
 	if err != nil {
 		t.Fatal(err)
 	}
-	return []provider.Provider{claude.New(filepath.Join(root, "claude")), codex.New(filepath.Join(root, "codex"))}
+	cp := codex.New(filepath.Join(root, "codex"))
+	cp.OpenFiles = func(context.Context) ([]byte, error) { return nil, nil }
+	return []provider.Provider{claude.New(filepath.Join(root, "claude")), cp}
 }
 
 // start builds a model over providers, sizes it and completes the scan.

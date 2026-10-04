@@ -143,7 +143,7 @@ func Scan(ctx context.Context, providers []Provider) (ScanResult, error) {
 	close(ch)
 	wg.Wait()
 
-	AttachLive(ctx, providers, res.Sessions)
+	res.Warnings = append(res.Warnings, AttachLive(ctx, providers, res.Sessions)...)
 	SortByUpdated(res.Sessions)
 	sort.Slice(res.Warnings, func(i, j int) bool {
 		if res.Warnings[i].Path != res.Warnings[j].Path {
@@ -155,12 +155,14 @@ func Scan(ctx context.Context, providers []Provider) (ScanResult, error) {
 }
 
 // AttachLive sets Live on every session whose agent is running now.
-func AttachLive(ctx context.Context, providers []Provider, sessions []model.Session) {
+func AttachLive(ctx context.Context, providers []Provider, sessions []model.Session) []Warning {
+	var warnings []Warning
 	live := map[model.Tool]map[string]model.LiveState{}
 	for _, p := range providers {
 		states, err := p.Live(ctx)
 		if err != nil {
-			continue // live state is best effort
+			warnings = append(warnings, Warning{Path: p.Root(), Msg: err.Error()})
+			continue
 		}
 		m := map[string]model.LiveState{}
 		for _, st := range states {
@@ -174,6 +176,7 @@ func AttachLive(ctx context.Context, providers []Provider, sessions []model.Sess
 			sessions[i].Live = &st
 		}
 	}
+	return warnings
 }
 
 // SortByUpdated sorts sessions newest first, breaking ties by ID.

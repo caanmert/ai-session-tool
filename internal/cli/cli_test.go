@@ -93,9 +93,11 @@ func (e *env) run(t *testing.T, args ...string) (stdout string, err error) {
 		Err: &bytes.Buffer{},
 		Now: func() time.Time { return time.Date(2026, 10, 3, 12, 0, 0, 0, time.UTC) },
 		Providers: func() []provider.Provider {
+			cp := codex.New(filepath.Join(e.root, "codex"))
+			cp.OpenFiles = func(context.Context) ([]byte, error) { return nil, nil }
 			return []provider.Provider{
 				claude.New(filepath.Join(e.root, "claude")),
-				codex.New(filepath.Join(e.root, "codex")),
+				cp,
 			}
 		},
 		Version:   "test",

@@ -36,6 +36,8 @@ type Provider struct {
 	root string
 	// Bin is the codex executable used for resume/fork/new; default "codex".
 	Bin string
+	// OpenFiles queries local Codex processes; injectable for tests. Nil uses lsof.
+	OpenFiles func(context.Context) ([]byte, error)
 
 	mu       sync.Mutex
 	loaded   bool
@@ -213,9 +215,6 @@ func (p *Provider) Fingerprint() string {
 	}
 	return fmt.Sprintf("names:%d:%d", info.Size(), info.ModTime().UnixNano())
 }
-
-// Live is not implemented: Codex keeps no registry of running processes.
-func (p *Provider) Live(context.Context) ([]model.LiveState, error) { return nil, nil }
 
 // ResumeCmd runs `codex resume <id>` (or `codex fork <id>`) in the
 // session's cwd, so the resumed thread keeps its project directory.

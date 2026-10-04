@@ -43,6 +43,7 @@ type Entry struct {
 	TrashedAt time.Time  `json:"trashedAt"`
 	Method    string     `json:"method"`
 	Files     []Move     `json:"files,omitempty"`
+	Pending   bool       `json:"pending,omitempty"` // archive outcome must be resolved before deletion
 
 	dir string
 }
@@ -54,6 +55,9 @@ type Trash struct {
 	CodexBin string
 	// Run executes a codex command and returns its combined output.
 	Run func(*exec.Cmd) ([]byte, error)
+	// CheckLive refreshes live state immediately before a destructive action.
+	// Errors must prevent the action; callers must not treat unknown as idle.
+	CheckLive func(context.Context, model.Session) error
 }
 
 // New returns the trash at dir.
@@ -73,6 +77,11 @@ func (t *Trash) Put(ctx context.Context, s model.Session) (Entry, error) {
 	if s.Live != nil {
 		return Entry{}, ErrLive
 	}
+	if t.CheckLive != nil {
+		if err := t.CheckLive(ctx, s); err != nil {
+			return Entry{}, err
+		}
+	}
 	dir := t.entryDir(s.Tool, s.ID)
 	if _, err := os.Stat(dir); err == nil {
 		return Entry{}, fmt.Errorf("%s is already in the trash", s.ID)
@@ -81,10 +90,23 @@ func (t *Trash) Put(ctx context.Context, s model.Session) (Entry, error) {
 
 	switch s.Tool {
 	case model.ToolCodex:
-		if err := t.codex(ctx, "archive", s.ID); err != nil {
-			return Entry{}, err
-		}
+		// Persist recovery information before asking Codex to change anything.
+		// Keep it on command failure too: an interrupted CLI may already have
+		// archived the session. `ais restore` can then recover it by id.
 		e.Method = MethodCodexArchive
+		e.Pending = true
+		if err := writeManifest(dir, e); err != nil {
+			return Entry{}, fmt.Errorf("save Codex restore record before archiving: %w", err)
+		}
+		if err := t.codex(ctx, "archive", s.ID); err != nil {
+			return e, fmt.Errorf("%w (restore record kept; use ais restore %s if the session was archived)", err, s.ID)
+		}
+		e.Pending = false
+		if err := writeManifest(dir, e); err != nil {
+			e.Pending = true
+			return e, fmt.Errorf("archived, but could not finalize restore record: %w; restore with ais restore %s", err, s.ID)
+		}
+		return e, nil
 	default:
 		e.Method = MethodMove
 		if err := os.MkdirAll(filepath.Join(dir, "files"), 0o700); err != nil {
@@ -133,7 +155,23 @@ func writeManifest(dir string, e Entry) error {
 	if err != nil {
 		return err
 	}
-	return os.WriteFile(filepath.Join(dir, "manifest.json"), data, 0o600)
+	f, err := os.CreateTemp(dir, ".manifest-*")
+	if err != nil {
+		return err
+	}
+	defer os.Remove(f.Name())
+	if _, err := f.Write(data); err != nil {
+		f.Close()
+		return err
+	}
+	if err := f.Sync(); err != nil {
+		f.Close()
+		return err
+	}
+	if err := f.Close(); err != nil {
+		return err
+	}
+	return os.Rename(f.Name(), filepath.Join(dir, "manifest.json"))
 }
 
 // List returns trashed sessions, most recently trashed first.
@@ -223,6 +261,14 @@ func (t *Trash) Restore(ctx context.Context, e Entry) error {
 
 // Delete permanently removes a trashed session.
 func (t *Trash) Delete(ctx context.Context, e Entry) error {
+	if e.Pending {
+		return fmt.Errorf("archive outcome for %s is unknown; restore it before deleting", e.ID)
+	}
+	if t.CheckLive != nil {
+		if err := t.CheckLive(ctx, model.Session{Tool: e.Tool, ID: e.ID}); err != nil {
+			return err
+		}
+	}
 	if e.Method == MethodCodexArchive {
 		if err := t.codex(ctx, "delete", e.ID, "--force"); err != nil {
 			return err

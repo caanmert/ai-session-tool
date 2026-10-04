@@ -17,8 +17,9 @@ import (
 	"runtime"
 	"strings"
 	"sync"
+	"time"
 
-	_ "modernc.org/sqlite" // pure-Go SQLite driver with FTS5
+	"modernc.org/sqlite" // pure-Go SQLite driver with FTS5
 
 	"github.com/caanmert/ai-session-tool/internal/model"
 	"github.com/caanmert/ai-session-tool/internal/provider"
@@ -26,7 +27,7 @@ import (
 
 // schemaVersion invalidates the whole index when the schema or what the
 // parsers extract changes.
-const schemaVersion = 2 // 2: usage breakdown per slot and model
+const schemaVersion = 3 // 3: reconcile mixed Codex message representations
 
 // maxBodyBytes caps the conversation text indexed per session.
 const maxBodyBytes = 1 << 20
@@ -73,9 +74,21 @@ func Open(path string) (*Index, error) {
 		return nil, err
 	}
 	ix := &Index{db: db, path: path}
-	if err := ix.migrate(); err != nil {
-		db.Close()
-		return nil, fmt.Errorf("index %s: %w", path, err)
+	// SQLite can return BUSY immediately when concurrent first connections
+	// enable WAL, even with busy_timeout. Retry only this transient startup
+	// error; migrations are transactional and safe to attempt again.
+	deadline := time.Now().Add(10 * time.Second)
+	for {
+		err := ix.migrate()
+		if err == nil {
+			break
+		}
+		var sqliteErr *sqlite.Error
+		if !errors.As(err, &sqliteErr) || sqliteErr.Code()&0xff != 5 || time.Now().After(deadline) {
+			db.Close()
+			return nil, fmt.Errorf("index %s: %w", path, err)
+		}
+		time.Sleep(20 * time.Millisecond)
 	}
 	return ix, nil
 }
@@ -87,8 +100,16 @@ func (ix *Index) Path() string { return ix.path }
 func (ix *Index) Close() error { return ix.db.Close() }
 
 func (ix *Index) migrate() error {
+	// _txlock=immediate serializes schema checks across processes. Checking
+	// the version before taking this lock lets a second opener rebuild an
+	// index that another process has just initialized and populated.
+	tx, err := ix.db.Begin()
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback() }() // no-op after Commit
 	var version int
-	if err := ix.db.QueryRow(`PRAGMA user_version`).Scan(&version); err != nil {
+	if err := tx.QueryRow(`PRAGMA user_version`).Scan(&version); err != nil {
 		return err
 	}
 	if version == schemaVersion {
@@ -129,11 +150,6 @@ func (ix *Index) migrate() error {
 		`CREATE VIRTUAL TABLE fts USING fts5(meta, body, tokenize = 'unicode61 remove_diacritics 2')`,
 		fmt.Sprintf(`PRAGMA user_version = %d`, schemaVersion),
 	}
-	tx, err := ix.db.Begin()
-	if err != nil {
-		return err
-	}
-	defer func() { _ = tx.Rollback() }() // no-op after Commit
 	for _, s := range stmts {
 		if _, err := tx.Exec(s); err != nil {
 			return fmt.Errorf("%s: %w", strings.Fields(s)[0], err)
@@ -208,7 +224,7 @@ func (ix *Index) Load(ctx context.Context, providers []provider.Provider) (provi
 		}
 	}
 
-	provider.AttachLive(ctx, providers, res.Sessions)
+	res.Warnings = append(res.Warnings, provider.AttachLive(ctx, providers, res.Sessions)...)
 	provider.SortByUpdated(res.Sessions)
 	return res, nil
 }

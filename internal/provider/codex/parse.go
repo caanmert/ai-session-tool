@@ -83,8 +83,8 @@ func cleanPrompt(s string) string {
 	return strings.TrimSpace(s)
 }
 
-// Where a message came from. Codex records the same conversation in more
-// than one form; the scan picks one source per role to avoid duplicates.
+// Where a message came from. Codex can change representations between turns,
+// so duplicates must be reconciled per message, not across the whole rollout.
 type source int
 
 const (
@@ -95,19 +95,19 @@ const (
 	srcAsstResp         // response_item message role=assistant
 	srcAsstItem         // event_msg item_completed AgentMessage
 	srcAsstEvent        // event_msg agent_message
-	numSources
 )
 
 type entry struct {
-	src source
-	msg model.Message
+	src  source
+	msg  model.Message
+	turn string
 }
 
 // scan is everything read from one thread's rollout chain.
 type scan struct {
 	meta       *sessionMeta // the active rollout's own session_meta
 	entries    []entry
-	counts     [numSources]int
+	turn       string
 	started    time.Time
 	updated    time.Time
 	model      string
@@ -118,40 +118,45 @@ type scan struct {
 }
 
 func (sc *scan) add(src source, m model.Message) {
-	sc.counts[src]++
-	sc.entries = append(sc.entries, entry{src, m})
-}
-
-// userSource and asstSource choose one representation per role.
-func (sc *scan) userSource() source {
-	for _, s := range []source{srcUserItem, srcUserEvent, srcUserResp} {
-		if sc.counts[s] > 0 {
-			return s
-		}
-	}
-	return srcUserItem
-}
-
-func (sc *scan) asstSource() source {
-	for _, s := range []source{srcAsstResp, srcAsstItem, srcAsstEvent} {
-		if sc.counts[s] > 0 {
-			return s
-		}
-	}
-	return srcAsstResp
+	sc.entries = append(sc.entries, entry{src: src, msg: m, turn: sc.turn})
 }
 
 // messages returns the transcript with duplicate representations removed.
 func (sc *scan) messages() []model.Message {
-	us, as := sc.userSource(), sc.asstSource()
 	var out []model.Message
+	var last entry
+	lastIndex := -1
+	var sources uint
 	for _, e := range sc.entries {
-		switch e.src {
-		case srcOther, us, as:
+		if e.src == srcOther {
 			out = append(out, e.msg)
+			continue
 		}
+		mask := uint(1) << e.src
+		if lastIndex >= 0 && sources&mask == 0 && sameMessage(last, e) {
+			sources |= mask
+			// The source constants are ordered by preference within each role.
+			if e.src < last.src {
+				out[lastIndex], last = e.msg, e
+			}
+			continue
+		}
+		lastIndex, last, sources = len(out), e, mask
+		out = append(out, e.msg)
 	}
 	return out
+}
+
+func sameMessage(a, b entry) bool {
+	if a.msg.Role != b.msg.Role || a.msg.Text != b.msg.Text {
+		return false
+	}
+	if a.turn != "" && b.turn != "" {
+		return a.turn == b.turn
+	}
+	// Old logs do not identify turns. Only coalesce nearby copies from
+	// different representations; repeated prompts/replies in one source stay.
+	return a.msg.Time.Sub(b.msg.Time).Abs() <= 2*time.Second
 }
 
 // segment is one file of a thread's history: the active rollout, preceded
@@ -295,11 +300,15 @@ func (sc *scan) record(l line, ts time.Time) error {
 	switch l.Type {
 	case "turn_context":
 		var tc struct {
-			CWD   string `json:"cwd"`
-			Model string `json:"model"`
+			TurnID string `json:"turn_id"`
+			CWD    string `json:"cwd"`
+			Model  string `json:"model"`
 		}
 		if err := json.Unmarshal(l.Payload, &tc); err != nil {
 			return err
+		}
+		if tc.TurnID != "" {
+			sc.turn = tc.TurnID
 		}
 		if tc.Model != "" {
 			sc.model = tc.Model
@@ -333,6 +342,14 @@ func (sc *scan) event(payload json.RawMessage, ts time.Time) error {
 		return err
 	}
 	switch head.Type {
+	case "task_started":
+		var ev struct {
+			TurnID string `json:"turn_id"`
+		}
+		if err := json.Unmarshal(payload, &ev); err != nil {
+			return err
+		}
+		sc.turn = ev.TurnID
 	case "user_message":
 		var ev struct {
 			Message     string   `json:"message"`
@@ -361,13 +378,17 @@ func (sc *scan) event(payload json.RawMessage, ts time.Time) error {
 		}
 	case "item_completed":
 		var ev struct {
-			Item struct {
+			TurnID string `json:"turn_id"`
+			Item   struct {
 				Type    string     `json:"type"`
 				Content []textPart `json:"content"`
 			} `json:"item"`
 		}
 		if err := json.Unmarshal(payload, &ev); err != nil {
 			return err
+		}
+		if ev.TurnID != "" {
+			sc.turn = ev.TurnID
 		}
 		var texts []string
 		images := 0
@@ -665,19 +686,25 @@ func (p *Provider) Parse(ctx context.Context, f provider.FileRef) (model.Session
 		s.CWD = sc.lastCWD
 	}
 
-	us, as := sc.userSource(), sc.asstSource()
 	var firstRaw string
-	for _, e := range sc.entries {
-		if e.src != us {
+	for _, m := range sc.messages() {
+		if m.Kind != model.KindText {
 			continue
 		}
-		if firstRaw == "" {
-			firstRaw = e.msg.Text
-			s.FirstPrompt = textutil.Truncate(textutil.Collapse(e.msg.Text), maxPromptRunes)
+		if m.Role == model.RoleAssistant {
+			s.AssistantTurns++
+			continue
 		}
-		s.LastPrompt = textutil.Truncate(textutil.Collapse(e.msg.Text), maxPromptRunes)
+		if m.Role != model.RoleUser {
+			continue
+		}
+		s.UserTurns++
+		if firstRaw == "" {
+			firstRaw = m.Text
+			s.FirstPrompt = textutil.Truncate(textutil.Collapse(m.Text), maxPromptRunes)
+		}
+		s.LastPrompt = textutil.Truncate(textutil.Collapse(m.Text), maxPromptRunes)
 	}
-	s.UserTurns, s.AssistantTurns = sc.counts[us], sc.counts[as]
 	if s.UserTurns == 0 && s.AssistantTurns == 0 {
 		return model.Session{}, sc.warns, provider.ErrEmpty
 	}

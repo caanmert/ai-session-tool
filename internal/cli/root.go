@@ -81,7 +81,24 @@ func (a *App) trash() (*trash.Trash, error) {
 	if err != nil {
 		return nil, err
 	}
-	return trash.New(filepath.Join(dir, "trash")), nil
+	tr := trash.New(filepath.Join(dir, "trash"))
+	tr.CheckLive = func(ctx context.Context, s model.Session) error {
+		p := provider.For(a.Providers(), s.Tool)
+		if p == nil {
+			return fmt.Errorf("cannot check live state for %s", s.Tool)
+		}
+		states, err := p.Live(ctx)
+		if err != nil {
+			return fmt.Errorf("cannot confirm session is stopped: %w", err)
+		}
+		for _, st := range states {
+			if st.SessionID == s.ID {
+				return trash.ErrLive
+			}
+		}
+		return nil
+	}
+	return tr, nil
 }
 
 // annotate applies your annotations to sessions (pinned first). Without a
@@ -233,6 +250,7 @@ preview, then resume or fork with one key. Piped, it prints the recent list.`,
 		newTrashCmd(app),
 		newRestoreCmd(app),
 		newStatsCmd(app),
+		newRunCmd(app),
 	)
 	return root
 }

@@ -222,8 +222,12 @@ func (a *App) listTrash(tr *trash.Trash) error {
 	}
 	t, now := a.theme(), a.Now()
 	for _, e := range entries {
+		title := e.Title
+		if e.Pending {
+			title += " (archive incomplete; restore to recover)"
+		}
 		fmt.Fprintf(a.Out, "%s  %s  %s  %s\n", t.ID(render.ShortID(e.ID)), t.Tool(e.Tool, fmt.Sprintf("%-6s", e.Tool)),
-			t.Faint(fmt.Sprintf("%-4s", render.Age(now, e.TrashedAt))), e.Title)
+			t.Faint(fmt.Sprintf("%-4s", render.Age(now, e.TrashedAt))), title)
 	}
 	return nil
 }

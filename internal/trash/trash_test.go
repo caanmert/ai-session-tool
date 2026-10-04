@@ -114,6 +114,12 @@ func TestCodexUsesCodexCommands(t *testing.T) {
 	tr := New(filepath.Join(t.TempDir(), "trash"))
 	tr.CodexBin = "true" // any executable on PATH; Run below never starts it
 	tr.Run = func(c *exec.Cmd) ([]byte, error) {
+		if c.Args[1] == "archive" {
+			e, err := tr.Find(c.Args[2])
+			if err != nil || !e.Pending {
+				t.Fatalf("archive started without a recovery record: %+v, %v", e, err)
+			}
+		}
 		ran = append(ran, strings.Join(c.Args[1:], " "))
 		return nil, nil
 	}
@@ -140,7 +146,71 @@ func TestCodexUsesCodexCommands(t *testing.T) {
 	if _, err := tr.Put(ctx, model.Session{Tool: model.ToolCodex, ID: "nope"}); err == nil || !strings.Contains(err.Error(), "thread not found") {
 		t.Errorf("codex failure should surface its output: %v", err)
 	}
+	list, err := tr.List()
+	if err != nil || len(list) != 1 || !list[0].Pending {
+		t.Fatalf("failed archive must retain pending recovery record: %+v, %v", list, err)
+	}
+	tr.Run = func(*exec.Cmd) ([]byte, error) { t.Fatal("must not delete uncertain archive"); return nil, nil }
+	if err := tr.Delete(ctx, list[0]); err == nil {
+		t.Fatal("pending archive was deleted")
+	}
+	tr.Run = func(c *exec.Cmd) ([]byte, error) {
+		if strings.Join(c.Args[1:], " ") != "unarchive nope" {
+			t.Fatal(c.Args)
+		}
+		return nil, nil
+	}
+	if err := tr.Restore(ctx, list[0]); err != nil {
+		t.Fatal(err)
+	}
 	if list, _ := tr.List(); len(list) != 0 {
-		t.Errorf("failed codex archive left an entry: %+v", list)
+		t.Fatal("restore left record")
+	}
+}
+
+func TestCodexDoesNotArchiveWithoutRecoveryRecord(t *testing.T) {
+	blocked := filepath.Join(t.TempDir(), "file")
+	writeFile(t, blocked, "not a directory")
+	tr := New(blocked)
+	tr.CodexBin = "true"
+	tr.Run = func(*exec.Cmd) ([]byte, error) { t.Fatal("archive ran without recovery record"); return nil, nil }
+	if _, err := tr.Put(context.Background(), model.Session{Tool: model.ToolCodex, ID: "x"}); err == nil {
+		t.Fatal("expected manifest write failure")
+	}
+}
+
+func TestCodexFinalizeFailureKeepsRecoveryRecord(t *testing.T) {
+	if os.Getuid() == 0 {
+		t.Skip("root bypasses directory write permissions")
+	}
+	tr := New(t.TempDir())
+	tr.CodexBin = "true"
+	tr.Run = func(c *exec.Cmd) ([]byte, error) {
+		dir := tr.entryDir(model.ToolCodex, c.Args[2])
+		if err := os.Chmod(dir, 0o500); err != nil {
+			t.Fatal(err)
+		}
+		t.Cleanup(func() { _ = os.Chmod(dir, 0o700) })
+		return nil, nil
+	}
+	e, err := tr.Put(context.Background(), model.Session{Tool: model.ToolCodex, ID: "x"})
+	if err == nil || !strings.Contains(err.Error(), "could not finalize") || !e.Pending {
+		t.Fatalf("finalization = %+v, %v", e, err)
+	}
+	saved, err := tr.Find("x")
+	if err != nil || !saved.Pending {
+		t.Fatalf("lost recovery record: %+v, %v", saved, err)
+	}
+	if err := os.Chmod(saved.dir, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	tr.Run = func(c *exec.Cmd) ([]byte, error) {
+		if c.Args[1] != "unarchive" {
+			t.Fatal(c.Args)
+		}
+		return nil, nil
+	}
+	if err := tr.Restore(context.Background(), saved); err != nil {
+		t.Fatal(err)
 	}
 }

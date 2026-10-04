@@ -41,7 +41,9 @@ func fixtures(t *testing.T) (root string, providers []provider.Provider) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	return root, []provider.Provider{claude.New(filepath.Join(root, "claude")), codex.New(filepath.Join(root, "codex"))}
+	cp := codex.New(filepath.Join(root, "codex"))
+	cp.OpenFiles = func(context.Context) ([]byte, error) { return nil, nil }
+	return root, []provider.Provider{claude.New(filepath.Join(root, "claude")), cp}
 }
 
 func open(t *testing.T) *Index {

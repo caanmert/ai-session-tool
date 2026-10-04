@@ -8,7 +8,9 @@ Both tools save every conversation on disk, but finding and resuming one is clum
 
 `ais` reads both stores and gives you one list across all your projects. From that list you can resume any session in its own project directory.
 
-> **Status:** early but complete for daily use: browse, search, resume, fork, rename, tag, pin, archive and trash Claude Code and Codex CLI sessions, and see what they used. Running agents in parallel is next (see [Roadmap](#roadmap)).
+Read the [usage guide](docs/USAGE.md) for setup, keyboard shortcuts, a complete parallel-task workflow, and troubleshooting.
+
+> **Status:** browse, search, resume, fork, rename, tag, pin, archive and trash Claude Code and Codex CLI sessions, see what they used, and launch parallel tasks in separate worktrees and tmux windows with agent event alerts.
 
 ## Install
 
@@ -77,16 +79,16 @@ Example:
    11111111  claude  api      feat/auth      3d       5     4.2k    Fix auth token refresh
 ```
 
-`●` marks a session whose agent is running right now (Claude Code only for now).
+`●` marks a session whose agent is running, including idle Codex sessions that still have their rollout open.
 
 ## How it works
 
-`ais` only **reads** the tools' own files. It never modifies them.
+Browsing and indexing only **read** the tools' files and local process metadata. Annotations stay in ais's own database; explicit trash/restore operations move files or ask the tool to archive/unarchive them, as described below.
 
 | Tool | Transcripts | Running sessions | Override |
 | --- | --- | --- | --- |
 | Claude Code | `~/.claude/projects/<project>/<session-id>.jsonl` | `~/.claude/sessions/<pid>.json` | `CLAUDE_CONFIG_DIR` |
-| Codex CLI | `~/.codex/sessions/YYYY/MM/DD/rollout-*.jsonl[.zst]` | not yet | `CODEX_HOME` |
+| Codex CLI | `~/.codex/sessions/YYYY/MM/DD/rollout-*.jsonl[.zst]` | open rollout files (`lsof`) | `CODEX_HOME` |
 
 For each transcript, `ais` collects:
 - the working directory, git branch, model and version;
@@ -98,6 +100,8 @@ Codex specifics:
 - Rollouts older than a week are zstd-compressed (`.jsonl.zst`); `ais` reads both, preferring the plain file when both exist.
 - A reverted thread gets a new rollout file that points at the earlier one through `history_base`; `ais` lists the newest file and stitches the history back together.
 - Subagent and internal threads are hidden; archived threads (`archived_sessions/`) are not listed.
+- Mixed transcript formats are combined message by message, including across `history_base` rollouts.
+- Live detection requires `lsof` on macOS or Linux and includes Codex daemon sessions. Inspection failures appear in `ais doctor`; trash and permanent deletion are blocked if live state cannot be checked.
 
 Lines it can't parse are skipped and reported by `ais doctor`.
 
@@ -115,7 +119,7 @@ The trash removes a session from the tool itself, restorably:
 - **Claude Code** sessions (the transcript and its folder of subagent data) are moved into `ais`'s trash folder, and moved back on `ais restore`.
 - **Codex** keeps its own database, so `ais` calls `codex archive` / `codex unarchive`, and `codex delete` when you empty the trash.
 
-Running sessions are never trashed.
+Live state is checked again immediately before trashing or permanently deleting a session; sessions detected as running are refused. Codex restore records are saved before archiving. If archiving is interrupted, the pending record remains in `ais trash`, can be recovered with `ais restore <id>`, and cannot be permanently deleted until resolved.
 
 ### Usage and cost
 
@@ -135,6 +139,122 @@ Rows that include unpriced models show a `+`; `—` means nothing in the row had
 
 Resuming runs the agent **in the session's original directory**, because `claude --resume` only finds sessions of the current project. On macOS and Linux, `ais` replaces itself with the agent process, so the agent gets the terminal exactly as if you had started it yourself.
 
+## Parallel tasks
+
+Requires `git`, `tmux`, and the chosen agent on `PATH`. Give each task as a
+separate quoted argument (use `--` before the prompts):
+
+```sh
+ais run --tool claude -- "Fix login validation" "Add export tests"
+ais run --tool codex --project /path/to/repo -- "Improve search" "Document the API"
+ais run --notify=false -- "A task without ais event alerts"
+ais run --quiet 30s -- "A task with optional silence alerts too"
+ais run list                 # saved runs, including stopped runs
+ais run list --json          # prompts, branches and worktree paths
+ais run status ais-1234      # pane states, alerts, branches and changed files
+ais run status ais-1234 --json
+ais run review ais-1234      # interactive tasks, changed files and diffs
+ais run diff ais-1234        # review every task's changes from the starting commit
+ais run diff ais-1234 --task task-2 --stat
+ais run attach ais-1234      # full run id or unique prefix
+ais run attach ais-1234 --task task-2 # jump directly to a task
+ais run stop ais-1234        # terminate the run's agents; preserve their work
+```
+
+Each run creates a detached tmux session with one window per task. Every task
+gets its own new branch and worktree at the same committed `HEAD` of the chosen
+project. Uncommitted changes in your original checkout are not copied. Agents
+use their normal permission settings. There is no automatic merge or commit.
+
+Agents receive the caller's `PATH`, `CODEX_HOME`, `CODEX_SQLITE_HOME` and
+`CLAUDE_CONFIG_DIR`, including when a variable is unset, even if the tmux server
+was started with different settings.
+
+`ais run attach` joins the session, or switches to it if you are already inside
+tmux. With tmux's default keys, `ctrl+b n` moves to the next task and `ctrl+b d`
+detaches while agents keep running. Exited panes retain their output.
+
+### Review a run
+
+`ais run review <id>` combines status, changed files and diffs in one interactive
+screen. It refreshes every three seconds, preserving the selected task/file and
+diff scroll position. Use `--task task-2` to select an initial task, or
+`--refresh 0s` for manual refresh. Wide terminals show files beside the diff;
+narrow terminals stack the panels.
+
+- `tab` / `shift+tab` move between tasks, files and diff panels.
+- Arrow keys or `j/k` select a task/file or scroll the diff. `pgup/pgdn` and
+  `g/G` move faster; left/right or `h/l` pan long diff lines.
+- Select **All changes** for the whole task, or a file for its individual patch.
+- `a` attaches to the selected agent from any panel. `enter` also attaches,
+  except in the files panel, where it focuses the diff.
+- `r` or `ctrl+r` refreshes; `?` opens help; `q` quits review and leaves agents running.
+
+Outside tmux, detach with `ctrl+b d` to return to review. Inside tmux, switch back
+to the review window/session. Large patch previews are truncated; `ais run diff`
+provides the complete output. Interactive review requires a terminal; use the
+following commands for scripts and redirected output.
+
+`ais run status <id>` shows each task's pane state (`running`, `exited`,
+`missing`, or `unknown`), exit code when available, outstanding event/silence
+alerts, current branch and changed files. `--task task-2` selects one task;
+`--json` includes file paths and any inspection errors. Missing worktrees are
+reported individually, and Git inspection still works if tmux is unavailable.
+Pane state describes the local terminal process; a daemon may continue work
+after its client exits. An outstanding alert is an event, not proof that the
+agent is still waiting.
+
+`ais run diff <id>` compares each worktree with the run's saved starting commit,
+including committed, staged and unstaged changes, plus untracked files. Ignored
+files are excluded. `--stat` shows file statistics; `--task task-2` limits the
+review to one task. Renames appear as deletions and additions. Both review
+commands leave files and the Git index unchanged and work after a run stops.
+If a task cannot be read, `diff` reports the error, continues reviewing the other
+tasks, and exits unsuccessfully. Running tasks can change files during review;
+stop or pause their work before treating a diff as final.
+
+Use `ais run attach <id> --task task-2` to jump to its agent pane. Newly launched
+runs retain this mapping when you rename a tmux window; older runs use the
+original window name.
+
+### Agent notifications
+
+New runs enable event alerts by default (`--notify=false` opts out):
+
+- **Codex:** completed turns and approval requests use its built-in terminal
+  notifications, configured to emit a bell even when the terminal has focus.
+- **Claude Code:** a per-invocation `Notification` hook forwards idle prompts,
+  permission prompts and elicitation dialogs to the originating tmux pane.
+  Claude normally waits about 60 seconds before an idle alert, or six seconds
+  for permission/elicitation alerts; typing and background work can delay them.
+
+tmux marks the window with its bell indicator and shows a message when you are
+viewing another window in that run. Selecting the window clears the indicator.
+An alert records an event that needs attention; it is not a continuously updated
+busy/waiting status. These alerts work inside tmux and do not send desktop
+notifications while you are detached.
+
+Configuration is passed to each agent on launch. No user or project settings
+files are changed, and existing hooks and approval policies remain in effect.
+Claude hooks must be enabled and allowed by your settings. Older agents that
+do not support these settings can use `--notify=false`. The integration follows
+[Codex terminal notifications](https://learn.chatgpt.com/docs/config-file/config-advanced#notifications)
+and [Claude Notification hooks](https://code.claude.com/docs/en/hooks#notification).
+
+Silence alerts are disabled by default. Add `--quiet 30s` to highlight a window
+after 30 seconds without output. Silence means **possibly waiting for input**;
+an agent can also be silently working. Use `--quiet 0s` to disable that timer.
+Existing running sessions retain the settings they were launched with.
+
+Run manifests and worktrees live in `<ais data directory>/runs/<run-id>/`.
+Manifests are saved before agents start, including all planned worktree paths,
+so a setup failure can be inspected with `ais run list --json`. Stopping a run
+closes its tmux session; it keeps branches, worktrees and manifests. Review and
+merge or cherry-pick the changes yourself. When finished, use `git worktree
+remove <path>` and `git branch -d <branch>` to clean up safely. Do not delete
+ais's data directory as if it were the rebuildable index cache: it holds your
+task work as well as annotations.
+
 ## Roadmap
 
 1. [x] Scaffold: Go module, Cobra CLI, lint, CI, goreleaser
@@ -144,7 +264,10 @@ Resuming runs the agent **in the session's original directory**, because `claude
 5. [x] Bubble Tea TUI: list + preview, filter, resume / fork / new
 6. [x] Tags, rename, pin, archive/trash + restore
 7. [x] Token/cost stats by day, week, month, project, model, tool
-8. [ ] Parallel runner: tmux windows + git worktrees, "waiting for input" notifications
+8. [x] Parallel runner: tmux windows + git worktrees, saved runs, attach/stop and quiet-window alerts
+9. [x] Agent event alerts in tmux: Codex completion/approval and Claude idle/permission/elicitation notifications
+10. [x] Run status, task-specific attach, and diffs for reviewing parallel work
+11. [x] Interactive run review with task status, file selection, diff previews and agent attach
 
 ## Development
 
