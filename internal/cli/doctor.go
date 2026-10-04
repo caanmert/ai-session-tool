@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -93,12 +94,32 @@ func runDoctor(ctx context.Context, app *App, verbose bool) error {
 		}
 	}
 
-	if t.Color {
-		fmt.Fprintf(w, "\n%s\n", t.Bold("● index"))
-	} else {
-		fmt.Fprintf(w, "\n[index]\n")
-	}
 	row := func(k, v string) { fmt.Fprintf(w, "  %s %s\n", t.Faint(fmt.Sprintf("%-12s", k)), v) }
+	section := func(name string) {
+		if t.Color {
+			fmt.Fprintf(w, "\n%s\n", t.Bold("● "+name))
+		} else {
+			fmt.Fprintf(w, "\n[%s]\n", name)
+		}
+	}
+
+	section("data")
+	if st, err := app.store(); err != nil {
+		row("status", t.Warn(err.Error()))
+	} else {
+		ann, err := st.All(ctx)
+		if err != nil {
+			return err
+		}
+		row("path", filepath.Dir(st.Path()))
+		row("annotated", fmt.Sprintf("%d sessions", len(ann)))
+		if tr, err := app.trash(); err == nil {
+			entries, _ := tr.List()
+			row("trash", fmt.Sprintf("%d sessions", len(entries)))
+		}
+	}
+
+	section("index")
 	ix := app.index()
 	if ix == nil {
 		row("status", t.Warn("disabled"))

@@ -55,17 +55,21 @@ func (m Model) header() string {
 	case m.loading && !m.scanned:
 		info = m.spinner.View() + t.Faint(" scanning sessions…")
 	default:
-		claude, codex := 0, 0
+		claude, codex, archived := 0, 0, 0
 		for _, s := range m.sessions {
-			if s.Tool == model.ToolCodex {
+			switch {
+			case s.Archived:
+				archived++
+			case s.Tool == model.ToolCodex:
 				codex++
-			} else {
+			default:
 				claude++
 			}
 		}
-		count := fmt.Sprintf("%d sessions", len(m.sessions))
+		total := len(m.sessions) - archived
+		count := fmt.Sprintf("%d sessions", total)
 		if !m.query.empty() {
-			count = fmt.Sprintf("%d of %d sessions", len(m.view), len(m.sessions))
+			count = fmt.Sprintf("%d of %d sessions", len(m.view), total)
 			byText := 0
 			for _, i := range m.view {
 				if !m.query.matchWords(m.sessions[i]) {
@@ -80,6 +84,9 @@ func (m Model) header() string {
 			t.Faint("  ") + t.Tool(model.ToolCodex, fmt.Sprintf("codex %d", codex))
 		if m.loading {
 			info += "  " + m.spinner.View()
+		}
+		if archived > 0 && !m.query.archived {
+			info += t.Faint(fmt.Sprintf("  ·  %d archived", archived))
 		}
 		if m.warnings > 0 {
 			info += t.Faint("  ·  ") + t.Warn(fmt.Sprintf("%d warnings (ais doctor)", m.warnings))
@@ -149,10 +156,8 @@ func (m Model) list(n int) []string {
 		if s.Live != nil {
 			live = t.Live("● ")
 		}
-		title := pad(s.Title, c.titleW, false)
-		if sel {
-			title = t.Bold(title)
-		}
+		title := render.Title(t, s, c.titleW, sel)
+		title += strings.Repeat(" ", max(c.titleW-ui.Width(title), 0))
 		row := cursor + live + t.Tool(s.Tool, pad(string(s.Tool), 6, false)) + "  " + title
 		if c.project {
 			row += "  " + t.Faint(pad(s.Project(), 14, false))
@@ -192,6 +197,13 @@ func (m Model) footer() string {
 	if m.filtering {
 		return m.filter.View()
 	}
+	switch m.prompt {
+	case promptRename, promptTag:
+		return " " + m.input.View()
+	case promptTrash:
+		s, _ := m.current()
+		return " " + t.Warn("move ") + t.Bold(textutil.Truncate(s.Title, max(m.width-40, 10))) + t.Warn(" to the trash? ") + t.Bold("y") + t.Faint("/n")
+	}
 	if m.status != "" {
 		if m.statusError {
 			return " " + t.Error(m.status)
@@ -204,15 +216,16 @@ func (m Model) footer() string {
 	}
 	key := func(k, desc string, prio int) hint { return hint{t.Bold(k) + " " + t.Faint(desc), prio} }
 	hints := []hint{
-		key("enter", "resume", 0), key("f", "fork", 3), key("n", "new", 4), key("y", "copy", 5),
-		key("/", "filter", 1), key("tab", "preview", 6), key("?", "keys", 2), key("q", "quit", 2),
+		key("enter", "resume", 0), key("f", "fork", 3), key("n", "new", 5), key("y", "copy", 6),
+		key("r", "rename", 4), key("t", "tag", 4), key("p", "pin", 5), key("d", "trash", 6),
+		key("/", "filter", 1), key("tab", "preview", 7), key("?", "keys", 2), key("q", "quit", 2),
 	}
 	if !m.query.empty() {
 		hints = append([]hint{{t.Faint("filter: ") + m.filter.Value(), 0}, key("esc", "clear", 1)}, hints...)
 	}
 	sep := t.Faint("  ·  ")
 	// Drop the least important hints until the line fits.
-	for maxPrio := 6; maxPrio >= 0; maxPrio-- {
+	for maxPrio := 7; maxPrio >= 0; maxPrio-- {
 		var parts []string
 		for _, h := range hints {
 			if h.prio <= maxPrio {
@@ -229,29 +242,54 @@ func (m Model) footer() string {
 
 func (m Model) helpView() string {
 	t := m.d.Theme
-	section := func(name string) string { return "\n " + t.Bold(name) }
 	k := func(keys, desc string) string {
-		return fmt.Sprintf("   %s  %s", t.ID(fmt.Sprintf("%-14s", keys)), desc)
+		return fmt.Sprintf("   %s  %s", t.ID(fmt.Sprintf("%-10s", keys)), desc)
 	}
-	return strings.Join([]string{
-		section("Sessions"),
-		k("↑/↓  j/k", "move"),
-		k("pgup/pgdn", "page"),
-		k("g/G", "first / last"),
-		k("enter", "resume in its project directory; you come back here when it exits"),
+	left := []string{
+		"", " " + t.Bold("Sessions"),
+		k("↑↓ j/k", "move   pgup/pgdn page   g/G first/last"),
+		k("enter", "resume in its project; back here when it exits"),
 		k("f", "fork: continue in a new session, keep the original"),
-		k("n", "start a new session in the same project with the same tool"),
+		k("n", "new session in the same project and tool"),
 		k("y", "copy the resume command"),
-		k("r", "rescan"),
-		section("Filter"),
-		k("/", "type to filter; enter keeps it, esc clears it"),
-		"   " + t.Faint("words match title, prompts, project, branch, id and model;"),
-		"   " + t.Faint("t:codex  p:api  b:main  is:live narrow by tool, project, branch, running"),
-		section("Preview"),
-		k("tab", "focus the preview, then ↑/↓ pgup/pgdn g/G to scroll"),
+		k("ctrl+r", "rescan"),
+		"", " " + t.Bold("Organize"),
+		k("r", "rename (empty restores the tool's title)"),
+		k("t", "tags: bug +auth -old adds and removes"),
+		k("p", "pin to the top / unpin"),
+		k("a", "archive (hidden unless is:archived) / unarchive"),
+		k("d", "move to the trash (ais restore brings it back)"),
+	}
+	right := []string{
+		"", " " + t.Bold("Filter"),
+		k("/", "filter; enter keeps it, esc clears"),
+		"   " + t.Faint("words match titles, prompts, tags and conversations"),
+		"   " + t.Faint("t:codex  p:api  b:main  #tag"),
+		"   " + t.Faint("is:live  is:pinned  is:archived"),
+		"", " " + t.Bold("Preview"),
+		k("tab", "focus it, then ↑↓ pgup/pgdn g/G"),
 		k("J/K", "scroll the preview from the list"),
-		section("Other"),
-		k("?", "toggle this help"),
-		k("q  ctrl+c", "quit"),
-	}, "\n")
+		"", " " + t.Bold("Other"),
+		k("?  esc", "close this help"),
+		k("q", "quit"),
+	}
+	if m.width < 120 {
+		return strings.Join(append(left, right...), "\n")
+	}
+	colW := 0
+	for _, l := range left {
+		colW = max(colW, ui.Width(l))
+	}
+	var b strings.Builder
+	for i := 0; i < max(len(left), len(right)); i++ {
+		l, r := "", ""
+		if i < len(left) {
+			l = left[i]
+		}
+		if i < len(right) {
+			r = right[i]
+		}
+		b.WriteString(l + strings.Repeat(" ", colW-ui.Width(l)+4) + r + "\n")
+	}
+	return b.String()
 }

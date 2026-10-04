@@ -64,7 +64,17 @@ type Session struct {
 	Usage   Usage  `json:"usage"`
 
 	Live *LiveState `json:"live,omitempty"`
+
+	// Your own annotations, kept by ais (never written to the tools' files).
+	// OriginalTitle holds the tool's title when you renamed the session.
+	OriginalTitle string   `json:"originalTitle,omitempty"`
+	Tags          []string `json:"tags,omitempty"`
+	Pinned        bool     `json:"pinned,omitempty"`
+	Archived      bool     `json:"archived,omitempty"`
 }
+
+// Key identifies a session across tools: "tool/id".
+func (s Session) Key() string { return string(s.Tool) + "/" + s.ID }
 
 // Project is the short name shown in lists: the last element of the cwd.
 func (s Session) Project() string {

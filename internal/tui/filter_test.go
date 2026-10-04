@@ -7,7 +7,7 @@ import (
 )
 
 func TestQuery(t *testing.T) {
-	api := model.Session{Tool: model.ToolClaude, ID: "abc123", Title: "Fix auth token refresh", CWD: "/Users/me/code/api", GitBranch: "feat/auth", Model: "claude-opus-5-5"}
+	api := model.Session{Tool: model.ToolClaude, ID: "abc123", Title: "Fix auth token refresh", CWD: "/Users/me/code/api", GitBranch: "feat/auth", Model: "claude-opus-5-5", Tags: []string{"bug", "urgent"}, Pinned: true}
 	web := model.Session{Tool: model.ToolCodex, ID: "def456", Title: "Dark mode", FirstPrompt: "Add a toggle to the header", CWD: "/Users/me/code/web", GitBranch: "main", Live: &model.LiveState{PID: 1}}
 
 	tests := []struct {
@@ -29,6 +29,12 @@ func TestQuery(t *testing.T) {
 		{"opus", true, false}, // model
 		{"is:sleepy", false, false},
 		{"p:", false, false}, // an empty value is a plain word, matching nothing here
+		{"#bug", true, false},
+		{"#bu", true, false}, // tag prefix
+		{"#bug #api", false, false},
+		{"is:pinned", true, false},
+		{"urgent", true, false}, // tags are searched as words too
+		{"is:archived", false, false},
 	}
 	for _, tt := range tests {
 		q := parseQuery(tt.q)
@@ -41,5 +47,15 @@ func TestQuery(t *testing.T) {
 	}
 	if !parseQuery("  ").empty() || parseQuery("is:live").empty() {
 		t.Error("empty()")
+	}
+}
+
+func TestArchivedHiddenUnlessAsked(t *testing.T) {
+	old := model.Session{Tool: model.ToolClaude, ID: "x", Title: "Old work", Archived: true}
+	if parseQuery("").match(old) || parseQuery("old").match(old) {
+		t.Error("archived sessions must be hidden by default")
+	}
+	if !parseQuery("is:archived").match(old) || !parseQuery("is:archived old").match(old) {
+		t.Error("is:archived should show them")
 	}
 }

@@ -36,30 +36,87 @@ func run(t *testing.T, args ...string) (stdout string, err error) {
 // runWith is run with a given index path, to share an index between runs.
 func runWith(t *testing.T, indexPath string, args ...string) (stdout string, err error) {
 	t.Helper()
-	t.Setenv("HOME", t.TempDir()) // keep ~ abbreviation out of golden output
+	return runIn(t, indexPath, filepath.Join(t.TempDir(), "data"), args...)
+}
+
+// runIn also fixes the data directory, to share annotations between runs.
+func runIn(t *testing.T, indexPath, dataDir string, args ...string) (stdout string, err error) {
+	t.Helper()
 	root, absErr := filepath.Abs("../../testdata")
 	if absErr != nil {
 		t.Fatal(absErr)
 	}
+	return (&env{root: root, index: indexPath, data: dataDir}).run(t, args...)
+}
+
+// env is a test environment: transcripts under root, an index and a data
+// directory, and optional stdin.
+type env struct {
+	root, index, data, stdin string
+}
+
+// newEnv copies the fixtures so tests may change them (the trash moves files).
+func newEnv(t *testing.T) *env {
+	t.Helper()
+	src, err := filepath.Abs("../../testdata")
+	if err != nil {
+		t.Fatal(err)
+	}
+	root := t.TempDir()
+	err = filepath.Walk(src, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+		rel, _ := filepath.Rel(src, path)
+		if info.IsDir() {
+			return os.MkdirAll(filepath.Join(root, rel), 0o755)
+		}
+		data, err := os.ReadFile(path)
+		if err != nil {
+			return err
+		}
+		return os.WriteFile(filepath.Join(root, rel), data, 0o644)
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	return &env{root: root, index: filepath.Join(t.TempDir(), "index.db"), data: filepath.Join(t.TempDir(), "data")}
+}
+
+func (e *env) run(t *testing.T, args ...string) (stdout string, err error) {
+	t.Helper()
+	t.Setenv("HOME", t.TempDir()) // keep ~ abbreviation out of golden output
 	var out bytes.Buffer
 	app := &App{
+		In:  strings.NewReader(e.stdin),
 		Out: &out,
 		Err: &bytes.Buffer{},
 		Now: func() time.Time { return time.Date(2026, 10, 3, 12, 0, 0, 0, time.UTC) },
 		Providers: func() []provider.Provider {
 			return []provider.Provider{
-				claude.New(filepath.Join(root, "claude")),
-				codex.New(filepath.Join(root, "codex")),
+				claude.New(filepath.Join(e.root, "claude")),
+				codex.New(filepath.Join(e.root, "codex")),
 			}
 		},
 		Version:   "test",
-		IndexPath: func() (string, error) { return indexPath, nil },
+		IndexPath: func() (string, error) { return e.index, nil },
+		DataDir:   func() (string, error) { return e.data, nil },
 	}
 	t.Cleanup(func() { app.Close() })
 	cmd := NewRootCmd(app)
 	cmd.SetArgs(args)
 	err = cmd.ExecuteContext(context.Background())
-	return strings.ReplaceAll(out.String(), root, "$ROOT"), err
+	return strings.ReplaceAll(out.String(), e.root, "$ROOT"), err
+}
+
+// must runs a command that has to succeed.
+func (e *env) must(t *testing.T, args ...string) string {
+	t.Helper()
+	out, err := e.run(t, args...)
+	if err != nil {
+		t.Fatalf("ais %s: %v", strings.Join(args, " "), err)
+	}
+	return out
 }
 
 func golden(t *testing.T, name, got string) {
@@ -303,5 +360,133 @@ func TestIndexPersistsAndReindexes(t *testing.T) {
 	out, err = runWith(t, path, "doctor")
 	if err != nil || !strings.Contains(out, "[index]") || !strings.Contains(out, "sessions     8 (11 transcripts tracked)") {
 		t.Errorf("doctor index section: %q, %v", out, err)
+	}
+}
+
+func TestAnnotations(t *testing.T) {
+	e := newEnv(t)
+	e.must(t, "rename", "1111", "Token", "refresh", "fix")
+	e.must(t, "tag", "1111", "bug", "#Auth")
+	e.must(t, "pin", "dddd")
+	e.must(t, "archive", "4444")
+	out := e.must(t, "tag", "2222", "ui")
+	if out != "tagged 22222222  Dark mode  #ui\n" {
+		t.Errorf("tag confirmation: %q", out)
+	}
+
+	golden(t, "ls_annotated.txt", e.must(t, "ls"))
+	all := e.must(t, "ls", "--all")
+	if !strings.Contains(all, "/review src/auth  (archived)") {
+		t.Errorf("ls --all should show the archived session:\n%s", all)
+	}
+	if got := e.must(t, "ls", "--tag", "bug", "--json"); !strings.Contains(got, `"title": "Token refresh fix"`) ||
+		!strings.Contains(got, `"originalTitle": "Fix auth token refresh"`) || !strings.Contains(got, `"tags": [`) ||
+		strings.Count(got, `"id":`) != 1 {
+		t.Errorf("ls --tag bug --json:\n%s", got)
+	}
+
+	show := e.must(t, "show", "1111", "--info")
+	for _, want := range []string{"Token refresh fix", "renamed   from: Fix auth token refresh", "marks     #auth #bug"} {
+		if !strings.Contains(show, want) {
+			t.Errorf("show lacks %q:\n%s", want, show)
+		}
+	}
+	if got := e.must(t, "tags"); got != "#auth  1\n#bug  1\n#ui  1\n" {
+		t.Errorf("tags: %q", got)
+	}
+	// Your titles and tags are searchable.
+	if got := e.must(t, "search", "token", "fix"); !strings.HasPrefix(got, "11111111") {
+		t.Errorf("search by your title: %q", got)
+	}
+
+	e.must(t, "rename", "1111", "--reset")
+	e.must(t, "unpin", "dddd")
+	e.must(t, "unarchive", "4444")
+	e.must(t, "tag", "1111", "--remove", "bug", "auth")
+	e.must(t, "tag", "2222", "-r", "ui")
+	if got, want := e.must(t, "ls"), mustRead(t, "testdata/ls.txt"); got != want {
+		t.Errorf("undoing every annotation should restore the plain list:\n%s\n---\n%s", got, want)
+	}
+
+	if _, err := e.run(t, "tag", "1111", "two words"); err == nil {
+		t.Error("invalid tag accepted")
+	}
+	if _, err := e.run(t, "rename", "1111"); err == nil {
+		t.Error("rename without a title or --reset accepted")
+	}
+}
+
+func mustRead(t *testing.T, path string) string {
+	t.Helper()
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return string(data)
+}
+
+func TestTrashAndRestore(t *testing.T) {
+	e := newEnv(t)
+	transcript := filepath.Join(e.root, "claude/projects/-Users-dev-code-web/22222222-2222-4222-8222-222222222222.jsonl")
+
+	out := e.must(t, "trash", "2222")
+	if out != "trashed 22222222  Dark mode\n" {
+		t.Errorf("trash: %q", out)
+	}
+	if _, err := os.Stat(transcript); !errors.Is(err, os.ErrNotExist) {
+		t.Error("the transcript should have left the Claude project folder")
+	}
+	if strings.Contains(e.must(t, "ls"), "Dark mode") {
+		t.Error("a trashed session must not be listed")
+	}
+	if got := e.must(t, "trash"); !strings.Contains(got, "22222222  claude  now   Dark mode") {
+		t.Errorf("trash list: %q", got)
+	}
+
+	e.must(t, "restore", "2222")
+	if _, err := os.Stat(transcript); err != nil {
+		t.Errorf("restore did not bring the transcript back: %v", err)
+	}
+	if !strings.Contains(e.must(t, "ls"), "Dark mode") {
+		t.Error("a restored session should be listed again")
+	}
+
+	// Emptying asks first, and "no" keeps everything.
+	e.must(t, "trash", "2222")
+	e.stdin = "n\n"
+	if _, err := e.run(t, "trash", "--empty"); err == nil || err.Error() != "cancelled" {
+		t.Errorf("declined --empty: %v", err)
+	}
+	e.stdin = "y\n"
+	if got := e.must(t, "trash", "--empty"); got != "deleted 1 session\n" {
+		t.Errorf("--empty: %q", got)
+	}
+	if got := e.must(t, "trash"); got != "" {
+		t.Errorf("trash should be empty: %q", got)
+	}
+	if _, err := e.run(t, "restore", "2222"); err == nil {
+		t.Error("a deleted session can't be restored")
+	}
+}
+
+func TestTrashCodexUsesCodex(t *testing.T) {
+	e := newEnv(t)
+	bin := t.TempDir()
+	log := filepath.Join(bin, "calls")
+	script := "#!/bin/sh\necho \"$*\" >> " + log + "\n"
+	if err := os.WriteFile(filepath.Join(bin, "codex"), []byte(script), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("PATH", bin+string(os.PathListSeparator)+os.Getenv("PATH"))
+
+	e.must(t, "trash", "aaaa")
+	e.must(t, "restore", "aaaa")
+	e.must(t, "trash", "aaaa")
+	e.must(t, "trash", "--empty", "--yes")
+	calls, _ := os.ReadFile(log)
+	want := "archive aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa\nunarchive aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa\n" +
+		"archive aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa\ndelete aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa --force\n"
+	if string(calls) != want {
+		t.Errorf("codex calls:\n%s\nwant:\n%s", calls, want)
 	}
 }

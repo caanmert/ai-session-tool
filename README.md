@@ -8,7 +8,7 @@ Both tools save every conversation on disk, but finding and resuming one is clum
 
 `ais` reads both stores and gives you one list across all your projects. From that list you can resume any session in its own project directory.
 
-> **Status:** early. Claude Code and Codex CLI sessions both work in the interactive browser and with `ls` / `show` / `search` / `resume` / `doctor`. Tags, rename and archive are next (see [Roadmap](#roadmap)).
+> **Status:** early but complete for daily use: browse, search, resume, fork, rename, tag, pin, archive and trash Claude Code and Codex CLI sessions. Usage stats are next (see [Roadmap](#roadmap)).
 
 ## Install
 
@@ -23,9 +23,10 @@ Requires Go 1.24+. Prebuilt macOS binaries are published on each tagged release.
 Run `ais` with no arguments in a terminal:
 
 - the list shows every session, newest first; the pane below previews the selected one (your prompts, replies rendered as Markdown, tool calls)
-- `/` filters as you type: words match the title, project, branch, id and model, and anything said in the conversation; `t:codex`, `p:api`, `b:main` and `is:live` narrow by tool, project, branch and running sessions
+- `/` filters as you type: words match the title, project, branch, id, model, your tags and anything said in the conversation; `t:codex`, `p:api`, `b:main`, `#tag`, `is:live`, `is:pinned` and `is:archived` narrow it down
 - `enter` resumes the session in its own project directory, `f` forks it, `n` starts a new one in the same project. When the agent exits you are back in the list
-- `y` copies the resume command, `tab` scrolls the preview, `r` rescans, `?` lists every key, `q` quits
+- `r` renames, `t` tags (`bug +auth -old`), `p` pins to the top, `a` archives (hidden unless `is:archived`), `d` moves to the trash after asking
+- `y` copies the resume command, `tab` scrolls the preview, `ctrl+r` rescans, `?` lists every key, `q` quits
 
 Piped (`ais | head`), it prints the recent list instead.
 
@@ -51,6 +52,14 @@ ais resume 3f2a --print      # print the command instead: cd '/path' && claude -
 
 ais doctor                   # where ais looks, how many sessions it found, parse warnings
 ais reindex                  # rebuild the index from scratch (always safe)
+
+ais rename 3f2a Token refresh fix     # your own title (--reset restores the tool's)
+ais tag 3f2a bug auth                 # ais tags lists them; ls --tag bug filters
+ais pin 3f2a / ais unpin 3f2a         # pinned sessions stay on top
+ais archive 3f2a / ais unarchive 3f2a # hidden from lists; ls --all shows them
+ais trash 3f2a                        # remove from the tool too; ais trash lists the trash
+ais restore 3f2a                      # bring it back
+ais trash --empty --older-than 30d    # delete for good (asks first)
 ```
 
 On a terminal, output is colored. Each tool has its own color, recent sessions stand out, and `show` draws a session card with replies rendered as Markdown (code blocks, lists, emphasis). Piped or redirected output stays plain text, so `grep`, `awk` and `--json` scripts keep working. Use `--color=always|never|auto` to override; `NO_COLOR` is honored. Light and dark terminal backgrounds are detected; set `AIS_THEME=dark` or `light` if your terminal doesn't report its background.
@@ -94,6 +103,16 @@ Parsed sessions are cached in a SQLite index (pure Go, no cgo) at `~/Library/Cac
 
 It is only a cache: delete it or run `ais reindex` at any time. `--no-index` reads transcripts directly.
 
+### Your data and the trash
+
+Titles, tags, pins and archive flags you set are yours: they live in `~/Library/Application Support/ais/ais.db` (`~/.local/share/ais` on Linux; override with `AIS_DATA_DIR`), keyed by tool and session id, and are never written into Claude's or Codex's files.
+
+The trash removes a session from the tool itself, restorably:
+- **Claude Code** sessions (the transcript and its folder of subagent data) are moved into `ais`'s trash folder, and moved back on `ais restore`.
+- **Codex** keeps its own database, so `ais` calls `codex archive` / `codex unarchive`, and `codex delete` when you empty the trash.
+
+Running sessions are never trashed.
+
 Resuming runs the agent **in the session's original directory**, because `claude --resume` only finds sessions of the current project. On macOS and Linux, `ais` replaces itself with the agent process, so the agent gets the terminal exactly as if you had started it yourself.
 
 ## Roadmap
@@ -103,7 +122,7 @@ Resuming runs the agent **in the session's original directory**, because `claude
 3. [x] Codex adapter
 4. [x] SQLite index (incremental) + full-text `ais search`
 5. [x] Bubble Tea TUI: list + preview, filter, resume / fork / new
-6. [ ] Tags, rename, pin, archive/trash + restore
+6. [x] Tags, rename, pin, archive/trash + restore
 7. [ ] Token/cost stats by day, project, model
 8. [ ] Parallel runner: tmux windows + git worktrees, "waiting for input" notifications
 

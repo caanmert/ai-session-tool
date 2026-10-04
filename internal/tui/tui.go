@@ -43,6 +43,8 @@ type Deps struct {
 	// Search returns the sessions whose conversation contains every word,
 	// keyed "tool/id" (optional; without it the filter matches metadata).
 	Search func(ctx context.Context, words string) (map[string]bool, error)
+	// Actions rename, tag, pin, archive and trash (optional).
+	Actions Actions
 }
 
 // Run starts the TUI and blocks until the user quits.
@@ -101,6 +103,9 @@ type Model struct {
 	statusError bool
 	statusSeq   int
 	help        bool
+
+	prompt promptKind      // a question in the footer
+	input  textinput.Model // its answer
 }
 
 type previewEntry struct {
@@ -479,7 +484,13 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		return m, nil
 
+	case actionDoneMsg:
+		return m, m.applyAction(msg)
+
 	case tea.KeyMsg:
+		if m.prompt != promptNone {
+			return m.updatePrompt(msg)
+		}
 		if m.filtering {
 			return m.updateFilter(msg)
 		}
@@ -558,9 +569,19 @@ func (m Model) updateKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			return m, m.selectionChanged()
 		}
 		return m, nil
-	case "r", "ctrl+r":
+	case "ctrl+r":
 		m.loading = true
 		return m, tea.Batch(m.scan(), m.spinner.Tick)
+	case "r":
+		return m, m.startPrompt(promptRename)
+	case "t":
+		return m, m.startPrompt(promptTag)
+	case "d", "delete":
+		return m, m.startPrompt(promptTrash)
+	case "p":
+		return m, m.toggle("pin")
+	case "a":
+		return m, m.toggle("archive")
 	case "enter":
 		return m, m.launch(func(p provider.Provider, s model.Session) (*exec.Cmd, error) { return p.ResumeCmd(s, false) })
 	case "f":
@@ -625,4 +646,13 @@ func (m Model) updateKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.preview.ScrollUp(3)
 	}
 	return m, nil
+}
+
+// Actions change sessions: your annotations, and the trash.
+type Actions interface {
+	Rename(ctx context.Context, s model.Session, title string) error
+	Tag(ctx context.Context, s model.Session, add, remove []string) error
+	SetPinned(ctx context.Context, s model.Session, pinned bool) error
+	SetArchived(ctx context.Context, s model.Session, archived bool) error
+	Trash(ctx context.Context, s model.Session) error
 }

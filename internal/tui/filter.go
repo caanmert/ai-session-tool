@@ -12,13 +12,19 @@ import (
 //	t:codex        tool (also tool:)
 //	p:api          project path contains (also project:)
 //	b:main         git branch contains (also branch:)
+//	#bug           carries your tag
 //	is:live        agent running now
+//	is:pinned      pinned by you
+//	is:archived    archived by you (archived sessions are hidden otherwise)
 type query struct {
-	words    []string
-	tool     string
-	project  string
-	branch   string
-	liveOnly bool
+	words      []string
+	tool       string
+	project    string
+	branch     string
+	tags       []string
+	liveOnly   bool
+	pinnedOnly bool
+	archived   bool
 }
 
 func parseQuery(s string) query {
@@ -37,11 +43,22 @@ func parseQuery(s string) query {
 				q.branch = val
 				continue
 			case "is":
-				if val == "live" || val == "running" {
+				switch val {
+				case "live", "running":
 					q.liveOnly = true
+					continue
+				case "pinned":
+					q.pinnedOnly = true
+					continue
+				case "archived":
+					q.archived = true
 					continue
 				}
 			}
+		}
+		if tag, ok := strings.CutPrefix(f, "#"); ok && tag != "" {
+			q.tags = append(q.tags, tag)
+			continue
 		}
 		q.words = append(q.words, f)
 	}
@@ -49,7 +66,8 @@ func parseQuery(s string) query {
 }
 
 func (q query) empty() bool {
-	return len(q.words) == 0 && q.tool == "" && q.project == "" && q.branch == "" && !q.liveOnly
+	return len(q.words) == 0 && len(q.tags) == 0 && q.tool == "" && q.project == "" && q.branch == "" &&
+		!q.liveOnly && !q.pinnedOnly && !q.archived
 }
 
 // text is the free words, for a conversation search.
@@ -68,7 +86,22 @@ func (q query) matchFields(s model.Session) bool {
 	if q.branch != "" && !strings.Contains(strings.ToLower(s.GitBranch), q.branch) {
 		return false
 	}
-	return !q.liveOnly || s.Live != nil
+	if q.liveOnly && s.Live == nil || q.pinnedOnly && !s.Pinned || q.archived != s.Archived {
+		return false
+	}
+	for _, want := range q.tags {
+		found := false
+		for _, tag := range s.Tags {
+			if strings.HasPrefix(tag, want) {
+				found = true
+				break
+			}
+		}
+		if !found {
+			return false
+		}
+	}
+	return true
 }
 
 // matchWords checks the free words against the session's metadata.
@@ -77,7 +110,8 @@ func (q query) matchWords(s model.Session) bool {
 		return true
 	}
 	hay := strings.ToLower(strings.Join([]string{
-		s.Title, s.FirstPrompt, s.LastPrompt, s.CWD, s.GitBranch, s.ID, s.Model, string(s.Tool),
+		s.Title, s.OriginalTitle, s.FirstPrompt, s.LastPrompt, s.CWD, s.GitBranch, s.ID, s.Model, string(s.Tool),
+		strings.Join(s.Tags, " "),
 	}, "\n"))
 	for _, w := range q.words {
 		if !strings.Contains(hay, w) {

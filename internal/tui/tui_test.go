@@ -2,6 +2,8 @@ package tui
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"os/exec"
 	"path/filepath"
 	"strings"
@@ -398,5 +400,174 @@ func TestFilterMatchesConversationText(t *testing.T) {
 	h.send(searchMsg{text: "delay", hits: map[string]bool{"codex/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa": true}})
 	if len(h.m.view) != 0 {
 		t.Errorf("t:claude must exclude a codex conversation match: %d rows", len(h.m.view))
+	}
+}
+
+// fakeActions records calls and can fail on demand.
+type fakeActions struct {
+	calls []string
+	fail  error
+}
+
+func (f *fakeActions) Rename(_ context.Context, s model.Session, title string) error {
+	f.calls = append(f.calls, "rename "+s.ID[:8]+" "+title)
+	return f.fail
+}
+func (f *fakeActions) Tag(_ context.Context, s model.Session, add, remove []string) error {
+	f.calls = append(f.calls, "tag "+s.ID[:8]+" +"+strings.Join(add, ",")+" -"+strings.Join(remove, ","))
+	return f.fail
+}
+func (f *fakeActions) SetPinned(_ context.Context, s model.Session, on bool) error {
+	f.calls = append(f.calls, fmt.Sprintf("pin %s %v", s.ID[:8], on))
+	return f.fail
+}
+func (f *fakeActions) SetArchived(_ context.Context, s model.Session, on bool) error {
+	f.calls = append(f.calls, fmt.Sprintf("archive %s %v", s.ID[:8], on))
+	return f.fail
+}
+func (f *fakeActions) Trash(_ context.Context, s model.Session) error {
+	f.calls = append(f.calls, "trash "+s.ID[:8])
+	return f.fail
+}
+
+// run executes a command and feeds its message back, as Bubble Tea would.
+func (h *harness) run(cmd tea.Cmd) {
+	h.t.Helper()
+	if cmd == nil {
+		h.t.Fatal("expected a command")
+	}
+	msg := cmd()
+	if batch, ok := msg.(tea.BatchMsg); ok {
+		for _, c := range batch {
+			if c != nil {
+				if m, ok := c().(actionDoneMsg); ok {
+					h.send(m)
+				}
+			}
+		}
+		return
+	}
+	h.send(msg)
+}
+
+func startWithActions(t *testing.T) (*harness, *fakeActions) {
+	acts := &fakeActions{}
+	h := &harness{t: t}
+	h.m = New(Deps{Providers: fixtureProviders(t), Now: func() time.Time { return testNow }, Theme: ui.New(nil, ui.Never), Actions: acts})
+	h.send(tea.WindowSizeMsg{Width: 120, Height: 30})
+	h.send(h.m.scan()())
+	return h, acts
+}
+
+func TestOrganizeKeys(t *testing.T) {
+	h, acts := startWithActions(t)
+	h.keys("G") // dddddddd, the oldest
+	h.run(h.send(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("p")}))
+	if !strings.HasPrefix(h.selected(), "dddddddd") || h.m.cursor != 0 {
+		t.Errorf("pinning should move the session to the top and keep it selected: %s at %d", h.selected(), h.m.cursor)
+	}
+	if lines := strings.Split(h.m.View(), "\n"); !strings.Contains(lines[1], "★ Bump terraform") {
+		t.Errorf("pinned row: %q", lines[1])
+	}
+
+	h.keys("t")
+	if h.m.prompt != promptTag {
+		t.Fatal("t should ask for tags")
+	}
+	h.keys("infra +ops")
+	h.run(h.key(tea.KeyEnter))
+	if s, _ := h.m.current(); strings.Join(s.Tags, ",") != "infra,ops" || !strings.Contains(h.m.View(), "#infra #ops") {
+		t.Errorf("tags = %v", s.Tags)
+	}
+	h.keys("t-ops")
+	h.run(h.key(tea.KeyEnter))
+	if s, _ := h.m.current(); strings.Join(s.Tags, ",") != "infra" {
+		t.Errorf("after -ops tags = %v", s.Tags)
+	}
+
+	h.keys("r")
+	if h.m.prompt != promptRename || h.m.input.Value() != "Bump terraform to 1.9" {
+		t.Fatalf("rename should start from the current title: %q", h.m.input.Value())
+	}
+	h.send(tea.KeyMsg{Type: tea.KeyCtrlU}) // clear the line
+	h.keys("Terraform 1.9 upgrade")
+	h.run(h.key(tea.KeyEnter))
+	if s, _ := h.m.current(); s.Title != "Terraform 1.9 upgrade" || s.OriginalTitle != "Bump terraform to 1.9" {
+		t.Errorf("renamed: %q (was %q)", s.Title, s.OriginalTitle)
+	}
+	h.keys("r")
+	h.send(tea.KeyMsg{Type: tea.KeyCtrlU})
+	h.run(h.key(tea.KeyEnter)) // empty restores the tool's title
+	if s, _ := h.m.current(); s.Title != "Bump terraform to 1.9" || s.OriginalTitle != "" {
+		t.Errorf("reset title: %q / %q", s.Title, s.OriginalTitle)
+	}
+
+	h.keys("r")
+	h.key(tea.KeyEsc)
+	if h.m.prompt != promptNone || len(acts.calls) != 5 {
+		t.Errorf("esc should cancel without acting: %v", acts.calls)
+	}
+
+	want := []string{"pin dddddddd true", "tag dddddddd +infra,ops -", "tag dddddddd + -ops",
+		"rename dddddddd Terraform 1.9 upgrade", "rename dddddddd "}
+	if got := strings.Join(acts.calls[:5], " | "); got != strings.Join(want, " | ") {
+		t.Errorf("calls:\n%s\nwant:\n%s", got, strings.Join(want, " | "))
+	}
+}
+
+func TestArchiveAndTrashKeys(t *testing.T) {
+	h, acts := startWithActions(t)
+	h.run(h.send(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("a")})) // archive aaaaaaaa
+	if len(h.m.view) != 7 || strings.HasPrefix(h.selected(), "aaaaaaaa") {
+		t.Errorf("archived session should leave the list: %d rows, selected %s", len(h.m.view), h.selected())
+	}
+	if !strings.Contains(h.m.View(), "7 sessions") || !strings.Contains(h.m.View(), "1 archived") {
+		t.Errorf("header:\n%s", strings.Split(h.m.View(), "\n")[0])
+	}
+	h.keys("/is:archived")
+	if len(h.m.view) != 1 || !strings.HasPrefix(h.selected(), "aaaaaaaa") {
+		t.Errorf("is:archived should show it: %d rows", len(h.m.view))
+	}
+	h.key(tea.KeyEsc)
+
+	h.keys("d")
+	if h.m.prompt != promptTrash || !strings.Contains(h.m.View(), "to the trash? y/n") {
+		t.Fatal("d should ask before trashing")
+	}
+	h.keys("n")
+	if h.m.prompt != promptNone || len(acts.calls) != 1 {
+		t.Errorf("n should cancel: %v", acts.calls)
+	}
+	first := h.selected()
+	h.keys("d")
+	h.run(h.send(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("y")}))
+	if len(h.m.view) != 6 || h.selected() == first || !strings.Contains(h.m.status, "moved to the trash") {
+		t.Errorf("after trash: %d rows, status %q", len(h.m.view), h.m.status)
+	}
+
+	acts.fail = errors.New("disk full")
+	h.run(h.send(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("p")}))
+	if !h.m.statusError || !strings.Contains(h.m.status, "pin failed: disk full") {
+		t.Errorf("a failed action should say so: %q", h.m.status)
+	}
+	if s, _ := h.m.current(); s.Pinned {
+		t.Error("a failed pin must not pin")
+	}
+}
+
+func TestOrganizeWithoutActions(t *testing.T) {
+	h := start(t, fixtureProviders(t), 120, 30)
+	h.keys("r")
+	if h.m.prompt != promptNone || !h.m.statusError {
+		t.Error("without a data directory, organizing should explain why it can't")
+	}
+}
+
+func TestLiveSessionsCannotBeTrashed(t *testing.T) {
+	h, acts := startWithActions(t)
+	h.m.sessions[h.m.view[0]].Live = &model.LiveState{PID: 1}
+	h.keys("d")
+	if h.m.prompt != promptNone || !strings.Contains(h.m.status, "running") || len(acts.calls) != 0 {
+		t.Errorf("live session: prompt %v, status %q", h.m.prompt, h.m.status)
 	}
 }

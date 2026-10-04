@@ -19,7 +19,9 @@ type listOptions struct {
 	tool    string
 	project string
 	since   string
+	tags    []string
 	live    bool
+	all     bool
 	limit   int
 	json    bool
 }
@@ -43,6 +45,8 @@ func newListCmd(app *App) *cobra.Command {
 	f.StringVarP(&o.project, "project", "p", "", "only sessions whose cwd contains this text")
 	f.StringVar(&o.since, "since", "", "only sessions updated within this window (30m, 12h, 7d, 2w) or since a date (2006-01-02)")
 	f.BoolVar(&o.live, "live", false, "only sessions whose agent is running now")
+	f.StringSliceVarP(&o.tags, "tag", "t", nil, "only sessions with this tag (repeatable)")
+	f.BoolVarP(&o.all, "all", "a", false, "include archived sessions")
 	f.IntVarP(&o.limit, "limit", "n", 50, "maximum sessions to show (0 = all)")
 	f.BoolVar(&o.json, "json", false, "print JSON instead of a table")
 	return cmd
@@ -72,6 +76,8 @@ func runList(ctx context.Context, app *App, o listOptions) error {
 		case o.project != "" && !strings.Contains(strings.ToLower(s.CWD), strings.ToLower(o.project)):
 		case !since.IsZero() && s.UpdatedAt.Before(since):
 		case o.live && s.Live == nil:
+		case s.Archived && !o.all:
+		case !hasTags(s, o.tags):
 		default:
 			sessions = append(sessions, s)
 		}
@@ -125,8 +131,26 @@ func printTable(app *App, now time.Time, sessions []model.Session) {
 			{Text: render.Age(now, updated), Style: func(x string) string { return t.Age(now, updated, x) }},
 			{Text: fmt.Sprint(s.MessageCount()), Style: t.Faint},
 			{Text: render.Tokens(s.Usage.Total()), Style: t.Faint},
-			{Text: textutil.Truncate(s.Title, titleWidth)},
+			{Text: render.Title(t, s, titleWidth, false)},
 		})
 	}
 	_ = t.Table(app.Out, cols, rows)
+}
+
+// hasTags reports whether s carries every tag (normalized like stored tags).
+func hasTags(s model.Session, tags []string) bool {
+	for _, want := range tags {
+		want = strings.ToLower(strings.TrimPrefix(strings.TrimSpace(want), "#"))
+		found := false
+		for _, tag := range s.Tags {
+			if tag == want {
+				found = true
+				break
+			}
+		}
+		if !found {
+			return false
+		}
+	}
+	return true
 }

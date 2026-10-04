@@ -1,0 +1,8 @@
+   ID        TOOL    PROJECT  BRANCH         UPDATED  MSGS  TOKENS  TITLE
+   dddddddd  codex   infra                   2w          2     950  ★ Bump terraform to 1.9
+   aaaaaaaa  codex   api      feat/webhooks  21h         4   21.2k  Webhook retries
+   99999999  codex   docs                    2d          4       0  Write the install guide
+   22222222  claude  web      main           2d          3      2k  Dark mode  #ui
+   11111111  claude  api      feat/auth      3d          5    4.2k  Token refresh fix  #auth #bug
+   cccccccc  codex   cli                     12d         1       0  Plain copy wins
+   bbbbbbbb  codex   web      main           13d         2    3.2k  Fix the flaky date picker test

@@ -3,9 +3,11 @@ package cli
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -13,15 +15,19 @@ import (
 
 	"github.com/caanmert/ai-session-tool/internal/clipboard"
 	"github.com/caanmert/ai-session-tool/internal/index"
+	"github.com/caanmert/ai-session-tool/internal/meta"
+	"github.com/caanmert/ai-session-tool/internal/model"
 	"github.com/caanmert/ai-session-tool/internal/provider"
 	"github.com/caanmert/ai-session-tool/internal/provider/claude"
 	"github.com/caanmert/ai-session-tool/internal/provider/codex"
+	"github.com/caanmert/ai-session-tool/internal/trash"
 	"github.com/caanmert/ai-session-tool/internal/tui"
 	"github.com/caanmert/ai-session-tool/internal/ui"
 )
 
 // App holds the dependencies commands use, so tests can swap them.
 type App struct {
+	In        io.Reader
 	Out, Err  io.Writer
 	Now       func() time.Time
 	Providers func() []provider.Provider
@@ -31,12 +37,73 @@ type App struct {
 	Interactive func() bool
 	// IndexPath locates the session index. Nil disables the index.
 	IndexPath func() (string, error)
+	// DataDir locates ais's own data: annotations and the trash. Nil
+	// disables both.
+	DataDir func() (string, error)
 
 	color   ui.Mode
 	themes  map[io.Writer]*ui.Theme
 	noIndex bool
 	ix      *index.Index
 	ixTried bool
+	st      *meta.Store
+	stErr   error
+	stTried bool
+}
+
+// store opens the annotation store once.
+func (a *App) store() (*meta.Store, error) {
+	if a.stTried {
+		return a.st, a.stErr
+	}
+	a.stTried = true
+	if a.DataDir == nil {
+		a.stErr = errors.New("annotations are disabled")
+		return nil, a.stErr
+	}
+	dir, err := a.DataDir()
+	if err == nil {
+		a.st, err = meta.Open(filepath.Join(dir, "ais.db"))
+	}
+	a.stErr = err
+	return a.st, err
+}
+
+// trash returns the trash in ais's data directory.
+func (a *App) trash() (*trash.Trash, error) {
+	if a.DataDir == nil {
+		return nil, errors.New("the trash is disabled")
+	}
+	dir, err := a.DataDir()
+	if err != nil {
+		return nil, err
+	}
+	return trash.New(filepath.Join(dir, "trash")), nil
+}
+
+// annotate applies your annotations to sessions (pinned first). Without a
+// store it leaves them as they are.
+func (a *App) annotate(ctx context.Context) func(provider.ScanResult, error) (provider.ScanResult, error) {
+	return func(res provider.ScanResult, err error) (provider.ScanResult, error) {
+		return a.applyAnnotations(ctx, res, err)
+	}
+}
+
+func (a *App) applyAnnotations(ctx context.Context, res provider.ScanResult, err error) (provider.ScanResult, error) {
+	if err != nil {
+		return res, err
+	}
+	st, serr := a.store()
+	if serr != nil {
+		return res, nil
+	}
+	ann, aerr := st.All(ctx)
+	if aerr != nil {
+		fmt.Fprintf(a.Err, "%s annotations unavailable: %v\n", a.themeFor(a.Err).Warn("ais:"), aerr)
+		return res, nil
+	}
+	meta.Apply(res.Sessions, ann)
+	return res, nil
 }
 
 // index opens the session index once. It returns nil when the index is
@@ -59,14 +126,18 @@ func (a *App) index() *index.Index {
 	return a.ix
 }
 
-// Close releases the index.
+// Close releases the index and the annotation store.
 func (a *App) Close() error {
-	if a.ix == nil {
-		return nil
+	var errs []error
+	if a.ix != nil {
+		errs = append(errs, a.ix.Close())
+		a.ix, a.ixTried = nil, false
 	}
-	err := a.ix.Close()
-	a.ix, a.ixTried = nil, false
-	return err
+	if a.st != nil {
+		errs = append(errs, a.st.Close())
+		a.st, a.stTried = nil, false
+	}
+	return errors.Join(errs...)
 }
 
 // theme returns the output theme for stdout.
@@ -87,6 +158,7 @@ func (a *App) themeFor(w io.Writer) *ui.Theme {
 // DefaultApp wires the real filesystem, clock and terminal.
 func DefaultApp(version string) *App {
 	return &App{
+		In:        os.Stdin,
 		Out:       os.Stdout,
 		Err:       os.Stderr,
 		Now:       time.Now,
@@ -96,6 +168,7 @@ func DefaultApp(version string) *App {
 			return term.IsTerminal(int(os.Stdin.Fd())) && term.IsTerminal(int(os.Stdout.Fd()))
 		},
 		IndexPath: index.DefaultPath,
+		DataDir:   meta.DefaultDir,
 	}
 }
 
@@ -146,17 +219,26 @@ preview, then resume or fork with one key. Piped, it prints the recent list.`,
 		newDoctorCmd(app),
 		newSearchCmd(app),
 		newReindexCmd(app),
+		newRenameCmd(app),
+		newTagCmd(app),
+		newTagsCmd(app),
+		newFlagCmd(app, "pin", "Keep a session at the top of every list", func(st *meta.Store, ctx context.Context, s model.Session) error { return st.SetPinned(ctx, s, true) }),
+		newFlagCmd(app, "unpin", "Stop keeping a session at the top", func(st *meta.Store, ctx context.Context, s model.Session) error { return st.SetPinned(ctx, s, false) }),
+		newFlagCmd(app, "archive", "Hide a session from lists (ls --all and is:archived still show it)", func(st *meta.Store, ctx context.Context, s model.Session) error { return st.SetArchived(ctx, s, true) }),
+		newFlagCmd(app, "unarchive", "Show an archived session in lists again", func(st *meta.Store, ctx context.Context, s model.Session) error { return st.SetArchived(ctx, s, false) }),
+		newTrashCmd(app),
+		newRestoreCmd(app),
 	)
 	return root
 }
 
 // scan loads every session from every provider, through the index when
-// it is available.
+// it is available, with your annotations applied.
 func (a *App) scan(ctx context.Context) (provider.ScanResult, error) {
 	if ix := a.index(); ix != nil {
-		return ix.Sync(ctx, a.Providers())
+		return a.annotate(ctx)(ix.Sync(ctx, a.Providers()))
 	}
-	return provider.Scan(ctx, a.Providers())
+	return a.annotate(ctx)(provider.Scan(ctx, a.Providers()))
 }
 
 // tuiDeps connects the TUI to the index (or a direct scan without one).
@@ -168,9 +250,19 @@ func (a *App) tuiDeps() tui.Deps {
 		Theme:     a.theme(),
 		Copy:      clipboard.Copy,
 	}
+	d.Sync = func(ctx context.Context) (provider.ScanResult, error) {
+		return a.annotate(ctx)(provider.Scan(ctx, providers))
+	}
+	if st, err := a.store(); err == nil {
+		d.Actions = &actions{app: a, st: st}
+	}
 	if ix := a.index(); ix != nil {
-		d.Load = func(ctx context.Context) (provider.ScanResult, error) { return ix.Load(ctx, providers) }
-		d.Sync = func(ctx context.Context) (provider.ScanResult, error) { return ix.Sync(ctx, providers) }
+		d.Load = func(ctx context.Context) (provider.ScanResult, error) {
+			return a.annotate(ctx)(ix.Load(ctx, providers))
+		}
+		d.Sync = func(ctx context.Context) (provider.ScanResult, error) {
+			return a.annotate(ctx)(ix.Sync(ctx, providers))
+		}
 		d.Search = func(ctx context.Context, q string) (map[string]bool, error) {
 			hits, err := ix.Search(ctx, q, 0)
 			keys := map[string]bool{}

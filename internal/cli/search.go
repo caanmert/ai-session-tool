@@ -69,14 +69,25 @@ func runSearch(ctx context.Context, app *App, q, tool string, limit int, asJSON 
 		Snippet string        `json:"snippet,omitempty"`
 	}
 	var results []result
-	for _, h := range hits {
-		s, ok := sessions[index.Key(h.Tool, h.ID)]
-		if !ok || tool != "" && string(s.Tool) != tool {
-			continue
+	seen := map[string]bool{}
+	add := func(s model.Session, snippet string) {
+		if seen[s.Key()] || tool != "" && string(s.Tool) != tool || limit > 0 && len(results) == limit {
+			return
 		}
-		results = append(results, result{s, h.Snippet})
-		if limit > 0 && len(results) == limit {
-			break
+		seen[s.Key()] = true
+		results = append(results, result{s, snippet})
+	}
+	for _, h := range hits {
+		if s, ok := sessions[index.Key(h.Tool, h.ID)]; ok {
+			add(s, h.Snippet)
+		}
+	}
+	// Your own titles and tags are not in the index; match them here.
+	for _, s := range res.Sessions {
+		if s.OriginalTitle != "" || len(s.Tags) > 0 {
+			if annotationMatches(s, q) {
+				add(s, "")
+			}
 		}
 	}
 
@@ -115,7 +126,7 @@ func runSearch(ctx context.Context, app *App, q, tool string, limit int, asJSON 
 		age := render.Age(now, s.UpdatedAt)
 		head := t.ID(render.ShortID(s.ID)) + "  " + t.Tool(s.Tool, pad(string(s.Tool), 6)) + "  " +
 			t.Bold(pad(project, projectW)) + "  " + t.Age(now, s.UpdatedAt, pad(age, 4)) + "  "
-		fmt.Fprintln(app.Out, head+textutil.Truncate(s.Title, max(width-ui.Width(head), 20)))
+		fmt.Fprintln(app.Out, head+render.Title(t, s, max(width-ui.Width(head), 20), false))
 		if r.Snippet != "" {
 			fmt.Fprintln(app.Out, "    "+highlight(t, textutil.Truncate(r.Snippet, max(width-6, 20))))
 		}
@@ -185,4 +196,17 @@ func newReindexCmd(app *App) *cobra.Command {
 			return nil
 		},
 	}
+}
+
+// annotationMatches reports whether every word of q appears in your title
+// or tags for s.
+func annotationMatches(s model.Session, q string) bool {
+	hay := strings.ToLower(s.Title + " " + strings.Join(s.Tags, " "))
+	words := strings.Fields(strings.ToLower(strings.ReplaceAll(q, `"`, " ")))
+	for _, w := range words {
+		if !strings.Contains(hay, strings.TrimPrefix(w, "#")) {
+			return false
+		}
+	}
+	return len(words) > 0
 }

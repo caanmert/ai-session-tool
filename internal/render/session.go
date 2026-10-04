@@ -34,6 +34,22 @@ func PlainDetails(w io.Writer, now time.Time, s model.Session, resume string) {
 	fmt.Fprintln(w, s.Title)
 	row := func(k, v string) { fmt.Fprintf(w, "  %-9s %s\n", k, v) }
 	row("id", fmt.Sprintf("%s (%s)", s.ID, s.Tool))
+	if s.OriginalTitle != "" {
+		row("renamed", "from: "+s.OriginalTitle)
+	}
+	var marks []string
+	if s.Pinned {
+		marks = append(marks, "pinned")
+	}
+	if s.Archived {
+		marks = append(marks, "archived")
+	}
+	for _, tag := range s.Tags {
+		marks = append(marks, "#"+tag)
+	}
+	if len(marks) > 0 {
+		row("marks", strings.Join(marks, " "))
+	}
 	if s.Live != nil {
 		row("live", fmt.Sprintf("running, pid %d, %s", s.Live.PID, s.Live.Status))
 	}
@@ -98,11 +114,14 @@ func Details(w io.Writer, t *ui.Theme, now time.Time, s model.Session, resume st
 	if s.GitBranch != "" {
 		project += t.Faint("  on ") + t.Branch(s.GitBranch)
 	}
-	rows := []kv{
-		{"id", t.ID(s.ID)},
+	rows := []kv{{"id", t.ID(s.ID)}}
+	if s.OriginalTitle != "" {
+		rows = append(rows, kv{"renamed", t.Faint("from: " + textutil.Truncate(s.OriginalTitle, valueWidth-6))})
+	}
+	rows = append(rows, []kv{
 		{"project", project},
 		{"updated", Ago(now, s.UpdatedAt) + t.Faint("  ·  started "+s.StartedAt.Local().Format("Jan 2 15:04"))},
-	}
+	}...)
 	if s.Model != "" || s.Version != "" {
 		rows = append(rows, kv{"model", strings.Join(nonEmpty(s.Model, VersionLabel(s.Version)), t.Faint("  ·  "))})
 	}
@@ -126,11 +145,55 @@ func Details(w io.Writer, t *ui.Theme, now time.Time, s model.Session, resume st
 	}
 }
 
+// Title renders a session title for lists: a star when pinned, then the
+// title cut to fit width (bold when emphasized), then your tags and an
+// archived marker.
+func Title(t *ui.Theme, s model.Session, width int, emphasize bool) string {
+	var suffix []string
+	for _, tag := range s.Tags {
+		suffix = append(suffix, "#"+tag)
+	}
+	if s.Archived {
+		suffix = append(suffix, "(archived)")
+	}
+	tail := strings.Join(suffix, " ")
+	prefix := ""
+	if s.Pinned {
+		prefix = "★ "
+	}
+	room := width - ui.Width(prefix)
+	if tail != "" {
+		room -= ui.Width(tail) + 2
+	}
+	title := textutil.Truncate(s.Title, max(room, 8))
+	if emphasize {
+		title = t.Bold(title)
+	}
+	out := t.Warn(prefix) + title
+	if tail != "" {
+		out += "  " + t.Branch(tail)
+	}
+	return out
+}
+
 // Badge renders the tool name, plus the running state for live sessions.
 func Badge(t *ui.Theme, s model.Session) string {
 	badge := t.Tool(s.Tool, "● "+string(s.Tool))
 	if s.Live != nil {
 		badge += t.Faint("  ·  ") + t.Live("running") + t.Faint(fmt.Sprintf(" (pid %d, %s)", s.Live.PID, s.Live.Status))
+	}
+	if s.Pinned {
+		badge += t.Faint("  ·  ") + t.Warn("★ pinned")
+	}
+	if s.Archived {
+		badge += t.Faint("  ·  archived")
+	}
+	for i, tag := range s.Tags {
+		sep := " "
+		if i == 0 {
+			sep = t.Faint("  ·  ")
+		}
+		badge += sep + t.Branch("#"+tag)
 	}
 	return badge
 }
