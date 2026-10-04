@@ -8,10 +8,13 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
+	"golang.org/x/term"
 
+	"github.com/caanmert/ai-session-tool/internal/clipboard"
 	"github.com/caanmert/ai-session-tool/internal/provider"
 	"github.com/caanmert/ai-session-tool/internal/provider/claude"
 	"github.com/caanmert/ai-session-tool/internal/provider/codex"
+	"github.com/caanmert/ai-session-tool/internal/tui"
 	"github.com/caanmert/ai-session-tool/internal/ui"
 )
 
@@ -21,6 +24,9 @@ type App struct {
 	Now       func() time.Time
 	Providers func() []provider.Provider
 	Version   string
+	// Interactive reports whether `ais` without arguments may open the TUI
+	// (stdin and stdout are terminals). Nil means never.
+	Interactive func() bool
 
 	color  ui.Mode
 	themes map[io.Writer]*ui.Theme
@@ -49,6 +55,9 @@ func DefaultApp(version string) *App {
 		Now:       time.Now,
 		Providers: DefaultProviders,
 		Version:   version,
+		Interactive: func() bool {
+			return term.IsTerminal(int(os.Stdin.Fd())) && term.IsTerminal(int(os.Stdout.Fd()))
+		},
 	}
 }
 
@@ -69,12 +78,21 @@ func NewRootCmd(app *App) *cobra.Command {
 		Long: `ais indexes the sessions Claude Code and Codex CLI keep on disk so you can
 find any of them from anywhere, see what it was about, and jump back in.
 
-Run without arguments to list recent sessions (the interactive TUI is coming).`,
+Run without arguments in a terminal to browse sessions interactively: filter,
+preview, then resume or fork with one key. Piped, it prints the recent list.`,
 		Version:       app.Version,
 		SilenceUsage:  true,
 		SilenceErrors: true,
 		Args:          cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
+			if app.Interactive != nil && app.Interactive() {
+				return tui.Run(cmd.Context(), tui.Deps{
+					Providers: app.Providers(),
+					Now:       app.Now,
+					Theme:     app.theme(),
+					Copy:      clipboard.Copy,
+				})
+			}
 			return runList(cmd.Context(), app, listOptions{limit: 30})
 		},
 	}

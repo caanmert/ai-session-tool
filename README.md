@@ -8,7 +8,7 @@ Both tools save every conversation on disk, but finding and resuming one is clum
 
 `ais` reads both stores and gives you one list across all your projects. From that list you can resume any session in its own project directory.
 
-> **Status:** early. Claude Code and Codex CLI sessions both work with `ls` / `show` / `resume` / `doctor`. A search index and an interactive TUI are next (see [Roadmap](#roadmap)).
+> **Status:** early. Claude Code and Codex CLI sessions both work in the interactive browser and with `ls` / `show` / `resume` / `doctor`. A search index is next (see [Roadmap](#roadmap)).
 
 ## Install
 
@@ -18,10 +18,21 @@ go install github.com/caanmert/ai-session-tool/cmd/ais@latest
 
 Requires Go 1.24+. Prebuilt macOS binaries are published on each tagged release.
 
+## Interactive browser
+
+Run `ais` with no arguments in a terminal:
+
+- the list shows every session, newest first; the pane below previews the selected one (your prompts, replies rendered as Markdown, tool calls)
+- `/` filters as you type: words match the title, prompts, project, branch, id and model; `t:codex`, `p:api`, `b:main` and `is:live` narrow by tool, project, branch and running sessions
+- `enter` resumes the session in its own project directory, `f` forks it, `n` starts a new one in the same project. When the agent exits you are back in the list
+- `y` copies the resume command, `tab` scrolls the preview, `r` rescans, `?` lists every key, `q` quits
+
+Piped (`ais | head`), it prints the recent list instead.
+
 ## Usage
 
 ```sh
-ais                          # recent sessions (the TUI will replace this)
+ais                          # interactive browser (or the recent list when piped)
 ais ls                       # newest first: id, tool, project, branch, age, messages, tokens, title
 ais ls -p api --since 7d     # filter by project path and recency
 ais ls --live                # only sessions whose agent is running right now
@@ -38,7 +49,7 @@ ais resume 3f2a --print      # print the command instead: cd '/path' && claude -
 ais doctor                   # where ais looks, how many sessions it found, parse warnings
 ```
 
-On a terminal, output is colored. Each tool has its own color, recent sessions stand out, and `show` draws a session card with replies rendered as Markdown (code blocks, lists, emphasis). Piped or redirected output stays plain text, so `grep`, `awk` and `--json` scripts keep working. Use `--color=always|never|auto` to override; `NO_COLOR` is honored.
+On a terminal, output is colored. Each tool has its own color, recent sessions stand out, and `show` draws a session card with replies rendered as Markdown (code blocks, lists, emphasis). Piped or redirected output stays plain text, so `grep`, `awk` and `--json` scripts keep working. Use `--color=always|never|auto` to override; `NO_COLOR` is honored. Light and dark terminal backgrounds are detected; set `AIS_THEME=dark` or `light` if your terminal doesn't report its background.
 
 Example:
 
@@ -81,7 +92,7 @@ Resuming runs the agent **in the session's original directory**, because `claude
 2. [x] Claude Code adapter: `ls`, `show`, `resume`, `doctor`
 3. [x] Codex adapter
 4. [ ] SQLite index (incremental) + full-text `ais search`
-5. [ ] Bubble Tea TUI: list + preview, fuzzy filter, resume / fork / new
+5. [x] Bubble Tea TUI: list + preview, filter, resume / fork / new
 6. [ ] Tags, rename, pin, archive/trash + restore
 7. [ ] Token/cost stats by day, project, model
 8. [ ] Parallel runner: tmux windows + git worktrees, "waiting for input" notifications

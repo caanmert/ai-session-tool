@@ -10,6 +10,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/caanmert/ai-session-tool/internal/model"
+	"github.com/caanmert/ai-session-tool/internal/render"
 	"github.com/caanmert/ai-session-tool/internal/textutil"
 	"github.com/caanmert/ai-session-tool/internal/ui"
 )
@@ -117,23 +118,15 @@ func printTable(app *App, now time.Time, sessions []model.Session) {
 		updated := s.UpdatedAt
 		rows = append(rows, []ui.Cell{
 			{Text: dot, Style: t.Live},
-			{Text: shortID(s.ID), Style: t.ID},
+			{Text: render.ShortID(s.ID), Style: t.ID},
 			{Text: string(s.Tool), Style: func(x string) string { return t.Tool(s.Tool, x) }},
 			{Text: textutil.Truncate(s.Project(), 14), Style: t.Bold},
 			{Text: textutil.Truncate(s.GitBranch, 14), Style: t.Branch},
-			{Text: age(now, updated), Style: func(x string) string { return t.Age(now, updated, x) }},
+			{Text: render.Age(now, updated), Style: func(x string) string { return t.Age(now, updated, x) }},
 			{Text: fmt.Sprint(s.MessageCount()), Style: t.Faint},
-			{Text: tokens(s.Usage.Total()), Style: t.Faint},
+			{Text: render.Tokens(s.Usage.Total()), Style: t.Faint},
 			{Text: textutil.Truncate(s.Title, titleWidth)},
 		})
 	}
 	_ = t.Table(app.Out, cols, rows)
-}
-
-// shortID is the id prefix shown in tables; any unique prefix resolves.
-func shortID(id string) string {
-	if len(id) <= 8 {
-		return id
-	}
-	return id[:8]
 }

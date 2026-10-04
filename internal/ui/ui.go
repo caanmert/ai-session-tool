@@ -73,7 +73,23 @@ func New(w io.Writer, mode Mode) *Theme {
 		t.profile = termenv.TrueColor // forced color into a pipe or buffer
 	}
 	t.r.SetColorProfile(t.profile)
+	switch strings.ToLower(os.Getenv("AIS_THEME")) {
+	case "dark":
+		t.r.SetHasDarkBackground(true)
+	case "light":
+		t.r.SetHasDarkBackground(false)
+	}
 	return t
+}
+
+// Prime settles anything that needs to ask the terminal (its background
+// color, for light/dark styles) now. Call it before a full-screen program
+// starts reading input, which would otherwise swallow the terminal's reply.
+// AIS_THEME=dark|light skips the question.
+func (t *Theme) Prime() {
+	if t.Color {
+		t.r.SetHasDarkBackground(t.r.HasDarkBackground())
+	}
 }
 
 func terminal(w io.Writer) (tty bool, width int) {
