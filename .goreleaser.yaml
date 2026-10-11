@@ -1,6 +1,10 @@
 version: 2
 project_name: ais
 
+before:
+  hooks:
+    - sh scripts/completions.sh
+
 builds:
   - main: ./cmd/ais
     binary: ais
@@ -14,6 +18,14 @@ builds:
 archives:
   - formats: [tar.gz]
     name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+    files:
+      - README.md
+      - docs/USAGE.md
+      - docs/RELEASING.md
+      - docs/screenshots/*
+      - src: build/completions/*
+        dst: completions
+        strip_parent: true
 
 checksum:
   name_template: checksums.txt

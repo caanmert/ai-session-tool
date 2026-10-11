@@ -31,6 +31,8 @@ func newDoctorCmd(app *App) *cobra.Command {
 func runDoctor(ctx context.Context, app *App, verbose bool) error {
 	w, t := app.Out, app.theme()
 	fmt.Fprintf(w, "%s %s\n", t.Bold("ais"), t.Faint(app.Version))
+	fmt.Fprintln(w, "\n[dependencies]")
+	app.printDependencies(app.dependencies())
 	for _, p := range app.Providers() {
 		if t.Color {
 			fmt.Fprintf(w, "\n%s\n", t.Bold(t.Tool(p.Tool(), "● "+string(p.Tool()))))
@@ -45,7 +47,7 @@ func runDoctor(ctx context.Context, app *App, verbose bool) error {
 		} else {
 			row("root", root)
 		}
-		if path, version, err := binaryInfo(ctx, string(p.Tool())); err != nil {
+		if path, version, err := app.binaryInfo(ctx, string(p.Tool())); err != nil {
 			row("binary", t.Warn("not on PATH (resume will fail)"))
 		} else {
 			row("binary", path+t.Faint(version))
@@ -152,8 +154,8 @@ func runDoctor(ctx context.Context, app *App, verbose bool) error {
 
 // binaryInfo finds a tool's executable and its version, formatted as
 // "  (version)" or "" when it can't be read.
-func binaryInfo(ctx context.Context, name string) (path, version string, err error) {
-	path, err = exec.LookPath(name)
+func (a *App) binaryInfo(ctx context.Context, name string) (path, version string, err error) {
+	path, err = a.lookPath(name)
 	if err != nil {
 		return "", "", err
 	}

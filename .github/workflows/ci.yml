@@ -9,6 +9,35 @@ permissions:
   contents: read
 
 jobs:
+  desktop:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: desktop/go.mod
+          cache-dependency-path: |
+            go.sum
+            desktop/go.sum
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: desktop/frontend/package-lock.json
+      - run: npm ci
+        working-directory: desktop/frontend
+      - run: npm test
+        working-directory: desktop/frontend
+      - run: npm run build
+        working-directory: desktop/frontend
+      - run: go vet ./...
+        working-directory: desktop
+      - run: go test -race ./...
+        working-directory: desktop
+      - run: go install github.com/wailsapp/wails/v2/cmd/wails@v2.15.0
+        working-directory: desktop
+      - run: sh scripts/build-desktop.sh -s
+
   test:
     strategy:
       fail-fast: false
@@ -22,6 +51,34 @@ jobs:
           go-version-file: go.mod
       - run: go vet ./...
       - run: go test -race ./...
+
+  packaging:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - run: python3 -m unittest discover -s scripts -v
+      - uses: goreleaser/goreleaser-action@v6
+        with:
+          version: "~> v2"
+          args: release --snapshot --clean
+      - name: Check release contents
+        run: |
+          for archive in dist/ais_*.tar.gz; do
+            tar -tzf "$archive" > dist/archive-files.txt
+            grep -Fx 'ais' dist/archive-files.txt
+            grep -Fx 'completions/ais.bash' dist/archive-files.txt
+            grep -Fx 'completions/ais.zsh' dist/archive-files.txt
+            grep -Fx 'completions/ais.fish' dist/archive-files.txt
+            grep -Fx 'docs/USAGE.md' dist/archive-files.txt
+          done
+      - name: Validate formula against snapshot archives
+        run: |
+          version="$(python3 -c 'import json; print(json.load(open("dist/metadata.json"))["version"])')"
+          python3 scripts/homebrew.py --tag "v$version"
+          ruby -c dist/homebrew/ais.rb
 
   lint:
     runs-on: ubuntu-latest

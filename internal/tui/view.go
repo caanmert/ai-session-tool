@@ -127,7 +127,7 @@ func (m Model) list(n int) []string {
 		return fit("", n)
 	}
 	if len(m.view) == 0 {
-		msg := "  no sessions found — run `ais doctor` to see where ais looks"
+		msg := "  no sessions found — run `ais setup` for session locations and next steps"
 		if !m.query.empty() {
 			msg = "  no sessions match — esc clears the filter"
 		}

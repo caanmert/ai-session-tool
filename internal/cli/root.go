@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"time"
 
@@ -33,8 +34,7 @@ type App struct {
 	Now       func() time.Time
 	Providers func() []provider.Provider
 	Version   string
-	// Interactive reports whether `ais` without arguments may open the TUI
-	// (stdin and stdout are terminals). Nil means never.
+	// Interactive reports whether stdin and stdout are terminals. Nil means never.
 	Interactive func() bool
 	// IndexPath locates the session index. Nil disables the index.
 	IndexPath func() (string, error)
@@ -43,6 +43,13 @@ type App struct {
 	DataDir func() (string, error)
 	// ConfigPath locates the config file (prices). Nil uses built-ins.
 	ConfigPath func() (string, error)
+	// LookPath resolves executables for setup, diagnostics and project detection.
+	// Nil uses exec.LookPath.
+	LookPath func(string) (string, error)
+	// Exec and Choose let tests replace project launchers and interactive pickers.
+	// Nil uses process replacement and the built-in terminal picker.
+	Exec   func(*exec.Cmd) error
+	Choose func(context.Context, string, []string) (int, error)
 
 	color   ui.Mode
 	themes  map[io.Writer]*ui.Theme
@@ -210,6 +217,9 @@ func NewRootCmd(app *App) *cobra.Command {
 		Long: `ais indexes the sessions Claude Code and Codex CLI keep on disk so you can
 find any of them from anywhere, see what it was about, and jump back in.
 
+Use ais new to start an agent in the current directory, or ais continue to
+resume a conversation from the current project.
+
 Run without arguments in a terminal to browse sessions interactively: filter,
 preview, then resume or fork with one key. Piped, it prints the recent list.`,
 		Version:       app.Version,
@@ -237,7 +247,10 @@ preview, then resume or fork with one key. Piped, it prints the recent list.`,
 		newListCmd(app),
 		newShowCmd(app),
 		newResumeCmd(app),
+		newNewCmd(app),
+		newContinueCmd(app),
 		newDoctorCmd(app),
+		newSetupCmd(app),
 		newSearchCmd(app),
 		newReindexCmd(app),
 		newRenameCmd(app),

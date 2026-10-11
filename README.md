@@ -1,6 +1,6 @@
 # ais: AI session manager
 
-Find, preview and resume your **Claude Code** and **Codex CLI** sessions from anywhere.
+Start, find, preview and resume your **Claude Code** and **Codex CLI** sessions from anywhere.
 
 Both tools save every conversation on disk, but finding and resuming one is clumsy:
 - `claude --resume` only lists sessions for the directory you're in.
@@ -12,13 +12,109 @@ Read the [usage guide](docs/USAGE.md) for setup, keyboard shortcuts, a complete 
 
 > **Status:** browse, search, resume, fork, rename, tag, pin, archive and trash Claude Code and Codex CLI sessions, see what they used, and launch parallel tasks in separate worktrees and tmux windows with agent event alerts.
 
+## Screenshots
+
+Find Claude Code and Codex conversations across projects, preview the selected
+session, and press Enter to resume it.
+
+![Session browser with Claude and Codex conversations, project and branch names, token usage, and a conversation preview](docs/screenshots/sessions.png)
+
+Review a parallel run with `ais run review <run-id>`: select a task, browse its
+changed files, and inspect the diff before deciding what to keep.
+
+![Parallel run review showing three tasks, their pane states, changed files, and a colored code diff](docs/screenshots/run-review.png)
+
+Both images show the real terminal interface using fictional demo data.
+[Regenerate the screenshots](docs/screenshots/README.md).
+
 ## Install
+
+### Desktop app (macOS)
+
+The new desktop app lets you choose projects, search and preview conversations,
+and work with Codex and Claude Code in graphical conversations: streaming replies,
+expandable tool activity, approval cards, and per-conversation model and reasoning
+controls. Reviewer model preferences are saved separately. Use **Review with another agent** to
+preview your Git diff, get file-linked findings from the other provider, and send
+selected findings back to the original conversation for fixes.
+
+![ais graphical chat with fictional demo data](docs/screenshots/desktop-chat.png)
+
+The screenshot shows the real interface with fictional demo data. See the
+[review screenshots and workflow](docs/DESKTOP.md#screenshots) for the full loop.
+
+With the [desktop build prerequisites](docs/DESKTOP.md#build-and-open) installed:
+
+```sh
+sh scripts/build-desktop.sh
+open desktop/build/bin/ais-desktop.app
+```
+
+See the [desktop guide](docs/DESKTOP.md) for setup, shortcuts and development.
+This first version is built from source; a desktop download is not yet published.
+
+### CLI
+
+The Homebrew package and release automation are prepared in this checkout. The
+first release and `caanmert/homebrew-tap` still need to be published before this
+installation command is available:
+
+```sh
+brew install caanmert/tap/ais
+ais setup
+ais
+```
+
+Homebrew will install a prebuilt binary and shell completions on macOS or Linux;
+users do not need Go. Update with `brew update` followed by `brew upgrade ais`.
+Maintainers: see [publishing a release](docs/RELEASING.md).
+
+Until the first package is published, install from source with Go 1.24.7+:
 
 ```sh
 go install github.com/caanmert/ai-session-tool/cmd/ais@latest
+ais setup
+ais
 ```
 
-Requires Go 1.24+. Prebuilt macOS binaries are published on each tagged release.
+Make sure Go's executable installation directory is on `PATH`. To try this
+checkout directly, run `go build -o ais ./cmd/ais`, then `./ais setup` and `./ais`.
+
+`ais setup` finds agent binaries and transcript locations, explains missing
+dependencies, and shows next steps. It does not install tools or change agent
+settings. Browse existing sessions without Git or tmux; install and sign in to
+the corresponding agent to resume them. Parallel tasks also require Git and
+tmux. You only need the agent you use.
+
+In the browser, type `/` to search, press Enter to resume, and `?` for shortcuts.
+Run `ais doctor` for deeper diagnostics. See the [usage guide](docs/USAGE.md) for
+manual binary installation and shell completions.
+
+## Work in the current project
+
+From your project directory:
+
+```sh
+ais new                  # choose an installed agent and start a fresh conversation here
+ais new --tool codex      # start Codex here directly
+ais new --tool claude     # start Claude Code here directly
+ais continue             # pick a previous conversation from this project
+ais continue --latest    # resume the most recently updated conversation
+```
+
+Use the arrow keys and Enter in the picker, or Esc to cancel. If only one agent
+is installed, `ais new` selects it automatically; a single matching session is
+also selected automatically by `ais continue`. The agent takes over the terminal
+and runs normally. Exiting it returns to your shell.
+
+Both commands accept `--project /path/to/project` and `--print` to preview the
+command. `ais continue` also accepts `--tool codex|claude` and a session ID prefix.
+In Git projects, it includes sessions from the same worktree and its
+subdirectories, excluding nested repositories and other worktrees. Outside Git,
+or without Git installed, it matches the directory exactly. Archived sessions
+stay hidden; `--latest` uses update time, regardless of pins.
+
+Running `ais` by itself still opens the global session browser.
 
 ## Interactive browser
 
@@ -37,6 +133,9 @@ Piped (`ais | head`), it prints the recent list instead.
 
 ```sh
 ais                          # interactive browser (or the recent list when piped)
+ais new --tool codex          # fresh session in the current directory
+ais continue                 # select an existing session for the current project
+ais continue --tool claude --latest # resume this project's newest Claude conversation
 ais ls                       # newest first: id, tool, project, branch, age, messages, tokens, title
 ais ls -p api --since 7d     # filter by project path and recency
 ais ls --live                # only sessions whose agent is running right now
@@ -54,6 +153,7 @@ ais resume 3f2a --fork       # continue in a new session, keep the original (`--
 ais resume 3f2a --print      # print the command instead: cd '/path' && claude --resume …
 
 ais doctor                   # where ais looks, how many sessions it found, parse warnings
+ais setup                    # first-use checks and instructions for missing tools
 ais reindex                  # rebuild the index from scratch (always safe)
 
 ais rename 3f2a Token refresh fix     # your own title (--reset restores the tool's)
@@ -268,6 +368,8 @@ task work as well as annotations.
 9. [x] Agent event alerts in tmux: Codex completion/approval and Claude idle/permission/elicitation notifications
 10. [x] Run status, task-specific attach, and diffs for reviewing parallel work
 11. [x] Interactive run review with task status, file selection, diff previews and agent attach
+12. [x] Guided setup, dependency diagnostics, and release packaging for Homebrew with shell completions (initial publication pending)
+13. [x] Project-aware `ais new` and `ais continue` launchers with agent/session pickers
 
 ## Development
 

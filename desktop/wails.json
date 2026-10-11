@@ -1,0 +1,11 @@
+{
+  "$schema": "https://wails.io/schemas/config.v2.json",
+  "name": "ais-desktop",
+  "outputfilename": "ais-desktop",
+  "frontend:install": "npm ci",
+  "frontend:build": "npm run build",
+  "frontend:dev:watcher": "npm run dev",
+  "frontend:dev:serverUrl": "auto",
+  "author": {"name": "ais contributors"},
+  "info": {"companyName": "ais", "productName": "ais", "productVersion": "0.1.0"}
+}

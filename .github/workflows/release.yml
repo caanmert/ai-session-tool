@@ -10,6 +10,8 @@ permissions:
 jobs:
   goreleaser:
     runs-on: ubuntu-latest
+    env:
+      HOMEBREW_TAP_ENABLED: ${{ secrets.HOMEBREW_TAP_TOKEN != '' }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -23,3 +25,37 @@ jobs:
           args: release --clean
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Generate verified Homebrew formula
+        run: python3 scripts/homebrew.py --tag "$GITHUB_REF_NAME"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: homebrew-formula
+          path: dist/homebrew/ais.rb
+          if-no-files-found: error
+      - name: Attach formula to release
+        run: gh release upload "$GITHUB_REF_NAME" dist/homebrew/ais.rb --clobber
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Check out Homebrew tap
+        if: env.HOMEBREW_TAP_ENABLED == 'true' && !contains(github.ref_name, '-')
+        uses: actions/checkout@v4
+        with:
+          repository: caanmert/homebrew-tap
+          path: dist/tap
+          token: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+      - name: Update Homebrew tap
+        if: env.HOMEBREW_TAP_ENABLED == 'true' && !contains(github.ref_name, '-')
+        working-directory: dist/tap
+        run: |
+          mkdir -p Formula
+          cp ../homebrew/ais.rb Formula/ais.rb
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add Formula/ais.rb
+          if ! git diff --cached --quiet; then
+            git commit -m "Update ais to $GITHUB_REF_NAME"
+            git push
+          fi
+      - name: Homebrew publishing status
+        if: env.HOMEBREW_TAP_ENABLED != 'true'
+        run: echo 'Formula attached to the release. Set HOMEBREW_TAP_TOKEN to publish it to caanmert/homebrew-tap automatically.'

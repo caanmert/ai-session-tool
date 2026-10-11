@@ -6,10 +6,30 @@ This guide describes the current checkout, including the interactive run review 
 
 ## 1. Get started
 
+The Homebrew package is prepared but requires its first published release and
+tap. Once those are available, install and start with:
+
+```sh
+brew install caanmert/tap/ais
+ais setup
+ais
+```
+
+This installs the binary and Bash, Zsh, and Fish completions without requiring
+Go. Use `brew update` and `brew upgrade ais` to update; `brew uninstall ais`
+removes the program while preserving sessions, annotations, and task worktrees.
+
+`ais setup` is a read-only onboarding check. It finds transcript files, reports
+missing tools and their installation instructions, and explains which features
+you can use. It does not verify agent sign-in, parse full conversations, install
+dependencies, or modify your shell settings. Missing optional tools do not make
+setup fail. Use `ais doctor` for parsing and runtime diagnostics.
+
 From this project's directory, use the local binary:
 
 ```sh
 ./ais --help
+./ais setup
 ./ais doctor
 ./ais
 ```
@@ -41,7 +61,103 @@ Different operations need different tools:
 
 Set up and sign in to the agent CLI you plan to use before launching tasks. `ais` uses that tool's normal configuration and permission settings.
 
-## 2. Find and resume an existing session
+### Install a release manually
+
+Once releases are published, download the archive matching your operating system
+and CPU, plus `checksums.txt`, from the
+[release page](https://github.com/caanmert/ai-session-tool/releases).
+Use `darwin` for macOS, `linux` for Linux, `arm64` for Apple Silicon/ARM64, and
+`amd64` for Intel/AMD x86-64. Go is only needed when building from source.
+
+Verify the downloaded archive against its entry in `checksums.txt` using
+`shasum -a 256 <archive>` on macOS or `sha256sum <archive>` on Linux. Extract it
+in a temporary directory and, from that directory, install it with:
+
+```sh
+mkdir -p "$HOME/.local/bin"
+install -m 755 ais "$HOME/.local/bin/ais"
+export PATH="$HOME/.local/bin:$PATH"
+ais setup
+ais
+```
+
+Add the PATH line to your shell's startup file to keep it in future terminals.
+To update, repeat with the newer release. To uninstall a manual installation,
+remove `$HOME/.local/bin/ais`; keep ais's data directory if it contains work you
+want to preserve.
+
+### Shell completions
+
+Homebrew installs completion files automatically. For a source or manual install,
+load completion for the current shell session with:
+
+```sh
+# Bash
+source <(ais completion bash)
+
+# Zsh
+autoload -Uz compinit && compinit
+source <(ais completion zsh)
+
+# Fish
+ais completion fish | source
+```
+
+Run `ais completion <shell> --help` for persistent installation instructions.
+Release archives also include generated scripts in `completions/`.
+
+## 2. Start or continue in the current project
+
+Open a terminal in your project and start a fresh conversation:
+
+```sh
+ais new                  # choose between installed agents
+ais new --tool codex      # start Codex directly
+ais new --tool claude     # start Claude Code directly
+```
+
+Use the arrow keys (or j/k) and Enter to choose; Esc or q cancels. If just one
+agent is installed, it is selected automatically. This starts the agent in your
+current directory with its normal settings and permissions. Git, tmux, and an
+existing saved session are not required. Work directly with the agent; when it
+exits, you return to your shell.
+
+To pick up earlier work in this project:
+
+```sh
+ais continue                     # choose a saved conversation, newest first
+ais continue --tool codex         # show only this project's Codex sessions
+ais continue --latest             # resume the most recently updated match
+ais continue 3f2a                 # select a session by its unique ID prefix
+```
+
+A single matching conversation is selected automatically. In a Git repository,
+the picker includes conversations recorded in the same worktree, including its
+subdirectories. Nested repositories and other worktrees are separate projects.
+Outside Git, or when Git is unavailable, ais matches the current directory
+exactly. Symlinks are resolved when matching. The resumed agent starts in the
+conversation's original directory, which may be a subdirectory of the project.
+
+Archived sessions stay hidden. Pins do not affect `--latest`. If nothing matches,
+use `ais new` to start a conversation, or `ais resume <id>` to open a conversation
+from another project. Only sessions whose recorded directory still exists are
+offered.
+
+Both commands accept `--project` and `--print`:
+
+```sh
+ais new --tool codex --project "/path/to/project"
+ais continue --project "/path/to/project" --latest
+ais new --tool claude --print
+ais continue --latest --print
+```
+
+`--print` outputs a shell-quoted command without launching an agent. In a script
+or pipe, specify `--tool` for `new` and a session ID or `--latest` for `continue`
+to avoid an interactive selection. Launching an agent requires an interactive
+terminal. To browse conversations across all projects, run plain `ais`.
+
+## 3. Find and resume an existing session
 
 Open the session browser:
 
@@ -93,7 +209,7 @@ ais resume 3f2a --print
 
 Here, `3f2a` is an example session ID prefix. Replace it with an ID from `ais ls`; the prefix must identify one session. `--print` shows the resume command without starting the agent.
 
-## 3. Launch independent tasks
+## 4. Launch independent tasks
 
 Choose tasks that can be developed separately, such as documentation and tests. Each task starts from the same committed `HEAD`. **Uncommitted changes in your original checkout are not copied.** Commit any changes that the agents need before launching a run.
 
@@ -136,7 +252,7 @@ ais run list --json
 
 The JSON output includes the task prompts, branch names and worktree paths. Saved runs remain listed after their tmux session stops.
 
-## 4. Monitor and review the work
+## 5. Monitor and review the work
 
 Open the interactive review screen:
 
@@ -198,7 +314,7 @@ Changes are compared with the run's saved starting commit, including committed, 
 
 Pane state describes the terminal process. It does not prove that a daemon-backed agent has finished its work. Alerts record events; they are not a continuously updated waiting/busy status.
 
-## 5. Answer an agent or provide another instruction
+## 6. Answer an agent or provide another instruction
 
 Press `a` in review, or attach directly:
 
@@ -233,7 +349,7 @@ ais run --tool codex --quiet 30s -- "Improve the installation guide"
 
 `--notify=false` disables ais's event-alert setup. `--quiet 30s` adds a silence alert after 30 seconds without output. Silence alerts default to off because an agent may be working without producing output. Settings apply when the run starts; they do not reconfigure existing runs.
 
-## 6. Keep the changes you want
+## 7. Keep the changes you want
 
 Wait for the agents to finish or stop their work through the agent UI, then inspect the final diffs and run the project's relevant tests in each task worktree. `ais run list --json` gives you the worktree paths and branch names.
 
@@ -259,7 +375,7 @@ git merge ais-a1b2c3d4e5f6/task-2
 
 Use the full branch names from your actual run. Resolve any conflicts and test the combined result before merging it into your usual development branch or opening a pull request. You can also cherry-pick selected commits instead. `ais` does not perform these integration steps automatically.
 
-## 7. Stop and clean up a run
+## 8. Stop and clean up a run
 
 Close the run's tmux session when you no longer need its terminal windows:
 
@@ -278,7 +394,7 @@ git branch -d ais-a1b2c3d4e5f6/task-1
 
 Repeat for the other tasks. If Git refuses removal because work is uncommitted or a branch is unmerged, inspect and preserve that work first. Once a worktree is removed, ais cannot show its working-tree diff. The saved run manifest remains available in `ais run list`.
 
-## 8. Organize sessions and inspect usage
+## 9. Organize sessions and inspect usage
 
 Session annotations use session IDs, not run IDs:
 
@@ -311,7 +427,7 @@ ais trash --empty --older-than 30d
 
 The last command asks before permanently deleting eligible entries. A Codex entry marked as an incomplete archive keeps its restore record; follow the recovery instruction shown with the error rather than deleting that record.
 
-## 9. Storage and configuration
+## 10. Storage and configuration
 
 | Data | Default location | Override |
 | --- | --- | --- |
@@ -326,7 +442,7 @@ Run manifests and task worktrees are under `<ais data directory>/runs/<run-id>/`
 
 Changing `AIS_DATA_DIR` changes which saved runs ais sees. Runner launches forward the caller's `PATH`, `CODEX_HOME`, `CODEX_SQLITE_HOME` and `CLAUDE_CONFIG_DIR`, including unset values, to avoid stale tmux-server settings.
 
-## 10. Troubleshooting
+## 11. Troubleshooting
 
 | Problem | What to check |
 | --- | --- |

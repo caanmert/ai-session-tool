@@ -1,2 +1,13 @@
 /dist/
 /ais
+/build/completions/
+__pycache__/
+/desktop/frontend/node_modules/
+/desktop/frontend/dist/
+/desktop/frontend/*.tsbuildinfo
+/desktop/frontend/package.json.md5
+/desktop/frontend/wailsjs/
+/desktop/build/bin/
+/desktop/build/darwin/*
+!/desktop/build/darwin/Info.plist
+/desktop/build/windows/
