@@ -2,6 +2,7 @@
 import { fileURLToPath } from "node:url";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
+import { mkdir } from "node:fs/promises";
 const { chromium } = await import(
   process.env.AIS_PLAYWRIGHT_MODULE || "playwright"
 );
@@ -116,6 +117,7 @@ try {
       userTurns: 1,
       assistantTurns: 2,
       usage: { input: 1200, output: 450, cacheRead: 0, cacheWrite: 0 },
+      pinned: true,
     };
     window.go = {
       main: {
@@ -138,12 +140,35 @@ try {
             chats[id].version++;
           },
           Refresh: async () => ({
-            sessions: [session],
+            sessions: [
+              session,
+              {
+                ...session,
+                key: "claude/architecture",
+                id: "architecture",
+                tool: "claude",
+                title: "Map the payment service boundaries",
+                gitBranch: "main",
+                pinned: false,
+                live: { pid: 12345 },
+                userTurns: 4,
+                assistantTurns: 6,
+              },
+              {
+                ...session,
+                key: "codex/tests",
+                id: "tests",
+                pinned: false,
+                title: "Add regression tests for order totals",
+                gitBranch: "test/order-totals",
+                updatedAt: "2026-10-03T08:30:00Z",
+              },
+            ],
             projects: [
               {
                 path: project,
                 name: "checkout",
-                sessions: 1,
+                sessions: 3,
                 available: true,
                 recent: false,
               },
@@ -189,14 +214,41 @@ try {
     };
   });
   await page.goto(process.argv[2] || "http://127.0.0.1:5183");
+  const screenshots =
+    process.env.AIS_SCREENSHOT_DIR ||
+    fileURLToPath(new URL("../docs/screenshots/", import.meta.url));
+  await mkdir(screenshots, { recursive: true });
+  await page
+    .getByRole("heading", { name: "Make checkout retries safe" })
+    .waitFor();
+  await page.screenshot({ path: `${screenshots}/desktop-history.png` });
+  await page.setViewportSize({ width: 960, height: 640 });
+  await page.getByRole("button", { name: "Pinned 1" }).click();
+  await page
+    .getByRole("combobox", { name: "Sort conversations" })
+    .selectOption("title");
+  await page.screenshot({ path: join(tmpdir(), "ais-history-small.png") });
+  const historyOverflow = await page.evaluate(() => ({
+    body: document.body.scrollWidth > innerWidth,
+    previewWidth: document.querySelector(".conversation").clientWidth,
+    rowsHeight: document.querySelector(".session-rows").clientHeight,
+  }));
+  if (
+    historyOverflow.body ||
+    historyOverflow.previewWidth < 300 ||
+    historyOverflow.rowsHeight < 100
+  )
+    throw Error(`History layout overflow: ${JSON.stringify(historyOverflow)}`);
+  await page.getByRole("button", { name: "All conversations 3" }).click();
+  await page
+    .getByRole("combobox", { name: "Sort conversations" })
+    .selectOption("recent");
+  await page.setViewportSize({ width: 1360, height: 900 });
   await page.getByRole("button", { name: /Codex · checkout/ }).click();
   await page
     .getByRole("region", { name: "Codex conversation" })
     .getByText("The focused tests pass.", { exact: false })
     .waitFor();
-  const screenshots = fileURLToPath(
-    new URL("../docs/screenshots/", import.meta.url),
-  );
   await page.waitForFunction(
     () =>
       document.querySelector('select[aria-label="Model"]')?.disabled === false,
@@ -230,7 +282,7 @@ try {
       ".chat-workspace:not([hidden]) .chat-messages",
     ).clientHeight,
   }));
-  console.log(JSON.stringify({ errors, overflow }));
+  console.log(JSON.stringify({ errors, overflow, historyOverflow }));
 
   if (errors.length || overflow.body || overflow.composer) process.exitCode = 1;
 } finally {

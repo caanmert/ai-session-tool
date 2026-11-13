@@ -127,6 +127,8 @@ export default function App() {
   const [activeChat, setActiveChat] = useState("");
   const [project, setProject] = useState("");
   const [tool, setTool] = useState("all");
+  const [historyView, setHistoryView] = useState("all");
+  const [historySort, setHistorySort] = useState("recent");
   const [query, setQuery] = useState("");
   const [searchKeys, setSearchKeys] = useState<Set<string> | null>(null);
   const [searching, setSearching] = useState(false);
@@ -141,6 +143,7 @@ export default function App() {
   const [newProject, setNewProject] = useState("");
   const [newTool, setNewTool] = useState<ToolName>("codex");
   const searchInput = useRef<HTMLInputElement>(null);
+  const sessionRows = useRef<HTMLDivElement>(null);
   const modal = useRef<HTMLDivElement>(null);
   const newButton = useRef<HTMLButtonElement>(null);
   const refreshSeq = useRef(0);
@@ -233,7 +236,7 @@ export default function App() {
     };
   }, [query, snapshot]);
 
-  const sessions = useMemo(
+  const scopedSessions = useMemo(
     () =>
       (snapshot?.sessions || []).filter(
         (s) =>
@@ -243,7 +246,30 @@ export default function App() {
       ),
     [snapshot, project, tool, searchKeys],
   );
+  const sessions = useMemo(() => {
+    const items = scopedSessions.filter(
+      (s) =>
+        historyView === "all" || (historyView === "pinned" ? s.pinned : s.live),
+    );
+    return items.sort((a, b) => {
+      if (historySort === "title")
+        return a.title.localeCompare(b.title) || a.key.localeCompare(b.key);
+      if (historySort === "recent" && !!a.pinned !== !!b.pinned)
+        return a.pinned ? -1 : 1;
+      const order = Date.parse(b.updatedAt) - Date.parse(a.updatedAt);
+      return (
+        (historySort === "oldest" ? -order : order) ||
+        a.key.localeCompare(b.key)
+      );
+    });
+  }, [scopedSessions, historyView, historySort]);
   const selected = sessions.find((s) => s.key === selectedKey) || sessions[0];
+  const hasFilters = !!query || tool !== "all" || historyView !== "all";
+  function clearFilters() {
+    setQuery("");
+    setTool("all");
+    setHistoryView("all");
+  }
   useEffect(() => {
     let active = true;
     setPreview(undefined);
@@ -487,7 +513,7 @@ export default function App() {
                 ? "Your coding workspace"
                 : project
                   ? currentProject?.name || basename(project)
-                  : "Your next step starts here."}
+                  : "Your conversations"}
             </h1>
             <p title={project}>
               {project ||
@@ -512,8 +538,33 @@ export default function App() {
               placeholder="Search conversations, projects, or tags…"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Escape") {
+                  e.preventDefault();
+                  setQuery("");
+                }
+                if (e.key === "ArrowDown" && sessions.length) {
+                  e.preventDefault();
+                  sessionRows.current
+                    ?.querySelector<HTMLButtonElement>('[tabindex="0"]')
+                    ?.focus();
+                }
+              }}
             />
-            <kbd>⌘ K</kbd>
+            {query ? (
+              <button
+                className="icon-button"
+                aria-label="Clear search"
+                onClick={() => {
+                  setQuery("");
+                  searchInput.current?.focus();
+                }}
+              >
+                <Icon name="close" size={14} />
+              </button>
+            ) : (
+              <kbd>⌘ K</kbd>
+            )}
           </label>
           <div className="tool-filter" aria-label="Filter by agent">
             {["all", "codex", "claude"].map((value) => (
@@ -539,6 +590,47 @@ export default function App() {
           >
             <Icon name="refresh" />
           </button>
+        </div>
+        <div className="history-controls" hidden={!!activeChat}>
+          <div
+            className="history-views"
+            role="group"
+            aria-label="Filter by session status"
+          >
+            {[
+              {
+                id: "all",
+                label: "All conversations",
+                count: scopedSessions.length,
+              },
+              {
+                id: "pinned",
+                label: "Pinned",
+                count: scopedSessions.filter((s) => s.pinned).length,
+              },
+              {
+                id: "live",
+                label: "Live",
+                count: scopedSessions.filter((s) => s.live).length,
+              },
+            ].map((view) => (
+              <button
+                key={view.id}
+                aria-pressed={historyView === view.id}
+                onClick={() => setHistoryView(view.id)}
+              >
+                {view.id === "pinned" && <Icon name="pin" size={13} />}
+                {view.id === "live" && <span className="status-dot online" />}
+                {view.label}
+                <span className="filter-count">{view.count}</span>
+              </button>
+            ))}
+          </div>
+          {hasFilters && (
+            <button className="history-reset" onClick={clearFilters}>
+              Clear filters
+            </button>
+          )}
         </div>
         {error && !showNew && (
           <div className="notice error" role="alert">
@@ -633,20 +725,67 @@ export default function App() {
               <span>
                 CONVERSATIONS <b>{sessions.length}</b>
               </span>
-              <small>
-                {loading
-                  ? "Refreshing…"
-                  : searching
-                    ? "Searching…"
-                    : "Pinned · Recent"}
-              </small>
+              <label className="history-sort">
+                <span className="sr-only">Sort conversations</span>
+                <select
+                  value={historySort}
+                  onChange={(e) => setHistorySort(e.target.value)}
+                >
+                  <option value="recent">Pinned · Recent</option>
+                  <option value="oldest">Oldest first</option>
+                  <option value="title">Title A–Z</option>
+                </select>
+              </label>
             </div>
-            <div className="session-rows" aria-busy={loading || searching}>
+            <div className="history-list-status" role="status">
+              {loading
+                ? "Refreshing conversations…"
+                : searching
+                  ? "Searching conversations…"
+                  : `${sessions.length} ${sessions.length === 1 ? "conversation" : "conversations"}${hasFilters ? " matching your filters" : project ? " in this project" : " across your projects"}`}
+            </div>
+            <div
+              className="session-rows"
+              ref={sessionRows}
+              aria-busy={loading || searching}
+              onKeyDown={(e) => {
+                if (
+                  !(e.target instanceof HTMLButtonElement) ||
+                  !e.target.classList.contains("session-row") ||
+                  e.altKey ||
+                  e.ctrlKey ||
+                  e.metaKey
+                )
+                  return;
+                const index = sessions.findIndex(
+                  (s) => s.key === selected?.key,
+                );
+                let next = index;
+                if (e.key === "ArrowDown")
+                  next = Math.min(index + 1, sessions.length - 1);
+                else if (e.key === "ArrowUp") next = Math.max(0, index - 1);
+                else if (e.key === "Home") next = 0;
+                else if (e.key === "End") next = sessions.length - 1;
+                else if (e.key === "Enter") {
+                  e.preventDefault();
+                  if (canResume) void launch(false);
+                  return;
+                } else return;
+                e.preventDefault();
+                if (sessions[next]) {
+                  setSelectedKey(sessions[next].key);
+                  sessionRows.current
+                    ?.querySelectorAll<HTMLButtonElement>(".session-row")
+                    [next]?.focus();
+                }
+              }}
+            >
               {sessions.map((s) => (
                 <button
                   className={`session-row ${selected?.key === s.key ? "selected" : ""}`}
                   key={s.key}
                   onClick={() => setSelectedKey(s.key)}
+                  tabIndex={selected?.key === s.key ? 0 : -1}
                   aria-current={selected?.key === s.key ? "true" : undefined}
                 >
                   <div className="row-top">
@@ -690,32 +829,31 @@ export default function App() {
                 <h3>
                   {loading
                     ? "Finding your conversations…"
-                    : query || tool !== "all"
-                      ? "No matches yet"
+                    : hasFilters
+                      ? historyView === "pinned"
+                        ? "No pinned conversations"
+                        : historyView === "live"
+                          ? "No live conversations"
+                          : "No matching conversations"
                       : "A fresh start"}
                 </h3>
                 <p>
                   {loading
                     ? "Reading your local session history."
-                    : query || tool !== "all"
-                      ? "Try another search or agent filter."
+                    : hasFilters
+                      ? historyView === "pinned"
+                        ? "Pin conversations with ais pin in the CLI, or try another filter."
+                        : historyView === "live"
+                          ? "Running agent sessions appear here after refreshing."
+                          : "Try a different search or clear your filters."
                       : "Start a conversation in this project and it will appear here."}
                 </p>
                 {!loading && (
                   <button
                     className="text-button"
-                    onClick={
-                      query || tool !== "all"
-                        ? () => {
-                            setQuery("");
-                            setTool("all");
-                          }
-                        : openNew
-                    }
+                    onClick={hasFilters ? clearFilters : openNew}
                   >
-                    {query || tool !== "all"
-                      ? "Clear filters"
-                      : "Start a session"}{" "}
+                    {hasFilters ? "Show all conversations" : "Start a session"}{" "}
                     <Icon name="arrow" size={15} />
                   </button>
                 )}
