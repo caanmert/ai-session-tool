@@ -86,6 +86,18 @@ func (a *App) ListChats() ([]ChatState, error) {
 	}
 	return a.chats.list(), nil
 }
+func (a *App) ListSavedChats() ([]ChatSummary, error) {
+	if err := a.chatReady(); err != nil {
+		return nil, err
+	}
+	return a.chats.library(), nil
+}
+func (a *App) ReopenChat(id string) (ChatState, error) {
+	if err := a.chatReady(); err != nil {
+		return ChatState{}, err
+	}
+	return a.chats.reopen(id)
+}
 func (a *App) ReadChat(id string, version int64) (ChatUpdate, error) {
 	if err := a.chatReady(); err != nil {
 		return ChatUpdate{}, err

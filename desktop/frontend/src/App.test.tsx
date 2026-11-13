@@ -110,6 +110,8 @@ beforeEach(() => {
     NewChat: vi.fn().mockResolvedValue(live),
     ResumeChat: vi.fn().mockResolvedValue(live),
     ListChats: vi.fn().mockResolvedValue([]),
+    ListSavedChats: vi.fn().mockResolvedValue([]),
+    ReopenChat: vi.fn().mockResolvedValue(live),
     NewSession: vi.fn(),
     ResumeSession: vi.fn(),
     LiveSessions: vi.fn(),
@@ -348,5 +350,40 @@ describe("desktop workflows", () => {
     expect(document.querySelector(".messages img")).toBeNull();
     expect(document.querySelector(".messages script")).toBeNull();
     expect(document.querySelector(".messages a")).toBeNull();
+  });
+  it("opens saved desktop work without starting or resuming a provider", async () => {
+    backend.ListSavedChats = vi.fn().mockResolvedValue([
+      {
+        id: live.id,
+        tool: live.tool,
+        project: live.project,
+        title: "Saved checkout review",
+        status: "idle",
+        updatedAt: live.updatedAt,
+        closed: true,
+        isReview: true,
+        complete: true,
+        findingCount: 1,
+        sentCount: 0,
+        fileCount: 2,
+      },
+    ]);
+    render(<App />);
+    await screen.findByRole("heading", { name: "Retry webhook delivery" });
+    await userEvent.click(
+      screen.getByRole("button", { name: "Saved workspace" }),
+    );
+    await userEvent.click(
+      await screen.findByRole("button", {
+        name: "Reopen Saved checkout review",
+      }),
+    );
+    expect(backend.ReopenChat).toHaveBeenCalledWith(live.id);
+    expect(
+      await screen.findByRole("region", { name: "Chat conversation" }),
+    ).toBeVisible();
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(backend.ResumeChat).not.toHaveBeenCalled();
+    expect(backend.SendChat).not.toHaveBeenCalled();
   });
 });

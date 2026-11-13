@@ -8,6 +8,7 @@ import {
 } from "react";
 import Markdown from "react-markdown";
 import ChatWorkspace, { chatBusy } from "./ChatWorkspace";
+import SavedWorkspace from "./SavedWorkspace";
 import {
   api,
   errorText,
@@ -140,6 +141,7 @@ export default function App() {
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [showNew, setShowNew] = useState(false);
+  const [showLibrary, setShowLibrary] = useState(false);
   const [newProject, setNewProject] = useState("");
   const [newTool, setNewTool] = useState<ToolName>("codex");
   const searchInput = useRef<HTMLInputElement>(null);
@@ -202,7 +204,9 @@ export default function App() {
   }
   function openChat(chat: ChatState) {
     setChats((items) =>
-      items.some((item) => item.id === chat.id) ? items : [...items, chat],
+      items.some((item) => item.id === chat.id)
+        ? items.map((item) => (item.id === chat.id ? chat : item))
+        : [...items, chat],
     );
     setActiveChat(chat.id);
   }
@@ -307,6 +311,7 @@ export default function App() {
   }, [project, selected, snapshot]);
   useEffect(() => {
     function key(event: KeyboardEvent) {
+      if (showLibrary) return;
       if (
         (event.metaKey || event.ctrlKey) &&
         event.key.toLowerCase() === "k" &&
@@ -348,7 +353,7 @@ export default function App() {
     }
     document.addEventListener("keydown", key);
     return () => document.removeEventListener("keydown", key);
-  }, [showNew, busy, openNew, snapshot]);
+  }, [showNew, showLibrary, busy, openNew, snapshot]);
   useEffect(() => {
     if (showNew) modal.current?.querySelector<HTMLElement>("button")?.focus();
   }, [showNew]);
@@ -431,6 +436,10 @@ export default function App() {
             <Icon name="grid" />
             <span>All sessions</span>
             <b>{snapshot?.sessions.length ?? "—"}</b>
+          </button>
+          <button className="nav-saved" onClick={() => setShowLibrary(true)}>
+            <Icon name="message" />
+            <span>Saved workspace</span>
           </button>
           <div className="section-heading">
             <span>PROJECTS</span>
@@ -709,10 +718,8 @@ export default function App() {
             onOpen={openChat}
             onSelect={(id) => {
               void api
-                .ReadChat(id, -1)
-                .then((update) => {
-                  if (update.state) openChat(update.state);
-                })
+                .ReopenChat(id)
+                .then(openChat)
                 .catch((e) => setError(errorText(e)));
             }}
             onState={chatChanged}
@@ -1031,6 +1038,13 @@ export default function App() {
           </section>
         </div>
       </main>
+      {showLibrary && (
+        <SavedWorkspace
+          project={project}
+          onClose={() => setShowLibrary(false)}
+          onOpen={openChat}
+        />
+      )}
       {showNew && (
         <div
           className="modal-overlay"

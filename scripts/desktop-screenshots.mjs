@@ -185,6 +185,26 @@ try {
             truncated: false,
           }),
           ListChats: async () => [source],
+          ListSavedChats: async () =>
+            Object.values(chats).map((chat) => ({
+              id: chat.id,
+              tool: chat.tool,
+              project: chat.project,
+              title: chat.title,
+              status: chat.status,
+              updatedAt: chat.updatedAt,
+              closed: !!chat.closed,
+              isReview: !!chat.review,
+              complete: !!chat.review?.complete,
+              findingCount: chat.review?.findings.length || 0,
+              sentCount:
+                chat.review?.findings.filter((f) => f.sent).length || 0,
+              fileCount: chat.review?.snapshot.files.length || 0,
+            })),
+          ReopenChat: async (id) => {
+            chats[id].closed = false;
+            return chats[id];
+          },
           ReadChat: async (id, version) => ({
             version: chats[id].version,
             state: version === chats[id].version ? null : chats[id],
@@ -207,7 +227,9 @@ try {
           },
           SendChat: async () => {},
           StopChat: async () => {},
-          CloseChat: async () => {},
+          CloseChat: async (id) => {
+            chats[id].closed = true;
+          },
           AnswerChat: async () => {},
         },
       },
@@ -272,6 +294,41 @@ try {
     throw Error("Missing finding highlight");
   await page.setViewportSize({ width: 960, height: 640 });
   await page.screenshot({ path: join(tmpdir(), "ais-review-small.png") });
+  await page.getByRole("button", { name: "Close conversation tab" }).click();
+  await page.getByRole("button", { name: "Saved workspace" }).click();
+  await page.getByLabel("Saved work type").selectOption("reviews");
+  await page
+    .getByRole("button", { name: "Reopen Review with Claude Code" })
+    .waitFor();
+  const libraryOverflow = await page.evaluate(() => {
+    const dialog = document.querySelector("dialog");
+    const bounds = dialog.getBoundingClientRect();
+    return (
+      bounds.bottom > innerHeight ||
+      bounds.top < 0 ||
+      dialog.scrollWidth > dialog.clientWidth
+    );
+  });
+  if (libraryOverflow)
+    throw Error("Saved workspace overflows the minimum window size");
+  await page.screenshot({
+    path: join(tmpdir(), "ais-saved-workspace-small.png"),
+  });
+  await page.setViewportSize({ width: 1360, height: 900 });
+  await page.screenshot({ path: `${screenshots}/desktop-saved-workspace.png` });
+  await page.keyboard.press("Escape");
+  await page
+    .getByRole("button", { name: "Saved workspace" })
+    .waitFor({ state: "visible" });
+  if (await page.getByRole("dialog").count())
+    throw Error("Escape did not close the saved workspace");
+  await page.getByRole("button", { name: "Saved workspace" }).click();
+  await page.getByLabel("Saved work type").selectOption("reviews");
+  await page
+    .getByRole("button", { name: "Reopen Review with Claude Code" })
+    .click();
+  await page.getByText("Stop retrying permanent payment failures").waitFor();
+  await page.setViewportSize({ width: 960, height: 640 });
   const overflow = await page.evaluate(() => ({
     body: document.body.scrollWidth > innerWidth,
     composer:
