@@ -43,7 +43,10 @@ selected findings back to the original conversation for fixes.
 The screenshot shows the real interface with fictional demo data. See the
 [review screenshots and workflow](docs/DESKTOP.md#screenshots) for the full loop.
 
-With the [desktop build prerequisites](docs/DESKTOP.md#build-and-open) installed:
+CI builds the app for macOS 13 or newer on Apple silicon. See
+[Download a CI build](docs/DESKTOP.md#download-a-ci-build) for the steps and what to
+do the first time you open it. To build it yourself instead, install the
+[desktop build prerequisites](docs/DESKTOP.md#build-and-open) and run:
 
 ```sh
 sh scripts/build-desktop.sh
@@ -51,7 +54,7 @@ open desktop/build/bin/ais-desktop.app
 ```
 
 See the [desktop guide](docs/DESKTOP.md) for setup, shortcuts and development.
-This first version is built from source; a desktop download is not yet published.
+A signed, notarized desktop release is not yet published.
 
 ### CLI
 
