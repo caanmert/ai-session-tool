@@ -113,6 +113,14 @@ using the provider's saved session. Up to eight responses can run concurrently,
 with up to 100 open tabs. Continuing an already-open native session selects the
 existing conversation instead of creating another copy.
 
+Unsent messages are saved on this Mac as you type, separately for each desktop
+conversation. Closing a tab or restarting the app keeps the draft. It is cleared
+after a successful send or when you choose **Discard draft**; a failed send keeps
+the text. Drafts use the app WebView's local storage, separate from provider
+transcripts and `desktop-chats` records. Clearing the app's website data removes
+them. If storage is unavailable or full, the composer tells you to keep a copy;
+you can still write and send messages.
+
 Open tabs and review metadata persist across restarts. Closing a tab hides it
 and retains its local record. Normal provider conversations can be reopened from
 History; a review can also reopen its original conversation. A dedicated browser

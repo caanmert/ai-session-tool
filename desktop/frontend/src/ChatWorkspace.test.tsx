@@ -49,7 +49,9 @@ const handlers = {
   onState: vi.fn(),
 };
 beforeEach(() => {
+  vi.restoreAllMocks();
   vi.clearAllMocks();
+  window.localStorage.clear();
   state = structuredClone(initial);
   backend = {
     ChatModels: vi
@@ -73,11 +75,112 @@ beforeEach(() => {
   window.go = { main: { App: backend } };
 });
 function show() {
-  render(
+  return render(
     <ChatWorkspace chat={initial} active reviewerAvailable {...handlers} />,
   );
 }
 describe("graphical conversations", () => {
+  it("recovers multiline drafts across remounts and keeps conversations separate", async () => {
+    const view = show();
+    const text = "  Investigate checkout\nKeep the existing API.  ";
+    fireEvent.change(screen.getByLabelText("Message agent"), {
+      target: { value: text },
+    });
+    expect(screen.getByRole("status")).toHaveTextContent(
+      "Draft saved on this Mac",
+    );
+    view.unmount();
+    state = { ...initial, id: "another-chat" };
+    const other = render(
+      <ChatWorkspace chat={state} active reviewerAvailable {...handlers} />,
+    );
+    expect(screen.getByLabelText("Message agent")).toHaveValue("");
+    other.unmount();
+    state = structuredClone(initial);
+    show();
+    expect(screen.getByLabelText("Message agent")).toHaveValue(text);
+    expect(screen.getByRole("status")).toHaveTextContent(
+      "Draft restored from this Mac",
+    );
+    expect(backend.SendChat).not.toHaveBeenCalled();
+    await userEvent.click(
+      screen.getByRole("button", { name: "Discard draft" }),
+    );
+    expect(screen.getByLabelText("Message agent")).toHaveValue("");
+    expect(window.localStorage.getItem("ais:chat-draft:v1:chat")).toBeNull();
+  });
+  it("retains a failed send on disk and clears only after a successful send", async () => {
+    backend.SendChat = vi
+      .fn()
+      .mockRejectedValueOnce(new Error("Offline"))
+      .mockResolvedValue(undefined);
+    const view = show();
+    fireEvent.change(screen.getByLabelText("Message agent"), {
+      target: { value: "Keep my request" },
+    });
+    await userEvent.click(screen.getByRole("button", { name: "Send ↑" }));
+    await screen.findByText("Offline");
+    view.unmount();
+    show();
+    expect(screen.getByLabelText("Message agent")).toHaveValue(
+      "Keep my request",
+    );
+    await userEvent.click(screen.getByRole("button", { name: "Send ↑" }));
+    await waitFor(() =>
+      expect(screen.getByLabelText("Message agent")).toHaveValue(""),
+    );
+    expect(window.localStorage.getItem("ais:chat-draft:v1:chat")).toBeNull();
+  });
+  it("keeps writing and sending available when draft storage fails", async () => {
+    vi.spyOn(Storage.prototype, "getItem").mockImplementation(() => {
+      throw Error("Unavailable");
+    });
+    vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => {
+      throw Error("Full");
+    });
+    show();
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      "Draft storage is unavailable",
+    );
+    fireEvent.change(screen.getByLabelText("Message agent"), {
+      target: { value: "Still send this" },
+    });
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      "Could not save this draft",
+    );
+    expect(screen.getByLabelText("Message agent")).toHaveValue(
+      "Still send this",
+    );
+    await userEvent.click(screen.getByRole("button", { name: "Send ↑" }));
+    expect(backend.SendChat).toHaveBeenCalledWith("chat", "Still send this");
+  });
+  it("warns when a sent draft cannot be removed from storage", async () => {
+    show();
+    fireEvent.change(screen.getByLabelText("Message agent"), {
+      target: { value: "Saved request" },
+    });
+    vi.spyOn(Storage.prototype, "removeItem").mockImplementation(() => {
+      throw Error("Unavailable");
+    });
+    await userEvent.click(screen.getByRole("button", { name: "Send ↑" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "It may reappear",
+    );
+    expect(screen.getByLabelText("Message agent")).toHaveValue("");
+  });
+  it("does not send during IME composition or for Shift+Enter", async () => {
+    show();
+    const input = screen.getByLabelText("Message agent");
+    fireEvent.change(input, { target: { value: "入力中" } });
+    fireEvent.keyDown(input, { key: "Enter", isComposing: true });
+    fireEvent.keyDown(input, { key: "Enter", keyCode: 229 });
+    fireEvent.keyDown(input, { key: "Enter", shiftKey: true });
+    expect(backend.SendChat).not.toHaveBeenCalled();
+    fireEvent.keyDown(input, { key: "Enter" });
+    await waitFor(() =>
+      expect(backend.SendChat).toHaveBeenCalledWith("chat", "入力中"),
+    );
+  });
   it("sends a message once and uses current server state after a late acknowledgement", async () => {
     let finish!: () => void;
     backend.SendChat = vi.fn(

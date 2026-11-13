@@ -1569,6 +1569,28 @@ h1 {
   align-items: center;
   gap: 12px;
 }
+.draft-status {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 5px 0 9px;
+  font-size: 10px;
+  line-height: 1.5;
+  color: #5b7052;
+}
+.draft-status button {
+  border: 0;
+  border-radius: 3px;
+  padding: 3px;
+  background: none;
+  font-size: inherit;
+  color: #815336;
+  white-space: nowrap;
+}
+.draft-status .draft-error {
+  color: #995a34;
+}
 .composer-footer > span {
   font-size: 10px;
   color: #7a8670;

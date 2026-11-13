@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import Markdown from "react-markdown";
 import ModelPicker from "./ModelPicker";
+import { useChatDraft } from "./useChatDraft";
 import {
   api,
   errorText,
@@ -55,7 +56,7 @@ export default function ChatWorkspace({
   onState,
 }: Props) {
   const [state, setState] = useState(chat);
-  const [prompt, setPrompt] = useState("");
+  const { prompt, updatePrompt, draftError, restored } = useChatDraft(chat.id);
   const [error, setError] = useState("");
   const [actionWorking, setWorking] = useState(false);
   const [settingsBusy, setSettingsBusy] = useState(false);
@@ -138,7 +139,7 @@ export default function ChatWorkspace({
     const text = prompt;
     await perform(async () => {
       await api.SendChat(state.id, text);
-      setPrompt("");
+      updatePrompt("");
       setRetry((n) => n + 1);
       following.current = true;
     });
@@ -440,18 +441,41 @@ export default function ChatWorkspace({
             placeholder={`Message ${toolLabel(state.tool)} about this project…`}
             value={prompt}
             disabled={working}
-            onChange={(e) => setPrompt(e.target.value)}
+            onChange={(e) => updatePrompt(e.target.value)}
             onKeyDown={(e) => {
               if (
                 e.key === "Enter" &&
                 !e.shiftKey &&
-                !e.nativeEvent.isComposing
+                !e.nativeEvent.isComposing &&
+                e.nativeEvent.keyCode !== 229
               ) {
                 e.preventDefault();
                 void send();
               }
             }}
           />
+        )}
+        {!state.review && (prompt || draftError) && (
+          <div className="draft-status">
+            <span
+              role={draftError ? "alert" : "status"}
+              className={draftError ? "draft-error" : ""}
+            >
+              {draftError ||
+                (restored
+                  ? "Draft restored from this Mac"
+                  : "Draft saved on this Mac")}
+            </span>
+            {!!prompt && (
+              <button
+                type="button"
+                disabled={working}
+                onClick={() => updatePrompt("")}
+              >
+                Discard draft
+              </button>
+            )}
+          </div>
         )}
         {!state.review && (
           <ModelPicker
