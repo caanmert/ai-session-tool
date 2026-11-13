@@ -360,6 +360,10 @@ task work as well as annotations.
 
 ## Roadmap
 
+The [desktop product roadmap](docs/ROADMAP.md) tracks the next stages of the
+graphical workspace. Implementation and review status live on the
+[project board](https://github.com/users/caanmert/projects/5).
+
 1. [x] Scaffold: Go module, Cobra CLI, lint, CI, goreleaser
 2. [x] Claude Code adapter: `ls`, `show`, `resume`, `doctor`
 3. [x] Codex adapter
