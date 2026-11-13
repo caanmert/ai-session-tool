@@ -263,23 +263,34 @@ func (m *terminals) resize(id string, cols, rows int) error {
 	return pty.Setsize(t.file, &pty.Winsize{Rows: uint16(rows), Cols: uint16(cols)})
 }
 
+// killGroup sends SIGKILL to a process group. A group that is already gone, or
+// whose members have all exited and are only waiting to be reaped, counts as
+// stopped: Darwin reports EPERM rather than ESRCH for such a group.
+func killGroup(pgid int) error {
+	err := unix.Kill(-pgid, unix.SIGKILL)
+	if err == unix.ESRCH || (err == unix.EPERM && !groupHasLiveProcess(pgid)) {
+		return nil
+	}
+	return err
+}
+
 func (t *liveTerminal) stop() error {
 	var stopErr error
 	kill := func(pgid int) {
-		if err := unix.Kill(-pgid, unix.SIGKILL); err != nil && err != unix.ESRCH {
-			stopErr = errors.Join(stopErr, err)
-		}
+		stopErr = errors.Join(stopErr, killGroup(pgid))
 	}
 	t.mu.Lock()
 	if !t.processExited {
 		// Agents may put a foreground job in another process group. Stop that group
 		// as well as the session leader, then hang up the controlling terminal.
+		// Signal each group once: a second signal can race the first one's exits.
+		leader := t.cmd.Process.Pid
 		if t.file != nil {
-			if pgid, err := unix.IoctlGetInt(int(t.file.Fd()), unix.TIOCGPGRP); err == nil && pgid > 0 && pgid != unix.Getpgrp() {
+			if pgid, err := unix.IoctlGetInt(int(t.file.Fd()), unix.TIOCGPGRP); err == nil && pgid > 0 && pgid != unix.Getpgrp() && pgid != leader {
 				kill(pgid)
 			}
 		}
-		kill(t.cmd.Process.Pid)
+		kill(leader)
 	}
 	t.mu.Unlock()
 	// Reader drains final output and closes the PTY after Wait. Bound cleanup even
