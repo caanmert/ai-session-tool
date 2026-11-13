@@ -215,10 +215,13 @@ Claude Code uses its bidirectional stream-JSON CLI interface, including the
 [user-input control flow](https://code.claude.com/docs/en/agent-sdk/user-input).
 Each response starts a provider process, resumes its native conversation ID where
 available, and reaps the process on completion or stop. CLI compatibility is
-version-sensitive; initialization was checked with Codex 0.160.0 and Claude Code
-2.1.283. Model catalog discovery was also checked against both installed CLIs without
-starting model turns. These checks do not prove all authenticated model and tool
-flows work.
+version-sensitive. On October 12, 2026, authenticated backend smoke checks passed
+with Codex 0.162.1 and Claude Code 2.1.296: new/resumed conversations, explicit
+model selection, saved settings and conversation recovery after restart,
+stop/continue, command approval denial and acceptance, and both directions of the
+review-to-fix loop. Each fix was checked independently in a temporary repository.
+The checks also caught and fixed an early-stop bug: a new Claude conversation no
+longer retains an unusable session ID when stopped before its first model activity.
 
 Backend tests use real local fixture subprocesses for both providers to exercise
 streaming, native resume IDs, approval decisions, duplicate requests, malformed
@@ -230,10 +233,28 @@ unsupported choices, defaults, preference persistence, resumed sessions, provide
 model reporting, save failures and separate reviewer preferences. The earlier PTY implementation and its tests
 remain available internally; the main UI now uses structured chat.
 
-Before release, manually exercise both signed-in agents: new and resumed chats,
-real tool approvals, stop/resume, folder selection, tab switching, resizing, quit
-confirmation, and both review directions. Automated fixtures and initialization
-handshakes do not replace an authenticated end-to-end release smoke test.
+### Live compatibility checks
+
+Ordinary `go test` skips authenticated checks. To repeat them from `desktop/`,
+install and sign in to both CLIs, ensure `node` and `git` are on your PATH, then run:
+
+```sh
+AIS_TEST_INSTALLED_MODELS=1 go test -run '^TestInstalledModelCatalogs$' -v -count=1
+AIS_TEST_LIVE_AGENTS=1 go test -run '^TestLive' -v -count=1 -timeout=15m
+```
+
+The first command queries catalogs without model turns. The second consumes real
+model usage and creates native provider sessions. It uses temporary projects and
+temporary app state, stops long responses as soon as output begins, and approves
+only a fixed `printf` command or narrowly scoped fixture edits/test commands.
+Provider-native session history may remain after the temporary projects are removed.
+Unexpected approval requests fail the check without being granted. Select one
+check/provider with Go's subtest filter, for example
+`-run '^TestLiveStopFirstTurn$/claude$'`.
+
+These are backend integration checks, not native window automation. Before release,
+also manually check folder selection, tab switching, resizing, quit confirmation,
+and the rendered live chat, approval and review controls in the macOS app.
 
 ### Reproduce the screenshots
 

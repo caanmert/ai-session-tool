@@ -312,6 +312,36 @@ func TestStopAndMalformedProtocol(t *testing.T) {
 		t.Fatal(done.Error)
 	}
 }
+
+func TestClaudeStopBeforeFirstResponse(t *testing.T) {
+	for _, nativeID := range []string{"", "existing-session"} {
+		t.Run("session="+nativeID, func(t *testing.T) {
+			m := fakeChats(t, "hold")
+			s := createChat(t, m, t.TempDir(), "claude", nativeID)
+			if err := m.send(s.ID, "first prompt"); err != nil {
+				t.Fatal(err)
+			}
+			waitChat(t, m, s.ID, func(s ChatState) bool { return s.SessionID != "" })
+			// A crash before the first response must not restore a provisional ID.
+			disk := newChats(m.dataDir)
+			defer disk.close()
+			if err := disk.load(); err != nil {
+				t.Fatal(err)
+			}
+			saved, _ := disk.read(s.ID, -1)
+			if saved.State.SessionID != nativeID {
+				t.Fatal("persisted a Claude session before it became resumable")
+			}
+			if err := m.stop(s.ID); err != nil {
+				t.Fatal(err)
+			}
+			stopped := waitChat(t, m, s.ID, func(s ChatState) bool { return s.Status == "stopped" })
+			if stopped.SessionID != nativeID {
+				t.Fatal("stop kept a provisional ID or discarded an existing session")
+			}
+		})
+	}
+}
 func TestCanceledApprovalDoesNotReviveTurn(t *testing.T) {
 	m := newChats("")
 	s := createChat(t, m, t.TempDir(), "codex", "")
