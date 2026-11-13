@@ -6,6 +6,34 @@ Git diff. Replies, tool activity, questions and approvals appear directly in the
 app. The desktop app shares session readers, project rules, search and annotations
 with the `ais` CLI.
 
+## Download a CI build
+
+Every CI run on `main` and on pull requests builds the app and keeps it as the
+`ais-desktop-macos-arm64` artifact. It runs on macOS 13 or newer on Apple silicon
+and doesn't need any of the build tools below.
+
+To download the build from the latest successful run on `main` with the GitHub CLI:
+
+```sh
+run=$(gh run list --repo caanmert/ai-session-tool --workflow CI --branch main --status success --limit 1 --json databaseId -q '.[0].databaseId')
+gh run download "$run" --repo caanmert/ai-session-tool -n ais-desktop-macos-arm64
+ditto -x -k ais-desktop-macos-arm64.zip .
+open ais-desktop.app
+```
+
+Without the GitHub CLI, open the repository's **Actions** tab, choose the latest
+successful **CI** run on `main`, and download **ais-desktop-macos-arm64** under
+**Artifacts**. You need to be signed in to GitHub. The download is a zip that
+contains `ais-desktop-macos-arm64.zip`; unzip both to get `ais-desktop.app`, then
+move it to Applications.
+
+CI builds are ad-hoc signed, not signed with a Developer ID or notarized. Apps
+downloaded with `gh` open normally. macOS quarantines browser downloads, so the
+first time you open one it says Apple could not verify the app. On macOS 15 or
+later, open **System Settings → Privacy & Security** and click **Open Anyway**. On
+macOS 13 and 14, Control-click the app and choose **Open**. Only do this for builds
+from this repository's CI.
+
 ## Build and open
 
 This version targets macOS 13 or newer. Building requires Go 1.25+, Node.js 22.12+
@@ -32,9 +60,8 @@ you can move it to Applications. Install and sign in to Codex or Claude Code
 separately. Only the provider you use is needed for chat; cross-provider review
 requires both. Saved-history browsing works without either executable installed.
 
-This is a local development build with ad-hoc signing. A Developer ID signed,
-notarized download is not yet published. The Homebrew CLI package does not install
-the desktop app.
+Local and CI builds use ad-hoc signing. A Developer ID signed, notarized release
+is not yet published. The Homebrew CLI package does not install the desktop app.
 
 ## Screenshots
 

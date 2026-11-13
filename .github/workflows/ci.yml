@@ -37,6 +37,20 @@ jobs:
       - run: go install github.com/wailsapp/wails/v2/cmd/wails@v2.15.0
         working-directory: desktop
       - run: sh scripts/build-desktop.sh -s
+      - name: Package app
+        # Artifact uploads drop file permissions, including the app's executable
+        # bit, so zip with ditto, which keeps them along with the signature.
+        run: |
+          app=desktop/build/bin/ais-desktop.app
+          test "$(lipo -archs "$app/Contents/MacOS/ais-desktop")" = arm64
+          codesign --force --deep --sign - "$app"
+          codesign --verify --deep --strict "$app"
+          ditto -c -k --keepParent "$app" ais-desktop-macos-arm64.zip
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ais-desktop-macos-arm64
+          path: ais-desktop-macos-arm64.zip
+          if-no-files-found: error
 
   test:
     strategy:
