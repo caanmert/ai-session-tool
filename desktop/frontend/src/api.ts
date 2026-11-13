@@ -150,6 +150,20 @@ export type ChatState = {
   version: number;
 };
 export type ChatUpdate = { version: number; state: ChatState | null };
+export type ChatSummary = {
+  id: string;
+  tool: ToolName;
+  project: string;
+  title: string;
+  status: string;
+  updatedAt: string;
+  closed: boolean;
+  isReview: boolean;
+  complete: boolean;
+  findingCount: number;
+  sentCount: number;
+  fileCount: number;
+};
 export interface Backend {
   ChatModels(
     id: string,
@@ -164,6 +178,8 @@ export interface Backend {
   NewChat(project: string, tool: ToolName): Promise<ChatState>;
   ResumeChat(key: string): Promise<ChatState>;
   ListChats(): Promise<ChatState[]>;
+  ListSavedChats(): Promise<ChatSummary[]>;
+  ReopenChat(id: string): Promise<ChatState>;
   ReadChat(id: string, version: number): Promise<ChatUpdate>;
   SendChat(id: string, text: string): Promise<void>;
   StopChat(id: string): Promise<void>;
@@ -211,6 +227,8 @@ export const api: Backend = {
   NewChat: async (project, tool) => backend().NewChat(project, tool),
   ResumeChat: async (key) => backend().ResumeChat(key),
   ListChats: async () => backend().ListChats(),
+  ListSavedChats: async () => backend().ListSavedChats(),
+  ReopenChat: async (id) => backend().ReopenChat(id),
   ReadChat: async (id, version) => backend().ReadChat(id, version),
   SendChat: async (id, text) => backend().SendChat(id, text),
   StopChat: async (id) => backend().StopChat(id),

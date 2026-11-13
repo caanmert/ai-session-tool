@@ -102,9 +102,23 @@ existing conversation instead of creating another copy.
 
 Open tabs and review metadata persist across restarts. Closing a tab hides it
 and retains its local record. Normal provider conversations can be reopened from
-History; a review can also reopen its original conversation. A dedicated browser
-for closed review records is not implemented yet. Keep review tabs open when you
-want easy access to their findings.
+History; a review can also reopen its original conversation.
+
+Choose **Saved workspace** in the sidebar to find desktop conversations and independent reviews, including closed tabs and fresh
+conversations that have not sent a message yet. Filter by project or type, or
+search titles, project paths and agents. The list includes review completion,
+finding/sent counts and file counts.
+
+**Reopen** restores the same tab and its saved state; **View** selects an already
+open tab. Neither starts an agent or consumes model usage. Reviews retain their
+captured diff and findings, including sent markers, even if their project folder
+has moved or is temporarily unavailable. Sending messages or requesting fixes
+still requires an available project and the normal snapshot checks. Opening a
+review's **Original conversation** link also saves that tab's reopened state.
+Use **Esc** or the close button to leave the library. Native provider sessions
+remain available from History as before.
+
+![Saved desktop conversations and reviews](screenshots/desktop-saved-workspace.png)
 
 Quitting asks for confirmation if an agent is running. **Keep working** cancels
 the quit; **Stop and quit** stops the local processes. Running responses do not
@@ -295,7 +309,7 @@ AIS_PLAYWRIGHT_MODULE=/tmp/ais-ui-check/node_modules/playwright/index.mjs \
   node scripts/desktop-screenshots.mjs
 ```
 
-This replaces the three desktop screenshots with fresh renders, checks a
+This replaces the desktop screenshots with fresh renders, checks a
 960×640 viewport, and writes a small-window capture into the system temporary
 directory. It injects fictional provider responses into a fresh browser context;
 it does not read real conversations or contact an AI provider.
@@ -305,5 +319,5 @@ it does not read real conversations or contact an AI provider.
 The desktop app provides history browsing, graphical conversations and a
 cross-provider review/fix workflow on macOS. Parallel-run dashboards, GUI editing
 of tags and titles, attachment support, full provider slash-command
-parity, closed-review browsing, Windows/Linux support, and signed releases remain
+parity, Windows/Linux support, and signed releases remain
 future work. The CLI retains its session-management and parallel-task workflows.
