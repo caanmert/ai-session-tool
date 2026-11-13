@@ -308,7 +308,7 @@ AIS_PLAYWRIGHT_MODULE=/tmp/ais-ui-check/node_modules/playwright/index.mjs \
   node scripts/desktop-screenshots.mjs
 ```
 
-This replaces the four desktop screenshots with fresh renders, checks a
+This replaces the desktop screenshots with fresh renders, checks a
 960×640 viewport, and writes a small-window capture into the system temporary
 directory. It injects fictional provider responses into a fresh browser context;
 it does not read real conversations or contact an AI provider.
