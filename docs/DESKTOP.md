@@ -94,6 +94,19 @@ Switch tabs or return to **History** while an agent works. **⌘K** opens histor
 search, **⌘N** opens New session, and **Esc** closes the new-session dialog.
 History refreshes when a response finishes; the refresh button rescans manually.
 
+Use **Pinned** or **Live** above history to narrow the list; their counts follow
+the current project, agent, and search. Choose **Pinned · Recent**, **Oldest first**,
+or **Title A–Z** to sort. Recent order keeps pinned conversations first. **Clear
+filters** resets search, agent, and status while keeping the selected project.
+The search clear button (or **Esc** in search) clears just the query.
+
+Press **↓** in search to enter the list. **↑/↓**, **Home**, and **End** select and
+preview conversations; **Enter** continues the focused conversation in the app.
+Tab moves to the other controls. Pinned conversations can be managed with
+`ais pin <id>` and `ais unpin <id>` in the CLI.
+
+![Session history with status filters and sorting](screenshots/desktop-history.png)
+
 **Stop response** terminates that response's local process group. Files already
 changed remain changed; stopping is not an undo. Send a new message to continue
 using the provider's saved session. Up to eight responses can run concurrently,
@@ -295,7 +308,7 @@ AIS_PLAYWRIGHT_MODULE=/tmp/ais-ui-check/node_modules/playwright/index.mjs \
   node scripts/desktop-screenshots.mjs
 ```
 
-This replaces the three desktop screenshots with fresh renders, checks a
+This replaces the desktop screenshots with fresh renders, checks a
 960×640 viewport, and writes a small-window capture into the system temporary
 directory. It injects fictional provider responses into a fresh browser context;
 it does not read real conversations or contact an AI provider.

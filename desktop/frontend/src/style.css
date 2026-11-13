@@ -393,7 +393,7 @@ h1 {
   color: #3d4736;
 }
 .search input::placeholder {
-  color: #a0a497;
+  color: #6f796c;
 }
 .search kbd {
   font-family: inherit;
@@ -415,7 +415,7 @@ h1 {
   border: 0;
   border-radius: 4px;
   font-size: 10px;
-  color: #939989;
+  color: #5e6958;
   background: none;
 }
 .tool-filter button.selected {
@@ -490,6 +490,87 @@ h1 {
   background: #eff2e9;
   border-left-color: #6f8662;
 }
+.session-row:focus-visible {
+  outline: 2px solid #526f5d;
+  outline-offset: -3px;
+}
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+.history-controls {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 0 32px 16px;
+}
+.history-controls[hidden] {
+  display: none;
+}
+.history-views {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.history-views button {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 32px;
+  padding: 6px 10px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: transparent;
+  color: #5e6958;
+  font-size: 11px;
+}
+.history-views button:hover {
+  background: #e9ede4;
+}
+.history-views button[aria-pressed="true"] {
+  background: #e4eae1;
+  color: #304b3d;
+  border-color: #c9d5c5;
+  font-weight: 600;
+}
+.filter-count {
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+  padding: 1px 5px;
+  border-radius: 4px;
+  background: #ffffff80;
+}
+.history-reset {
+  border: 0;
+  background: none;
+  color: #815336;
+  font-size: 11px;
+  white-space: nowrap;
+}
+.history-sort select {
+  max-width: 132px;
+  border: 0;
+  border-radius: 4px;
+  padding: 5px 2px;
+  color: #596751;
+  font-size: 10px;
+  background: transparent;
+}
+.history-list-status {
+  padding: 9px 20px;
+  border-bottom: 1px solid #e8e9e2;
+  font-size: 10px;
+  color: #64705d;
+  background: #f2f4ee;
+}
 .row-top {
   display: flex;
   align-items: center;
@@ -498,12 +579,12 @@ h1 {
   color: #969e8a;
 }
 .row-top > span:nth-child(2) {
-  color: #76806b;
+  color: #5e6a53;
 }
 .row-top time {
   margin-left: auto;
   font-size: 9px;
-  color: #a0a68f;
+  color: #6b775f;
 }
 .agent-mark {
   display: inline-flex;
@@ -560,7 +641,7 @@ h1 {
   border: 1px solid #e0e6d7;
   border-radius: 3px;
   padding: 2px 5px;
-  font-size: 8px;
+  font-size: 10px;
   margin-left: auto;
   max-width: 120px;
   overflow: hidden;

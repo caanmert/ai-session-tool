@@ -130,6 +130,85 @@ beforeEach(() => {
   window.go = { main: { App: backend } };
 });
 describe("desktop workflows", () => {
+  it("combines status, agent and search filters and clears an empty result", async () => {
+    backend.Refresh = vi.fn().mockResolvedValue({
+      ...snapshot,
+      sessions: snapshot.sessions.map((s, i) => ({
+        ...s,
+        pinned: i === 1,
+        live: i === 0 ? { pid: 123 } : undefined,
+      })),
+    });
+    render(<App />);
+    await screen.findByRole("heading", { name: "Document installation" });
+    await userEvent.click(screen.getByRole("button", { name: "Pinned 1" }));
+    const list = screen.getByRole("region", { name: "Conversations" });
+    expect(within(list).getAllByRole("button")).toHaveLength(1);
+    await userEvent.click(
+      within(screen.getByLabelText("Filter by agent")).getByRole("button", {
+        name: "Codex",
+      }),
+    );
+    await screen.findByText("No pinned conversations");
+    await userEvent.click(
+      screen.getByRole("button", { name: "Show all conversations" }),
+    );
+    expect(within(list).getAllByRole("button")).toHaveLength(2);
+    await userEvent.click(screen.getByRole("button", { name: "Live 1" }));
+    expect(within(list).getAllByRole("button")).toHaveLength(1);
+    await userEvent.type(
+      screen.getByRole("textbox", { name: "Search sessions" }),
+      "webhook",
+    );
+    await waitFor(() => expect(backend.Search).toHaveBeenCalledWith("webhook"));
+    await userEvent.click(screen.getByRole("button", { name: "Clear search" }));
+    expect(
+      screen.getByRole("textbox", { name: "Search sessions" }),
+    ).toHaveFocus();
+    expect(
+      screen.getByRole("textbox", { name: "Search sessions" }),
+    ).toHaveValue("");
+    expect(screen.getByRole("button", { name: "Live 1" })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+  });
+  it("sorts without changing the source snapshot and navigates with the keyboard", async () => {
+    render(<App />);
+    await screen.findByRole("heading", { name: "Retry webhook delivery" });
+    const list = screen.getByRole("region", { name: "Conversations" });
+    const search = screen.getByRole("textbox", { name: "Search sessions" });
+    search.focus();
+    fireEvent.keyDown(search, { key: "ArrowDown" });
+    expect(within(list).getAllByRole("button")[0]).toHaveFocus();
+    await userEvent.keyboard("{End}");
+    expect(within(list).getAllByRole("button")[1]).toHaveFocus();
+    expect(
+      screen.getByRole("heading", { name: "Document installation" }),
+    ).toBeVisible();
+    await userEvent.keyboard("{Home}{ArrowDown}{ArrowUp}");
+    expect(within(list).getAllByRole("button")[0]).toHaveFocus();
+    await userEvent.selectOptions(
+      screen.getByRole("combobox", { name: "Sort conversations" }),
+      "oldest",
+    );
+    expect(within(list).getAllByRole("button")[0]).toHaveTextContent(
+      "Document installation",
+    );
+    await userEvent.selectOptions(
+      screen.getByRole("combobox", { name: "Sort conversations" }),
+      "title",
+    );
+    expect(within(list).getAllByRole("button")[0]).toHaveTextContent(
+      "Document installation",
+    );
+    expect(snapshot.sessions[0].key).toBe("codex/one");
+    fireEvent.keyDown(search, { key: "Enter" });
+    expect(backend.ResumeChat).not.toHaveBeenCalled();
+    fireEvent.keyDown(search, { key: "ArrowDown" });
+    await userEvent.keyboard("{Home}{Enter}");
+    expect(backend.ResumeChat).toHaveBeenCalledWith("claude/two");
+  });
   it("loads sessions, filters projects, and resumes the selected session", async () => {
     render(<App />);
     await screen.findByRole("heading", { name: "Retry webhook delivery" });
