@@ -27,7 +27,7 @@ import (
 
 // schemaVersion invalidates the whole index when the schema or what the
 // parsers extract changes.
-const schemaVersion = 3 // 3: reconcile mixed Codex message representations
+const schemaVersion = 4 // 4: keep Haiku 5.5 long-prompt usage apart for pricing
 
 // maxBodyBytes caps the conversation text indexed per session.
 const maxBodyBytes = 1 << 20

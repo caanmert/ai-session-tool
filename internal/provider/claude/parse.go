@@ -12,6 +12,7 @@ import (
 
 	"github.com/caanmert/ai-session-tool/internal/jsonl"
 	"github.com/caanmert/ai-session-tool/internal/model"
+	"github.com/caanmert/ai-session-tool/internal/pricing"
 	"github.com/caanmert/ai-session-tool/internal/provider"
 	"github.com/caanmert/ai-session-tool/internal/textutil"
 )
@@ -246,7 +247,13 @@ func (p *Provider) Parse(ctx context.Context, f provider.FileRef) (model.Session
 			at = s.UpdatedAt
 		}
 		s.Usage = s.Usage.Add(r.usage)
-		s.Breakdown = model.AddUsage(s.Breakdown, model.SlotOf(at), r.model, r.usage)
+		// Each response is one request, the unit some models' prices depend on.
+		s.Breakdown = model.AddEntry(s.Breakdown, model.UsageEntry{
+			Slot:       model.SlotOf(at),
+			Model:      r.model,
+			LongPrompt: pricing.LongPrompt(r.model, r.usage),
+			Usage:      r.usage,
+		})
 	}
 	if s.StartedAt.IsZero() {
 		s.StartedAt = s.UpdatedAt

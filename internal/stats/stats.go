@@ -112,7 +112,7 @@ func Build(sessions []model.Session, prices *pricing.Table, o Options) (Report, 
 			price, priced := prices.Lookup(e.Model)
 			cost := 0.0
 			if priced {
-				cost = price.Cost(e.Usage)
+				cost = price.EntryCost(e)
 			} else {
 				unpriced[keyOrUnknown(e.Model)] = true
 			}

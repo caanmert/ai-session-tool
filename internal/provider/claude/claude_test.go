@@ -297,6 +297,39 @@ func TestUsageBreakdown(t *testing.T) {
 	}
 }
 
+func TestHaikuLongPromptRequestsKeptApart(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "77777777-7777-4777-8777-777777777777.jsonl")
+	// In one slot: two Haiku 5.5 requests at or under 100,000 prompt tokens,
+	// one over it once cache reads count, and a large Opus request, whose
+	// price doesn't depend on prompt size.
+	lines := `{"type":"user","cwd":"/p","timestamp":"2026-11-01T10:00:00Z","message":{"role":"user","content":"hi"}}
+{"type":"assistant","timestamp":"2026-11-01T10:00:01Z","message":{"id":"h1","model":"claude-haiku-5-5","content":[{"type":"text","text":"a"}],"usage":{"input_tokens":100000,"output_tokens":10,"cache_read_input_tokens":0,"cache_creation_input_tokens":0}}}
+{"type":"assistant","timestamp":"2026-11-01T10:00:02Z","message":{"id":"h2","model":"claude-haiku-5-5","content":[{"type":"text","text":"b"}],"usage":{"input_tokens":60000,"output_tokens":20,"cache_read_input_tokens":50000,"cache_creation_input_tokens":0}}}
+{"type":"assistant","timestamp":"2026-11-01T10:00:03Z","message":{"id":"h3","model":"claude-haiku-5-5","content":[{"type":"text","text":"c"}],"usage":{"input_tokens":5,"output_tokens":1,"cache_read_input_tokens":0,"cache_creation_input_tokens":0}}}
+{"type":"assistant","timestamp":"2026-11-01T10:00:04Z","message":{"id":"o1","model":"claude-opus-5-5","content":[{"type":"text","text":"d"}],"usage":{"input_tokens":900000,"output_tokens":1,"cache_read_input_tokens":0,"cache_creation_input_tokens":0}}}
+`
+	if err := os.WriteFile(path, []byte(lines), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	s, _, err := New(dir).Parse(context.Background(), provider.FileRef{Path: path})
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := []string{
+		"claude-haiku-5-5 long=false {100005 11 0 0 0}",
+		"claude-haiku-5-5 long=true {60000 20 50000 0 0}",
+		"claude-opus-5-5 long=false {900000 1 0 0 0}",
+	}
+	var got []string
+	for _, e := range s.Breakdown {
+		got = append(got, fmt.Sprintf("%s long=%v %v", e.Model, e.LongPrompt, e.Usage))
+	}
+	if strings.Join(got, "\n") != strings.Join(want, "\n") {
+		t.Errorf("breakdown:\n%s\nwant:\n%s", strings.Join(got, "\n"), strings.Join(want, "\n"))
+	}
+}
+
 func TestOneHourCacheWrites(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "66666666-6666-4666-8666-666666666666.jsonl")

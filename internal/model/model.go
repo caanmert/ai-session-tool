@@ -46,13 +46,21 @@ func (u Usage) Add(o Usage) Usage {
 // IsZero reports whether no tokens were used.
 func (u Usage) IsZero() bool { return u == Usage{} }
 
+// Prompt returns the tokens a request sent to the model: its input plus
+// cache reads and writes. Some models' prices depend on it.
+func (u Usage) Prompt() int64 { return u.Input + u.CacheRead + u.CacheWrite }
+
 // UsageEntry is the usage of one model in one 15-minute slot (UTC), the
 // unit stats are built from: slots bucket cleanly into local days, weeks
 // and months in every time zone.
 type UsageEntry struct {
 	Slot  time.Time `json:"slot"`
 	Model string    `json:"model,omitempty"`
-	Usage Usage     `json:"usage"`
+	// LongPrompt marks usage from requests whose prompt was over the model's
+	// long-prompt threshold, which some models bill at higher prices. It is
+	// kept apart from the model's other usage in the same slot.
+	LongPrompt bool  `json:"longPrompt,omitempty"`
+	Usage      Usage `json:"usage"`
 }
 
 // SlotOf truncates t to its 15-minute usage slot.
@@ -61,24 +69,36 @@ func SlotOf(t time.Time) time.Time { return t.UTC().Truncate(15 * time.Minute) }
 // AddUsage adds u to the entry for (slot, model) in entries, keeping them
 // ordered by slot then model.
 func AddUsage(entries []UsageEntry, slot time.Time, modelName string, u Usage) []UsageEntry {
-	if u.IsZero() {
+	return AddEntry(entries, UsageEntry{Slot: slot, Model: modelName, Usage: u})
+}
+
+// AddEntry adds e's usage to the entry with the same slot, model and
+// LongPrompt, keeping entries ordered by slot, model, then LongPrompt.
+func AddEntry(entries []UsageEntry, e UsageEntry) []UsageEntry {
+	if e.Usage.IsZero() {
 		return entries
 	}
 	for i := range entries {
-		if entries[i].Slot.Equal(slot) && entries[i].Model == modelName {
-			entries[i].Usage = entries[i].Usage.Add(u)
+		if entries[i].Slot.Equal(e.Slot) && entries[i].Model == e.Model && entries[i].LongPrompt == e.LongPrompt {
+			entries[i].Usage = entries[i].Usage.Add(e.Usage)
 			return entries
 		}
 	}
-	entries = append(entries, UsageEntry{Slot: slot, Model: modelName, Usage: u})
-	for i := len(entries) - 1; i > 0; i-- {
-		a, b := entries[i-1], entries[i]
-		if a.Slot.Before(b.Slot) || a.Slot.Equal(b.Slot) && a.Model <= b.Model {
-			break
-		}
-		entries[i-1], entries[i] = b, a
+	entries = append(entries, e)
+	for i := len(entries) - 1; i > 0 && entryBefore(entries[i], entries[i-1]); i-- {
+		entries[i-1], entries[i] = entries[i], entries[i-1]
 	}
 	return entries
+}
+
+func entryBefore(a, b UsageEntry) bool {
+	if !a.Slot.Equal(b.Slot) {
+		return a.Slot.Before(b.Slot)
+	}
+	if a.Model != b.Model {
+		return a.Model < b.Model
+	}
+	return !a.LongPrompt && b.LongPrompt
 }
 
 // Session is one resumable conversation, summarised from its transcript.

@@ -228,7 +228,7 @@ Live state is checked again immediately before trashing or permanently deleting 
 
 `ais stats` adds up the tokens each API response reports, split by 15-minute slot and model, so a session that spans days or mixes models (Claude subagents often run on Haiku) is counted where and when it happened. Codex records running totals, so each step's increase is attributed to the model in use at the time.
 
-Cost is an estimate at API list prices, shown as `≈`; on a subscription you pay a flat fee instead. Current Claude models are priced out of the box, including the higher price of one-hour cache writes that Claude Code uses. Codex's OpenAI models have no built-in price. Add any model in `~/.config/ais/config.toml` (or `$AIS_CONFIG`):
+Cost is an estimate at API list prices, shown as `≈`; on a subscription you pay a flat fee instead. Current Claude models are priced out of the box. That includes the higher price of one-hour cache writes that Claude Code uses, and Claude Haiku 5.5's higher prices for requests whose prompt is over 100,000 tokens. Codex's OpenAI models have no built-in price. Add any model in `~/.config/ais/config.toml` (or `$AIS_CONFIG`):
 
 ```toml
 [prices."gpt-5.5-codex"]   # a model id or prefix; the longest match wins
@@ -237,6 +237,8 @@ output = 10.0
 cache_read = 0.125
 # cache_write and cache_write_1h default to 1.25x and 2x input
 ```
+
+A prefix you configure prices every model that starts with it, so `gpt-5` also covers `gpt-5.4` and `gpt-5.5-codex`. Built-in prices cover dated ids such as `claude-haiku-4-5-20251001`, but not a later Claude release: a new model like `claude-fable-5-3` is reported as unpriced until it has a price, instead of borrowing an older release's.
 
 Rows that include unpriced models show a `+`; `—` means nothing in the row had a price.
 

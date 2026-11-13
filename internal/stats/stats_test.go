@@ -62,6 +62,21 @@ func TestByDayRespectsTimeZone(t *testing.T) {
 	}
 }
 
+func TestLongPromptUsageCostsMore(t *testing.T) {
+	short := entry("2026-11-01T10:00:00Z", "claude-haiku-5-5", 1_000_000, 0)
+	long := short
+	long.LongPrompt = true
+	rep, err := Build([]model.Session{{Tool: model.ToolClaude, ID: "h", Breakdown: []model.UsageEntry{short, long}}},
+		pricing.Defaults(), Options{By: "model", Loc: time.UTC})
+	if err != nil {
+		t.Fatal(err)
+	}
+	// 1M input up to 100K-token prompts at $0.10, plus 1M over it at $0.50, in one model row.
+	if len(rep.Rows) != 1 || rep.Rows[0].Key != "claude-haiku-5-5" || math.Abs(rep.Rows[0].Cost-0.60) > 1e-9 {
+		t.Errorf("rows: %+v", rep.Rows)
+	}
+}
+
 func TestCostsAndUnpriced(t *testing.T) {
 	rep, err := Build(sessions, pricing.Defaults(), Options{By: "model", Loc: time.UTC})
 	if err != nil {
