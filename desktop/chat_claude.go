@@ -38,6 +38,26 @@ func (m *chatManager) runClaude(ctx context.Context, c *chatSession, state ChatS
 		}
 	}
 	sessionID := state.SessionID
+	// Initialization allocates an ID before Claude has created a resumable
+	// transcript. Do not keep that provisional ID if the first run is stopped
+	// (or fails) before any model activity is observed.
+	sessionStarted := false
+	markSessionStarted := func() {
+		if !sessionStarted {
+			sessionStarted = true
+			m.saveOrWarn(c)
+		}
+	}
+	defer func() {
+		if state.SessionID == "" && !sessionStarted {
+			c.mu.Lock()
+			if c.state.SessionID == sessionID {
+				c.state.SessionID = ""
+				c.change()
+			}
+			c.mu.Unlock()
+		}
+	}()
 	if sessionID != "" {
 		args = append(args, "--resume", sessionID)
 	} else {
@@ -94,7 +114,6 @@ func (m *chatManager) runClaude(ctx context.Context, c *chatSession, state ChatS
 				if !started {
 					started = true
 					c.sessionID(sessionID)
-					m.saveOrWarn(c)
 					if err = p.send(map[string]any{"type": "user", "session_id": sessionID, "parent_tool_use_id": nil, "message": map[string]any{"role": "user", "content": text}}); err != nil {
 						return "", err
 					}
@@ -121,6 +140,7 @@ func (m *chatManager) runClaude(ctx context.Context, c *chatSession, state ChatS
 				event := object(v["event"])
 				switch str(event["type"]) {
 				case "message_start":
+					markSessionStarted()
 					if str(v["parent_tool_use_id"]) == "" {
 						c.reportModel(str(object(event["message"])["model"]))
 					}
@@ -145,6 +165,7 @@ func (m *chatManager) runClaude(ctx context.Context, c *chatSession, state ChatS
 					}
 				}
 			case "assistant":
+				markSessionStarted()
 				message := object(v["message"])
 				if str(v["parent_tool_use_id"]) == "" {
 					c.reportModel(str(message["model"]))
@@ -189,6 +210,7 @@ func (m *chatManager) runClaude(ctx context.Context, c *chatSession, state ChatS
 				if boolean(v["is_error"]) {
 					return "", fmt.Errorf("Claude: %s %s", str(v["result"]), pretty(v["errors"]))
 				}
+				markSessionStarted()
 				if raw := v["structured_output"]; len(raw) > 0 && string(raw) != "null" {
 					final = string(raw)
 				} else if body := str(v["result"]); body != "" {
