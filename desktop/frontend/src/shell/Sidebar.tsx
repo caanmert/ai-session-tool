@@ -38,26 +38,26 @@ export default function Sidebar({
   closingChat,
   newButton,
   canStart,
-  footer,
   onNew,
   onHistory,
   onRuns,
   onSaved,
+  onSettings,
   onSelectChat,
   onCloseChat,
 }: {
-  view: "history" | "runs" | "chat";
+  view: "history" | "runs" | "settings" | "chat";
   snapshot?: Snapshot;
   chats: ChatState[];
   activeChat: string;
   closingChat: string;
   newButton: Ref<HTMLButtonElement>;
   canStart: boolean;
-  footer: ReactNode;
   onNew: () => void;
   onHistory: () => void;
   onRuns: () => void;
   onSaved: () => void;
+  onSettings: () => void;
   onSelectChat: (id: string) => void;
   onCloseChat: (id: string) => void;
 }) {
@@ -89,6 +89,12 @@ export default function Sidebar({
           onClick={onRuns}
         />
         <NavItem icon="folder" label="Saved workspace" onClick={onSaved} />
+        <NavItem
+          icon="settings"
+          label="Settings"
+          current={view === "settings"}
+          onClick={onSettings}
+        />
       </div>
       <div className="sidebar-scroll">
         <h2 className="section-label">Agents</h2>
@@ -141,7 +147,6 @@ export default function Sidebar({
           </>
         )}
       </div>
-      <div className="sidebar-footer">{footer}</div>
     </aside>
   );
 }

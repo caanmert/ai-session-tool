@@ -434,6 +434,42 @@ describe("desktop workflows", () => {
     );
     expect(backend.Refresh).toHaveBeenCalledTimes(2);
   });
+  it("keeps appearance, agent status and shortcuts in Settings", async () => {
+    backend.Refresh = vi.fn().mockResolvedValue({
+      ...snapshot,
+      tools: [
+        { name: "codex", path: "/bin/codex", available: true },
+        { name: "claude", path: "", available: false },
+      ],
+    });
+    render(<App />);
+    await screen.findByRole("heading", { name: "Retry webhook delivery" });
+    await userEvent.click(screen.getByRole("button", { name: "Settings" }));
+    const settings = screen.getByRole("region", { name: "Settings" });
+    expect(screen.getByRole("button", { name: "Settings" })).toHaveAttribute(
+      "aria-current",
+      "page",
+    );
+    await userEvent.selectOptions(
+      within(settings).getByLabelText("Appearance"),
+      "dark",
+    );
+    expect(document.documentElement.dataset.theme).toBe("dark");
+    expect(within(settings).getByText("/bin/codex")).toBeVisible();
+    expect(within(settings).getByText("Found")).toBeVisible();
+    expect(within(settings).getByText("Not found")).toBeVisible();
+    expect(within(settings).getByText("⌘K")).toBeVisible();
+    await userEvent.click(
+      within(settings).getByRole("button", { name: "Check again" }),
+    );
+    expect(backend.Refresh).toHaveBeenCalledTimes(2);
+    // The theme stays applied after leaving Settings.
+    await userEvent.click(screen.getByRole("button", { name: /^History/ }));
+    expect(
+      screen.queryByRole("region", { name: "Settings" }),
+    ).not.toBeInTheDocument();
+    expect(document.documentElement.dataset.theme).toBe("dark");
+  });
   it("opens saved desktop work without starting or resuming a provider", async () => {
     backend.ListSavedChats = vi.fn().mockResolvedValue([
       {

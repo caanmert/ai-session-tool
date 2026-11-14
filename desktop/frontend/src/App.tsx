@@ -3,7 +3,8 @@ import Markdown from "react-markdown";
 import RunDashboard from "./RunDashboard";
 import ChatWorkspace, { chatBusy } from "./ChatWorkspace";
 import SavedWorkspace from "./SavedWorkspace";
-import Appearance from "./Appearance";
+import { useAppearance } from "./Appearance";
+import Settings from "./settings/Settings";
 import TopBar from "./shell/TopBar";
 import Sidebar from "./shell/Sidebar";
 import AgentsMissing from "./shell/AgentsMissing";
@@ -49,7 +50,15 @@ export default function App() {
   const [chats, setChats] = useState<ChatState[]>([]);
   const [activeChat, setActiveChat] = useState("");
   const [project, setProject] = useState("");
-  const [showRuns, setShowRuns] = useState(false);
+  // The page behind any open conversation: History, Parallel runs or Settings.
+  const [page, setPage] = useState<"history" | "runs" | "settings">("history");
+  const showRuns = page === "runs";
+  const otherPage = page !== "history";
+  const setShowRuns = useCallback(
+    (on: boolean) => setPage(on ? "runs" : "history"),
+    [],
+  );
+  const appearance = useAppearance();
   const [tool, setTool] = useState("all");
   const [historyView, setHistoryView] = useState("all");
   const [historySort, setHistorySort] = useState("recent");
@@ -247,7 +256,7 @@ export default function App() {
   const currentProject = snapshot?.projects.find((p) => p.path === project);
   const showHistory = useCallback(() => {
     setActiveChat("");
-    setShowRuns(false);
+    setPage("history");
   }, []);
 
   const openNew = useCallback(() => {
@@ -297,6 +306,16 @@ export default function App() {
         },
       },
       {
+        id: "settings",
+        group: "Actions",
+        label: "Settings",
+        icon: "settings",
+        run: () => {
+          setActiveChat("");
+          setPage("settings");
+        },
+      },
+      {
         id: "saved",
         group: "Actions",
         label: "Saved workspace",
@@ -342,7 +361,7 @@ export default function App() {
         },
       })),
     ];
-  }, [chats, snapshot, openNew, showHistory]);
+  }, [chats, snapshot, openNew, showHistory, setShowRuns]);
   useEffect(() => {
     function key(event: KeyboardEvent) {
       if (showLibrary || document.querySelector("dialog[open]")) return;
@@ -461,14 +480,17 @@ export default function App() {
         onSearch={() => setShowPalette(true)}
       />
       <Sidebar
-        view={showRuns ? "runs" : activeChat ? "chat" : "history"}
+        view={otherPage ? page : activeChat ? "chat" : "history"}
         snapshot={snapshot}
         chats={chats}
-        activeChat={showRuns ? "" : activeChat}
+        activeChat={otherPage ? "" : activeChat}
         closingChat={closingChat}
         newButton={newButton}
         canStart={!!snapshot && !busy}
-        footer={<Appearance />}
+        onSettings={() => {
+          setActiveChat("");
+          setPage("settings");
+        }}
         onNew={openNew}
         onHistory={showHistory}
         onRuns={() => {
@@ -488,22 +510,26 @@ export default function App() {
         {!activeChat && (
           <header className="workspace-header">
             <h1>
-              {showRuns
-                ? "Parallel runs"
-                : project
-                  ? currentProject?.name || basename(project)
-                  : "Your conversations"}
+              {page === "settings"
+                ? "Settings"
+                : showRuns
+                  ? "Parallel runs"
+                  : project
+                    ? currentProject?.name || basename(project)
+                    : "Your conversations"}
             </h1>
             <p title={project}>
-              {showRuns
-                ? project ||
-                  "Launch independent tasks and review their changes."
-                : project ||
-                  "Every conversation. Every project. One place to pick up where you left off."}
+              {page === "settings"
+                ? "Appearance, agents and shortcuts for this Mac."
+                : showRuns
+                  ? project ||
+                    "Launch independent tasks and review their changes."
+                  : project ||
+                    "Every conversation. Every project. One place to pick up where you left off."}
             </p>
           </header>
         )}
-        <div className="toolbar" hidden={!!activeChat || showRuns}>
+        <div className="toolbar" hidden={!!activeChat || otherPage}>
           <label className="history-filter">
             <Icon name="filter" size={15} />
             <input
@@ -563,7 +589,7 @@ export default function App() {
             <Icon name="refresh" />
           </button>
         </div>
-        <div className="history-controls" hidden={!!activeChat || showRuns}>
+        <div className="history-controls" hidden={!!activeChat || otherPage}>
           <div
             className="history-views"
             role="group"
@@ -645,7 +671,7 @@ export default function App() {
           <ChatWorkspace
             key={live.id}
             chat={live}
-            active={activeChat === live.id && !showRuns}
+            active={activeChat === live.id && !otherPage}
             reviewerAvailable={
               !!snapshot?.tools.some((t) => t.name !== live.tool && t.available)
             }
@@ -659,6 +685,14 @@ export default function App() {
             onState={chatChanged}
           />
         ))}
+        {page === "settings" && (
+          <Settings
+            appearance={appearance}
+            tools={snapshot?.tools || []}
+            checking={loading}
+            onCheck={() => void refresh()}
+          />
+        )}
         {showRuns && (
           <RunDashboard
             project={project}
@@ -666,7 +700,7 @@ export default function App() {
             tools={snapshot?.tools || []}
           />
         )}
-        <div className="session-workspace" hidden={!!activeChat || showRuns}>
+        <div className="session-workspace" hidden={!!activeChat || otherPage}>
           <section className="session-list" aria-label="Conversations">
             <div className="list-heading">
               <span>
