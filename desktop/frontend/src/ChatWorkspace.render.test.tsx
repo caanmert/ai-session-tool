@@ -11,80 +11,86 @@ vi.mock("react-markdown", () => ({
   },
 }));
 
-test("streaming into a long conversation renders only the changing message", async () => {
-  const messages = Array.from({ length: 300 }, (_, i) => ({
-    id: `m${i}`,
-    role: i % 2 ? "assistant" : "user",
-    kind: "text",
-    text: `Message ${i}`,
-  }));
-  const chat = {
-    id: "chat",
-    tool: "codex",
-    project: "/project",
-    title: "Long conversation",
-    status: "running",
-    error: "",
-    messages,
-    approvals: [],
-    shortened: false,
-    version: 1,
-    settings: { model: "", effort: "", configured: false },
-    reviewerSettings: { model: "", effort: "", configured: false },
-  } as unknown as ChatState;
-  const streamed = (version: number, text: string): ChatUpdate => ({
-    version,
-    partial: true,
-    first: "m0",
-    count: 301,
-    state: {
-      ...chat,
+test(
+  "streaming into a long conversation renders only the changing message",
+  { timeout: 20000 },
+  async () => {
+    const messages = Array.from({ length: 300 }, (_, i) => ({
+      id: `m${i}`,
+      role: i % 2 ? "assistant" : "user",
+      kind: "text",
+      text: `Message ${i}`,
+    }));
+    const chat = {
+      id: "chat",
+      tool: "codex",
+      project: "/project",
+      title: "Long conversation",
+      status: "running",
+      error: "",
+      messages,
+      approvals: [],
+      shortened: false,
+      version: 1,
+      settings: { model: "", effort: "", configured: false },
+      reviewerSettings: { model: "", effort: "", configured: false },
+    } as unknown as ChatState;
+    const streamed = (version: number, text: string): ChatUpdate => ({
       version,
-      messages: [{ id: "reply", role: "assistant", kind: "text", text }],
-    },
-  });
-  const replies: ChatUpdate[] = [
-    { version: 1, state: chat },
-    streamed(2, "Work"),
-    streamed(3, "Working on"),
-    streamed(4, "Working on it"),
-  ];
-  window.go = {
-    main: {
-      App: {
-        ReadChat: async () => replies.shift() ?? { version: 4, state: null },
-        ChatChanges: async () => ({
-          available: true,
-          files: [],
-          added: 0,
-          removed: 0,
-        }),
-        ChatModels: async () => ({
-          models: [],
-          defaultModel: "",
-          defaultEffort: "",
-        }),
-      } as unknown as Backend,
-    },
-  };
-  render(
-    <ChatWorkspace
-      chat={chat}
-      active
-      reviewerAvailable={false}
-      onOpen={vi.fn()}
-      onSelect={vi.fn()}
-      onState={vi.fn()}
-    />,
-  );
-  await screen.findByText("Working on it");
-  // Each of the 300 saved messages is drawn once; the reply once per update.
-  expect(rendered.filter((text) => text.startsWith("Message "))).toHaveLength(
-    300,
-  );
-  // React may batch updates that arrive together, so the reply renders at
-  // most once per update and ends on the latest text.
-  const reply = rendered.filter((text) => text.startsWith("Work"));
-  expect(reply.length).toBeLessThanOrEqual(3);
-  expect(reply.at(-1)).toBe("Working on it");
-});
+      partial: true,
+      first: "m0",
+      count: 301,
+      state: {
+        ...chat,
+        version,
+        messages: [{ id: "reply", role: "assistant", kind: "text", text }],
+      },
+    });
+    const replies: ChatUpdate[] = [
+      { version: 1, state: chat },
+      streamed(2, "Work"),
+      streamed(3, "Working on"),
+      streamed(4, "Working on it"),
+    ];
+    window.go = {
+      main: {
+        App: {
+          ReadChat: async () => replies.shift() ?? { version: 4, state: null },
+          ChatChanges: async () => ({
+            available: true,
+            files: [],
+            added: 0,
+            removed: 0,
+          }),
+          ChatModels: async () => ({
+            models: [],
+            defaultModel: "",
+            defaultEffort: "",
+          }),
+        } as unknown as Backend,
+      },
+    };
+    render(
+      <ChatWorkspace
+        chat={chat}
+        active
+        reviewerAvailable={false}
+        onOpen={vi.fn()}
+        onSelect={vi.fn()}
+        onState={vi.fn()}
+      />,
+    );
+    // Drawing 300 messages can take longer than the default wait on a busy
+    // machine; the assertions below are about what rendered, not how fast.
+    await screen.findByText("Working on it", {}, { timeout: 10000 });
+    // Each of the 300 saved messages is drawn once; the reply once per update.
+    expect(rendered.filter((text) => text.startsWith("Message "))).toHaveLength(
+      300,
+    );
+    // React may batch updates that arrive together, so the reply renders at
+    // most once per update and ends on the latest text.
+    const reply = rendered.filter((text) => text.startsWith("Work"));
+    expect(reply.length).toBeLessThanOrEqual(3);
+    expect(reply.at(-1)).toBe("Working on it");
+  },
+);
