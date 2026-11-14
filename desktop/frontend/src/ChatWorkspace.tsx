@@ -94,6 +94,7 @@ export default function ChatWorkspace({
     let current: ChatState | undefined;
     let lastStatus = chat.status;
     let lastTitle = chat.title;
+    let lastApprovals = chat.approvals.map((a) => a.id).join();
     // The backend holds each read until the conversation changes, so this loop
     // costs nothing while idle. Updates carry only the messages that changed.
     async function poll() {
@@ -111,10 +112,16 @@ export default function ChatWorkspace({
         if (update.state) {
           current = next;
           setState(next);
-          if (next.status !== lastStatus || next.title !== lastTitle) {
+          const approvals = next.approvals.map((a) => a.id).join();
+          if (
+            next.status !== lastStatus ||
+            next.title !== lastTitle ||
+            approvals !== lastApprovals
+          ) {
             notify.current(next);
             lastStatus = next.status;
             lastTitle = next.title;
+            lastApprovals = approvals;
           }
         }
         // A reply without changes means the backend's wait ran out, or the
