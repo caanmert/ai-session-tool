@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import Markdown from "react-markdown";
 import ModelPicker from "./ModelPicker";
+import DiffViewer from "./DiffViewer";
 import { useChatDraft } from "./useChatDraft";
 import {
   api,
@@ -9,7 +10,6 @@ import {
   type ChatState,
   type ChatApproval,
   type ReviewDraft,
-  type ReviewSnapshot,
 } from "./api";
 
 export const chatBusy = (status: string) =>
@@ -43,7 +43,6 @@ type Props = {
   reviewerAvailable: boolean;
   onOpen: (chat: ChatState) => void;
   onSelect: (id: string) => void;
-  onClose: (id: string) => void;
   onState: (chat: ChatState) => void;
 };
 export default function ChatWorkspace({
@@ -52,7 +51,6 @@ export default function ChatWorkspace({
   reviewerAvailable,
   onOpen,
   onSelect,
-  onClose,
   onState,
 }: Props) {
   const [state, setState] = useState(chat);
@@ -74,6 +72,7 @@ export default function ChatWorkspace({
   const [showDiff, setShowDiff] = useState(false);
   const messages = useRef<HTMLDivElement>(null);
   const following = useRef(true);
+  const [awayFromLatest, setAwayFromLatest] = useState(false);
   const activeRef = useRef(active);
   activeRef.current = active;
   const notify = useRef(onState);
@@ -117,7 +116,7 @@ export default function ChatWorkspace({
   useEffect(() => {
     if (following.current && messages.current)
       messages.current.scrollTop = messages.current.scrollHeight;
-  }, [state.version]);
+  }, [state.version, active]);
   const busy = chatBusy(state.status);
   const other = state.tool === "codex" ? "claude" : "codex";
   async function perform(action: () => Promise<void>) {
@@ -142,6 +141,7 @@ export default function ChatWorkspace({
       updatePrompt("");
       setRetry((n) => n + 1);
       following.current = true;
+      setAwayFromLatest(false);
     });
   }
   return (
@@ -183,21 +183,6 @@ export default function ChatWorkspace({
               }
             >
               Review with {toolLabel(other)}
-            </button>
-          )}
-          {!busy && (
-            <button
-              className="icon-button"
-              aria-label="Close conversation tab"
-              disabled={working}
-              onClick={() =>
-                void perform(async () => {
-                  await api.CloseChat(state.id);
-                  onClose(state.id);
-                })
-              }
-            >
-              ×
             </button>
           )}
         </div>
@@ -263,6 +248,7 @@ export default function ChatWorkspace({
           if (el)
             following.current =
               el.scrollHeight - el.scrollTop - el.clientHeight < 80;
+          setAwayFromLatest(!following.current);
         }}
         aria-live="polite"
         aria-relevant="additions"
@@ -414,6 +400,19 @@ export default function ChatWorkspace({
           </div>
         )}
       </div>
+      {awayFromLatest && (
+        <button
+          className="jump-latest"
+          onClick={() => {
+            following.current = true;
+            setAwayFromLatest(false);
+            if (messages.current)
+              messages.current.scrollTop = messages.current.scrollHeight;
+          }}
+        >
+          Jump to latest ↓
+        </button>
+      )}
       {!!state.approvals.length && (
         <div className="approval-list">
           {state.approvals.map((approval) => (
@@ -729,80 +728,5 @@ function ReviewPreview({
         </button>
       </footer>
     </dialog>
-  );
-}
-function DiffViewer({
-  snapshot,
-  selectedFile,
-  selectedLine,
-  onFile,
-}: {
-  snapshot: ReviewSnapshot;
-  selectedFile: string;
-  selectedLine: number;
-  onFile: (file: string) => void;
-}) {
-  const selected =
-    snapshot.files.find((f) => f.path === selectedFile) || snapshot.files[0];
-  const highlight = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    const row = highlight.current;
-    const container = row?.parentElement;
-    if (selectedLine && row && container) {
-      container.scrollTop +=
-        row.getBoundingClientRect().top -
-        container.getBoundingClientRect().top -
-        container.clientHeight / 2;
-    }
-  }, [selectedFile, selectedLine]);
-  let oldLine = 0,
-    newLine = 0;
-  return (
-    <div className="review-diff">
-      <aside aria-label="Changed files">
-        {snapshot.files.map((file) => (
-          <button
-            className={file.path === selected?.path ? "active" : ""}
-            key={file.path}
-            onClick={() => onFile(file.path)}
-          >
-            {file.path}
-          </button>
-        ))}
-      </aside>
-      <div className="diff-code" aria-label="Reviewed diff">
-        {selected?.patch.split("\n").map((text, index) => {
-          const hunk = text.match(/^@@ -(\d+)(?:,\d+)? \+(\d+)(?:,\d+)? @@/);
-          let old: number | undefined, next: number | undefined;
-          let kind = "meta";
-          if (hunk) {
-            oldLine = Number(hunk[1]);
-            newLine = Number(hunk[2]);
-          } else if (text.startsWith("+") && !text.startsWith("+++")) {
-            kind = "added";
-            next = newLine++;
-          } else if (text.startsWith("-") && !text.startsWith("---")) {
-            kind = "removed";
-            old = oldLine++;
-          } else if (text.startsWith(" ")) {
-            kind = "context";
-            old = oldLine++;
-            next = newLine++;
-          }
-          const focused = !!selectedLine && selectedLine === next;
-          return (
-            <div
-              key={index}
-              ref={focused ? highlight : undefined}
-              className={`diff-line ${kind} ${focused ? "focused" : ""}`}
-            >
-              <span>{old ?? ""}</span>
-              <span>{next ?? ""}</span>
-              <code>{text || " "}</code>
-            </div>
-          );
-        })}
-      </div>
-    </div>
   );
 }

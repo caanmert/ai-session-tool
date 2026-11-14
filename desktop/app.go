@@ -13,6 +13,7 @@ import (
 	"github.com/caanmert/ai-session-tool/internal/application"
 	"github.com/caanmert/ai-session-tool/internal/index"
 	"github.com/caanmert/ai-session-tool/internal/meta"
+	"github.com/caanmert/ai-session-tool/internal/runner"
 )
 
 type App struct {
@@ -22,6 +23,7 @@ type App struct {
 	terminals    *terminals
 	chats        *chatManager
 	chatError    error
+	runs         *runner.Manager
 }
 
 func NewApp() *App { return &App{terminals: newTerminals()} }
@@ -58,6 +60,7 @@ func (a *App) startup(ctx context.Context) {
 	a.service = application.NewService(application.DefaultProviders(), indexPath, dataDir)
 	a.chats = newChats(filepath.Join(dataDir, "desktop-chats"))
 	a.chatError = a.chats.load()
+	a.runs = runner.New(filepath.Join(dataDir, "runs"))
 }
 
 func (a *App) shutdown(context.Context) {
@@ -76,6 +79,24 @@ func (a *App) ready() error {
 	}
 	if a.service == nil {
 		return errors.New("session manager is starting; try again shortly")
+	}
+	return nil
+}
+
+// SetAppearance keeps the native window and WebView surfaces in the same mode.
+func (a *App) SetAppearance(theme string) error {
+	if theme != "light" && theme != "dark" {
+		return errors.New("choose light or dark appearance")
+	}
+	if a.ctx == nil {
+		return errors.New("the window is starting")
+	}
+	if theme == "dark" {
+		wailsruntime.WindowSetDarkTheme(a.ctx)
+		wailsruntime.WindowSetBackgroundColour(a.ctx, 17, 25, 22, 255)
+	} else {
+		wailsruntime.WindowSetLightTheme(a.ctx)
+		wailsruntime.WindowSetBackgroundColour(a.ctx, 246, 247, 243, 255)
 	}
 	return nil
 }

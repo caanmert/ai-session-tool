@@ -3,10 +3,16 @@ import { fileURLToPath } from "node:url";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { mkdir } from "node:fs/promises";
-const { chromium } = await import(
+import { contrastFailures } from "./ui-contrast.mjs";
+const { chromium, webkit } = await import(
   process.env.AIS_PLAYWRIGHT_MODULE || "playwright"
 );
-const browser = await chromium.launch({ channel: "chrome", headless: true });
+const engine = process.env.AIS_BROWSER || "chrome";
+if (!["chrome", "webkit"].includes(engine))
+  throw Error("AIS_BROWSER must be chrome or webkit");
+const browser = await (engine === "webkit"
+  ? webkit.launch({ headless: true })
+  : chromium.launch({ channel: "chrome", headless: true }));
 try {
   const page = await browser.newPage({
     viewport: { width: 1360, height: 900 },
@@ -14,6 +20,13 @@ try {
   });
   const errors = [];
   page.on("pageerror", (e) => errors.push(String(e)));
+  const mode = process.env.AIS_APPEARANCE || "system";
+  const suffix = mode === "dark" ? "-dark" : "";
+  await page.emulateMedia({ colorScheme: "light" });
+  await page.addInitScript((mode) => {
+    if (!localStorage.getItem("ais:appearance:v1"))
+      localStorage.setItem("ais:appearance:v1", mode);
+  }, mode);
   await page.addInitScript(() => {
     const project = "/projects/checkout";
     const source = {
@@ -105,6 +118,7 @@ try {
       },
     };
     const chats = { chat: source, review };
+    window.__aisDemo = { source, review };
     const session = {
       key: "codex/demo",
       id: "demo",
@@ -122,6 +136,7 @@ try {
     window.go = {
       main: {
         App: {
+          SetAppearance: async () => {},
           ChatModels: async (_id, reviewer) => ({
             defaultModel: reviewer ? "claude-demo" : "codex-demo",
             defaultEffort: "medium",
@@ -207,7 +222,8 @@ try {
           },
           ReadChat: async (id, version) => ({
             version: chats[id].version,
-            state: version === chats[id].version ? null : chats[id],
+            state:
+              version === chats[id].version ? null : structuredClone(chats[id]),
           }),
           ResumeChat: async () => source,
           NewChat: async () => source,
@@ -230,12 +246,37 @@ try {
           CloseChat: async (id) => {
             chats[id].closed = true;
           },
-          AnswerChat: async () => {},
+          AnswerChat: async (id) => {
+            chats[id].approvals = [];
+            chats[id].status = "idle";
+            chats[id].version++;
+          },
         },
       },
     };
   });
   await page.goto(process.argv[2] || "http://127.0.0.1:5183");
+  if (mode === "system") {
+    await page.emulateMedia({ colorScheme: "dark" });
+    await page.waitForFunction(
+      () => document.documentElement.dataset.theme === "dark",
+    );
+    await page.emulateMedia({ colorScheme: "light" });
+  }
+  await page.waitForFunction(
+    (mode) =>
+      document.documentElement.dataset.theme ===
+      (mode === "dark" ? "dark" : "light"),
+    mode,
+  );
+  const opposite = mode === "dark" ? "light" : "dark";
+  await page.getByLabel("Appearance", { exact: true }).selectOption(opposite);
+  await page.reload();
+  await page.waitForFunction(
+    (theme) => document.documentElement.dataset.theme === theme,
+    opposite,
+  );
+  await page.getByLabel("Appearance", { exact: true }).selectOption(mode);
   const screenshots =
     process.env.AIS_SCREENSHOT_DIR ||
     fileURLToPath(new URL("../docs/screenshots/", import.meta.url));
@@ -243,7 +284,15 @@ try {
   await page
     .getByRole("heading", { name: "Make checkout retries safe" })
     .waitFor();
-  await page.screenshot({ path: `${screenshots}/desktop-history.png` });
+  const checkContrast = async () => {
+    const failures = await page.evaluate(contrastFailures);
+    if (failures.length)
+      throw Error(`Text contrast: ${JSON.stringify(failures)}`);
+  };
+  await checkContrast();
+  await page.screenshot({
+    path: `${screenshots}/desktop-history${suffix}.png`,
+  });
   await page.setViewportSize({ width: 960, height: 640 });
   await page.getByRole("button", { name: "Pinned 1" }).click();
   await page
@@ -275,7 +324,49 @@ try {
     () =>
       document.querySelector('select[aria-label="Model"]')?.disabled === false,
   );
-  await page.screenshot({ path: `${screenshots}/desktop-chat.png` });
+  await checkContrast();
+  await page.screenshot({ path: `${screenshots}/desktop-chat${suffix}.png` });
+  await page.evaluate(() => {
+    const source = window.__aisDemo.source;
+    source.approvals = [
+      {
+        id: "fixture-approval",
+        title: "Run checkout tests",
+        detail: "npm test -- checkout",
+        questions: [],
+      },
+    ];
+    source.status = "waiting";
+    source.version++;
+  });
+  await page.getByRole("button", { name: "Allow once" }).waitFor();
+  await checkContrast();
+  await page.setViewportSize({ width: 960, height: 640 });
+  await page.screenshot({ path: join(tmpdir(), `ais-approval${suffix}.png`) });
+  const approvalFits = await page.evaluate(
+    () =>
+      document
+        .querySelector(".chat-workspace:not([hidden]) .chat-composer")
+        .getBoundingClientRect().bottom <= innerHeight,
+  );
+  if (!approvalFits) throw Error("Approval composer overflow");
+  await page.getByRole("button", { name: "Allow once" }).click();
+  await page
+    .getByRole("button", { name: "Review with Claude Code" })
+    .waitFor({ state: "visible" });
+  await page.evaluate(() => {
+    window.__aisDemo.source.error =
+      "Fixture error: retry this response after reconnecting.";
+    window.__aisDemo.source.version++;
+  });
+  await page.getByRole("alert").waitFor();
+  await checkContrast();
+  await page.evaluate(() => {
+    window.__aisDemo.source.error = "";
+    window.__aisDemo.source.version++;
+  });
+  await page.getByRole("alert").waitFor({ state: "hidden" });
+  await page.setViewportSize({ width: 1360, height: 900 });
   await page.getByRole("button", { name: "Review with Claude Code" }).click();
   await page.getByRole("dialog").waitFor();
   await page.waitForFunction(
@@ -283,18 +374,24 @@ try {
       document.querySelector('select[aria-label="Reviewer model"]')
         ?.disabled === false,
   );
-  await page.screenshot({ path: `${screenshots}/desktop-review-preview.png` });
+  await checkContrast();
+  await page.screenshot({
+    path: `${screenshots}/desktop-review-preview${suffix}.png`,
+  });
   await page
     .getByRole("button", { name: "Send snapshot to Claude Code" })
     .click();
   await page.getByText("Stop retrying permanent payment failures").waitFor();
-  await page.screenshot({ path: `${screenshots}/desktop-review.png` });
+  await checkContrast();
+  await page.screenshot({ path: `${screenshots}/desktop-review${suffix}.png` });
   await page.getByRole("button", { name: "src/checkout.ts:6" }).click();
   if ((await page.locator(".diff-line.focused").count()) !== 1)
     throw Error("Missing finding highlight");
   await page.setViewportSize({ width: 960, height: 640 });
   await page.screenshot({ path: join(tmpdir(), "ais-review-small.png") });
-  await page.getByRole("button", { name: "Close conversation tab" }).click();
+  await page
+    .getByRole("button", { name: "Close Review with Claude Code", exact: true })
+    .click();
   await page.getByRole("button", { name: "Saved workspace" }).click();
   await page.getByLabel("Saved work type").selectOption("reviews");
   await page
@@ -315,7 +412,10 @@ try {
     path: join(tmpdir(), "ais-saved-workspace-small.png"),
   });
   await page.setViewportSize({ width: 1360, height: 900 });
-  await page.screenshot({ path: `${screenshots}/desktop-saved-workspace.png` });
+  await checkContrast();
+  await page.screenshot({
+    path: `${screenshots}/desktop-saved-workspace${suffix}.png`,
+  });
   await page.keyboard.press("Escape");
   await page
     .getByRole("button", { name: "Saved workspace" })
@@ -339,7 +439,7 @@ try {
       ".chat-workspace:not([hidden]) .chat-messages",
     ).clientHeight,
   }));
-  console.log(JSON.stringify({ errors, overflow, historyOverflow }));
+  console.log(JSON.stringify({ engine, errors, overflow, historyOverflow }));
 
   if (errors.length || overflow.body || overflow.composer) process.exitCode = 1;
 } finally {
