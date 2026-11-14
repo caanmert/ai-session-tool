@@ -7,6 +7,7 @@ import {
   type ReactNode,
 } from "react";
 import Markdown from "react-markdown";
+import RunDashboard from "./RunDashboard";
 import ChatWorkspace, { chatBusy } from "./ChatWorkspace";
 import SavedWorkspace from "./SavedWorkspace";
 import Appearance from "./Appearance";
@@ -129,6 +130,7 @@ export default function App() {
   const [chats, setChats] = useState<ChatState[]>([]);
   const [activeChat, setActiveChat] = useState("");
   const [project, setProject] = useState("");
+  const [showRuns, setShowRuns] = useState(false);
   const [tool, setTool] = useState("all");
   const [historyView, setHistoryView] = useState("all");
   const [historySort, setHistorySort] = useState("recent");
@@ -149,6 +151,7 @@ export default function App() {
   const [newProject, setNewProject] = useState("");
   const [newTool, setNewTool] = useState<ToolName>("codex");
   const searchInput = useRef<HTMLInputElement>(null);
+  const focusHistory = useRef(false);
   const sessionRows = useRef<HTMLDivElement>(null);
   const modal = useRef<HTMLDivElement>(null);
   const newButton = useRef<HTMLButtonElement>(null);
@@ -221,6 +224,7 @@ export default function App() {
     }
   }
   function openChat(chat: ChatState) {
+    setShowRuns(false);
     setChats((items) =>
       items.some((item) => item.id === chat.id)
         ? items.map((item) => (item.id === chat.id ? chat : item))
@@ -330,15 +334,20 @@ export default function App() {
   }, [project, selected, snapshot]);
   useEffect(() => {
     function key(event: KeyboardEvent) {
-      if (showLibrary) return;
+      if (showLibrary || document.querySelector("dialog[open]")) return;
       if (
         (event.metaKey || event.ctrlKey) &&
         event.key.toLowerCase() === "k" &&
         !showNew
       ) {
         event.preventDefault();
+        focusHistory.current = true;
+        setShowRuns(false);
         setActiveChat("");
-        searchInput.current?.focus();
+        if (!activeChat && !showRuns) {
+          searchInput.current?.focus();
+          focusHistory.current = false;
+        }
       }
       if (
         (event.metaKey || event.ctrlKey) &&
@@ -372,7 +381,13 @@ export default function App() {
     }
     document.addEventListener("keydown", key);
     return () => document.removeEventListener("keydown", key);
-  }, [showNew, showLibrary, busy, openNew, snapshot]);
+  }, [showNew, showLibrary, busy, openNew, snapshot, activeChat, showRuns]);
+  useEffect(() => {
+    if (focusHistory.current && !activeChat && !showRuns) {
+      searchInput.current?.focus();
+      focusHistory.current = false;
+    }
+  }, [activeChat, showRuns]);
   useEffect(() => {
     if (showNew) modal.current?.querySelector<HTMLElement>("button")?.focus();
   }, [showNew]);
@@ -411,6 +426,7 @@ export default function App() {
         items.some((item) => item.id === live.id) ? items : [...items, live],
       );
       setActiveChat(live.id);
+      setShowRuns(false);
       setShowNew(false);
       setToast("");
     } catch (e) {
@@ -445,9 +461,10 @@ export default function App() {
         </div>
         <div className="sidebar-main">
           <button
-            className={`nav-all ${!project ? "active" : ""}`}
+            className={`nav-all ${!project && !showRuns ? "active" : ""}`}
             onClick={() => {
               setActiveChat("");
+              setShowRuns(false);
               setProject("");
               setQuery("");
             }}
@@ -459,6 +476,17 @@ export default function App() {
           <button className="nav-saved" onClick={() => setShowLibrary(true)}>
             <Icon name="message" />
             <span>Saved workspace</span>
+          </button>
+          <button
+            className="nav-saved"
+            aria-pressed={showRuns}
+            onClick={() => {
+              setActiveChat("");
+              setShowRuns(true);
+            }}
+          >
+            <Icon name="branch" />
+            <span>Parallel runs</span>
           </button>
           <div className="section-heading">
             <span>PROJECTS</span>
@@ -479,6 +507,7 @@ export default function App() {
                 title={p.path}
                 onClick={() => {
                   setActiveChat("");
+                  setShowRuns(false);
                   setProject(p.path);
                   setQuery("");
                 }}
@@ -531,34 +560,42 @@ export default function App() {
           </div>
         </div>
       </aside>
-      <main className={`workspace ${activeChat ? "has-chat" : ""}`}>
+      <main
+        className={`workspace ${activeChat ? "has-chat" : ""} ${showRuns ? "has-runs" : ""}`}
+      >
         <header className="workspace-header">
           <div>
             <div className="eyebrow">
               WORKSPACE <span>/</span> {project ? "PROJECT" : "ALL PROJECTS"}
             </div>
-            <h1>
+            <h1 hidden={showRuns}>
               {activeChat
                 ? basename(activeConversation?.project || "") || "Workspace"
                 : project
                   ? currentProject?.name || basename(project)
                   : "Your conversations"}
             </h1>
+            {showRuns && <h1>Parallel runs</h1>}
             <p title={project}>
-              {project ||
-                "Every conversation. Every project. One place to pick up where you left off."}
+              {showRuns
+                ? project ||
+                  "Launch independent tasks and review their changes."
+                : project ||
+                  "Every conversation. Every project. One place to pick up where you left off."}
             </p>
           </div>
-          <button
-            ref={newButton}
-            className="button primary"
-            onClick={openNew}
-            disabled={!snapshot || busy}
-          >
-            <Icon name="plus" size={17} /> New session
-          </button>
+          {!showRuns && (
+            <button
+              ref={newButton}
+              className="button primary"
+              onClick={openNew}
+              disabled={!snapshot || busy}
+            >
+              <Icon name="plus" size={17} /> New session
+            </button>
+          )}
         </header>
-        <div className="toolbar" hidden={!!activeChat}>
+        <div className="toolbar" hidden={!!activeChat || showRuns}>
           <label className="search">
             <Icon name="search" />
             <input
@@ -620,7 +657,7 @@ export default function App() {
             <Icon name="refresh" />
           </button>
         </div>
-        <div className="history-controls" hidden={!!activeChat}>
+        <div className="history-controls" hidden={!!activeChat || showRuns}>
           <div
             className="history-views"
             role="group"
@@ -711,7 +748,7 @@ export default function App() {
           <ChatWorkspace
             key={live.id}
             chat={live}
-            active={activeChat === live.id}
+            active={activeChat === live.id && !showRuns}
             reviewerAvailable={
               !!snapshot?.tools.some((t) => t.name !== live.tool && t.available)
             }
@@ -725,7 +762,14 @@ export default function App() {
             onState={chatChanged}
           />
         ))}
-        <div className="session-workspace" hidden={!!activeChat}>
+        {showRuns && (
+          <RunDashboard
+            project={project}
+            projects={snapshot?.projects || []}
+            tools={snapshot?.tools || []}
+          />
+        )}
+        <div className="session-workspace" hidden={!!activeChat || showRuns}>
           <section className="session-list" aria-label="Conversations">
             <div className="list-heading">
               <span>

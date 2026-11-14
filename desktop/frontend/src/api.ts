@@ -150,6 +150,40 @@ export type ChatState = {
   version: number;
 };
 export type ChatUpdate = { version: number; state: ChatState | null };
+export type RunTask = {
+  prompt: string;
+  branch: string;
+  path: string;
+  window: string;
+};
+export type Run = {
+  id: string;
+  tool: ToolName;
+  repository: string;
+  base: string;
+  createdAt: string;
+  notifications: boolean;
+  tasks: RunTask[];
+};
+export type RunTaskStatus = {
+  task: RunTask;
+  state: string;
+  pane?: string;
+  exitCode?: number;
+  signal?: string;
+  attention: boolean;
+  quiet: boolean;
+  currentBranch?: string;
+  files: { status: string; path: string }[];
+  error?: string;
+};
+export type RunStatus = {
+  id: string;
+  base: string;
+  tasks: RunTaskStatus[];
+  warning?: string;
+};
+export type RunPatch = { patch: string; truncated: boolean };
 export type ChatSummary = {
   id: string;
   tool: ToolName;
@@ -206,6 +240,12 @@ export interface Backend {
   ResizeTerminal(id: string, cols: number, rows: number): Promise<void>;
   StopTerminal(id: string): Promise<void>;
   CloseTerminal(id: string): Promise<void>;
+  ListRuns(): Promise<Run[]>;
+  RunStatus(id: string): Promise<RunStatus>;
+  RunDiff(id: string, task: string, file: string): Promise<RunPatch>;
+  StartRun(project: string, tool: ToolName, prompts: string[]): Promise<Run>;
+  StopRun(id: string): Promise<void>;
+  RunAttachCommand(id: string, task: string): Promise<string>;
 }
 declare global {
   interface Window {
@@ -254,6 +294,13 @@ export const api: Backend = {
     backend().ResizeTerminal(id, cols, rows),
   StopTerminal: async (id) => backend().StopTerminal(id),
   CloseTerminal: async (id) => backend().CloseTerminal(id),
+  ListRuns: async () => backend().ListRuns(),
+  RunStatus: async (id) => backend().RunStatus(id),
+  RunDiff: async (id, task, file) => backend().RunDiff(id, task, file),
+  StartRun: async (project, tool, prompts) =>
+    backend().StartRun(project, tool, prompts),
+  StopRun: async (id) => backend().StopRun(id),
+  RunAttachCommand: async (id, task) => backend().RunAttachCommand(id, task),
 };
 export const toolLabel = (tool: string) =>
   tool === "claude" ? "Claude Code" : "Codex";

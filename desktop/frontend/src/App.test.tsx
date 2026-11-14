@@ -129,6 +129,12 @@ beforeEach(() => {
     ResizeTerminal: vi.fn(),
     StopTerminal: vi.fn(),
     CloseTerminal: vi.fn(),
+    ListRuns: vi.fn().mockResolvedValue([]),
+    RunStatus: vi.fn(),
+    RunDiff: vi.fn(),
+    StartRun: vi.fn(),
+    StopRun: vi.fn(),
+    RunAttachCommand: vi.fn(),
   };
   window.go = { main: { App: backend } };
 });
@@ -351,6 +357,25 @@ describe("desktop workflows", () => {
     expect(document.querySelector(".messages img")).toBeNull();
     expect(document.querySelector(".messages script")).toBeNull();
     expect(document.querySelector(".messages a")).toBeNull();
+  });
+  it("returns from runs to history search after the view becomes visible", async () => {
+    render(<App />);
+    await screen.findByRole("heading", { name: "Retry webhook delivery" });
+    await userEvent.click(
+      screen.getByRole("button", { name: "Parallel runs" }),
+    );
+    await screen.findByText("No runs yet");
+    fireEvent.keyDown(document, { key: "k", metaKey: true });
+    await waitFor(() =>
+      expect(
+        screen.getByRole("textbox", { name: "Search sessions" }),
+      ).toHaveFocus(),
+    );
+    screen.getByRole("textbox", { name: "Search sessions" }).blur();
+    fireEvent.keyDown(document, { key: "k", metaKey: true });
+    expect(
+      screen.getByRole("textbox", { name: "Search sessions" }),
+    ).toHaveFocus();
   });
   it("opens saved desktop work without starting or resuming a provider", async () => {
     backend.ListSavedChats = vi.fn().mockResolvedValue([

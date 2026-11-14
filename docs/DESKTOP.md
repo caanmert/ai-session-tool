@@ -242,6 +242,48 @@ changes must be narrowed first. Findings must reference files and visible lines
 in the snapshot, or use line zero for a file-level observation. Invalid reviewer
 output is shown as an error and cannot be handed back as accepted findings.
 
+## Parallel runs
+
+Choose **Parallel runs** in the sidebar to monitor saved runs from the CLI or
+desktop. Filter by project, select a run and task, then choose **All changes** or
+a changed file. The dashboard shows the pane's process state, exit code, current
+branch, worktree path, changed files and separate event/silence alerts. Missing
+worktrees are reported per task; Git review remains available when tmux cannot
+be inspected. Status refreshes every five seconds while the dashboard is open,
+preserving task and file selection. **Refresh runs** also reloads saved manifests.
+
+**Copy attach command** copies a tmux command for the selected task when its
+pane is available. Paste it into a new terminal outside an existing tmux session
+to answer questions or approvals in the agent's normal UI. The ais CLI is not
+required. Copying does not execute the command or start another agent.
+
+Use **New parallel run** to choose a project and agent and enter independent
+task prompts. Each task gets a branch, worktree and tmux window at the same
+committed HEAD. Uncommitted changes are not copied. The launch action starts
+real local agents with their normal settings and approvals; it requires Git,
+tmux and the chosen agent on PATH. There is no automatic commit or merge.
+If setup fails partway through, saved manifests and work remain discoverable.
+
+**Stop run…** opens a confirmation before terminating that run's tmux session.
+Branches, worktrees and saved changes remain. A daemon-backed provider may
+continue after its terminal exits; pane state and alerts do not prove it has
+finished or is still waiting. Stop or pause agents before treating a diff as
+final. A stopped run remains reviewable. Patch display is limited to 512 KiB;
+select a file or use `ais run diff <id>` for the complete output.
+
+![Desktop parallel run status and file review](screenshots/desktop-runs-light.png)
+
+The fixture-only browser check is reproducible with:
+
+```sh
+AIS_PLAYWRIGHT_MODULE=/tmp/ais-ui-check/node_modules/playwright/index.mjs \
+  node scripts/run-screenshots.mjs
+```
+
+It checks task/file selection, refresh, missing worktrees, explicit stop
+confirmation, multiline task launch and the minimum window size, without
+launching a provider or tmux. `AIS_SCREENSHOT_DIR` chooses an output directory.
+
 ## Agent discovery and local data
 
 Finder does not load shell startup files. The app checks its inherited `PATH`
@@ -368,7 +410,7 @@ output folder for validation without replacing documentation images.
 ## Current scope
 
 The desktop app provides history browsing, graphical conversations and a
-cross-provider review/fix workflow on macOS. Parallel-run dashboards, GUI editing
+cross-provider review/fix workflow and parallel-run dashboard on macOS. GUI editing
 of tags and titles, attachment support, full provider slash-command
 parity, Windows/Linux support, and signed releases remain
 future work. The CLI retains its session-management and parallel-task workflows.

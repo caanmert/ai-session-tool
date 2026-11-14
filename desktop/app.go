@@ -13,6 +13,7 @@ import (
 	"github.com/caanmert/ai-session-tool/internal/application"
 	"github.com/caanmert/ai-session-tool/internal/index"
 	"github.com/caanmert/ai-session-tool/internal/meta"
+	"github.com/caanmert/ai-session-tool/internal/runner"
 )
 
 type App struct {
@@ -22,6 +23,7 @@ type App struct {
 	terminals    *terminals
 	chats        *chatManager
 	chatError    error
+	runs         *runner.Manager
 }
 
 func NewApp() *App { return &App{terminals: newTerminals()} }
@@ -58,6 +60,7 @@ func (a *App) startup(ctx context.Context) {
 	a.service = application.NewService(application.DefaultProviders(), indexPath, dataDir)
 	a.chats = newChats(filepath.Join(dataDir, "desktop-chats"))
 	a.chatError = a.chats.load()
+	a.runs = runner.New(filepath.Join(dataDir, "runs"))
 }
 
 func (a *App) shutdown(context.Context) {
