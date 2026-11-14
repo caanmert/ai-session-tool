@@ -124,6 +124,7 @@ beforeEach(() => {
     CloseChat: vi.fn(),
     AnswerChat: vi.fn(),
     PrepareReview: vi.fn(),
+    PickFiles: vi.fn(),
     ChatChanges: vi
       .fn()
       .mockResolvedValue({ available: true, files: [], added: 0, removed: 0 }),

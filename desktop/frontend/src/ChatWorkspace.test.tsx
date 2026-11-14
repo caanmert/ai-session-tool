@@ -67,6 +67,7 @@ beforeEach(() => {
     CloseChat: vi.fn().mockResolvedValue(undefined),
     AnswerChat: vi.fn().mockResolvedValue(undefined),
     PrepareReview: vi.fn().mockResolvedValue(draft),
+    PickFiles: vi.fn().mockResolvedValue([]),
     ChatChanges: vi.fn().mockResolvedValue({
       available: true,
       files: [
@@ -495,6 +496,31 @@ describe("graphical conversations", () => {
       false,
       {},
     );
+  });
+  it("adds chosen file paths to the message without sending it", async () => {
+    backend.PickFiles = vi
+      .fn()
+      .mockResolvedValueOnce(["src/app.ts", "docs/release notes.md"])
+      .mockResolvedValueOnce([]);
+    show();
+    const message = screen.getByLabelText("Message agent");
+    await userEvent.type(message, "Compare");
+    await userEvent.click(
+      screen.getByRole("button", { name: "Mention files" }),
+    );
+    await waitFor(() =>
+      expect(message).toHaveValue(
+        'Compare src/app.ts "docs/release notes.md" ',
+      ),
+    );
+    expect(message).toHaveFocus();
+    // Canceling the picker changes nothing.
+    await userEvent.click(
+      screen.getByRole("button", { name: "Mention files" }),
+    );
+    expect(backend.PickFiles).toHaveBeenCalledTimes(2);
+    expect(message).toHaveValue('Compare src/app.ts "docs/release notes.md" ');
+    expect(backend.SendChat).not.toHaveBeenCalled();
   });
   it("requires question answers and submits only one approval decision", async () => {
     state = {
