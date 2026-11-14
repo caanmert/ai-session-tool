@@ -227,6 +227,8 @@ export type ChatSummary = {
 };
 export interface Backend {
   SetAppearance(theme: "light" | "dark"): Promise<void>;
+  /** Dock badge with the number of conversations waiting; `alert` bounces the icon. */
+  SetAttention(count: number, alert: boolean): Promise<void>;
   ChatModels(
     id: string,
     reviewer: boolean,
@@ -291,6 +293,7 @@ function backend(): Backend {
 }
 export const api: Backend = {
   SetAppearance: async (theme) => backend().SetAppearance(theme),
+  SetAttention: async (count, alert) => backend().SetAttention(count, alert),
   ChatModels: async (id, reviewer, refresh) =>
     backend().ChatModels(id, reviewer, refresh),
   SetChatSettings: async (id, settings, reviewer) =>

@@ -1,4 +1,3 @@
-import type { KeyboardEvent, RefObject } from "react";
 import Icon from "../Icon";
 import type { Snapshot } from "../api";
 
@@ -6,22 +5,16 @@ export default function TopBar({
   snapshot,
   project,
   busy,
-  query,
-  searchInput,
   onProject,
   onAddProject,
-  onQuery,
-  onSearchKey,
+  onSearch,
 }: {
   snapshot?: Snapshot;
   project: string;
   busy: boolean;
-  query: string;
-  searchInput: RefObject<HTMLInputElement | null>;
   onProject: (path: string) => void;
   onAddProject: () => void;
-  onQuery: (query: string) => void;
-  onSearchKey: (event: KeyboardEvent<HTMLInputElement>) => void;
+  onSearch: () => void;
 }) {
   return (
     <header className="top-bar">
@@ -56,31 +49,11 @@ export default function TopBar({
           <Icon name="plus" size={15} />
         </button>
       </div>
-      <label className="search">
+      <button className="search" aria-haspopup="dialog" onClick={onSearch}>
         <Icon name="search" size={15} />
-        <input
-          ref={searchInput}
-          aria-label="Search sessions"
-          placeholder="Search conversations, projects, or tags…"
-          value={query}
-          onChange={(e) => onQuery(e.target.value)}
-          onKeyDown={onSearchKey}
-        />
-        {query ? (
-          <button
-            className="icon-button"
-            aria-label="Clear search"
-            onClick={() => {
-              onQuery("");
-              searchInput.current?.focus();
-            }}
-          >
-            <Icon name="close" size={14} />
-          </button>
-        ) : (
-          <kbd>⌘K</kbd>
-        )}
-      </label>
+        <span>Search conversations, projects and actions…</span>
+        <kbd>⌘K</kbd>
+      </button>
     </header>
   );
 }

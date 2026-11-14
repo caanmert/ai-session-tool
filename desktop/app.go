@@ -24,9 +24,11 @@ type App struct {
 	chats        *chatManager
 	chatError    error
 	runs         *runner.Manager
+	// dockAttention updates the Dock icon; replaced in tests.
+	dockAttention func(count int, alert bool)
 }
 
-func NewApp() *App { return &App{terminals: newTerminals()} }
+func NewApp() *App { return &App{terminals: newTerminals(), dockAttention: setDockAttention} }
 
 func (a *App) startup(ctx context.Context) {
 	a.ctx = ctx
@@ -97,6 +99,22 @@ func (a *App) SetAppearance(theme string) error {
 	} else {
 		wailsruntime.WindowSetLightTheme(a.ctx)
 		wailsruntime.WindowSetBackgroundColour(a.ctx, 250, 250, 249, 255) // --canvas, light
+	}
+	return nil
+}
+
+// SetAttention shows how many conversations are waiting for the user on the
+// Dock icon. With alert set, the icon also bounces once if the app is in the
+// background. No notification permission is involved.
+func (a *App) SetAttention(count int, alert bool) error {
+	if a.ctx == nil {
+		return errors.New("the app is still starting")
+	}
+	if count < 0 {
+		count = 0
+	}
+	if a.dockAttention != nil {
+		a.dockAttention(count, alert)
 	}
 	return nil
 }

@@ -319,6 +319,17 @@ try {
   await page.screenshot({
     path: `${screenshots}/desktop-history${suffix}.png`,
   });
+  // Command palette: opens with the keyboard, filters, closes with Escape.
+  await page.keyboard.press("ControlOrMeta+k");
+  const palette = page.getByRole("dialog", { name: "Search and commands" });
+  await palette.waitFor();
+  await page.keyboard.type("checkout");
+  await checkContrast();
+  await page.screenshot({
+    path: `${screenshots}/desktop-palette${suffix}.png`,
+  });
+  await page.keyboard.press("Escape");
+  await palette.waitFor({ state: "detached" });
   await resize(960, 640);
   await page.getByRole("button", { name: "Pinned 1" }).click();
   await page
