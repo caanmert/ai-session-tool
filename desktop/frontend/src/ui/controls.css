@@ -1,0 +1,86 @@
+/* Shared controls: buttons, chips, keyboard hints. Tokens only. */
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-height: 32px;
+  padding: 0 12px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-control);
+  font-size: var(--text-md);
+  font-weight: 550;
+  white-space: nowrap;
+}
+/* One primary action per area: near-black in light, near-white in dark. */
+.button.primary,
+.button.accent {
+  background: var(--brand);
+  color: var(--on-brand);
+}
+.button.primary:hover:not(:disabled),
+.button.accent:hover:not(:disabled) {
+  background: var(--brand-hover);
+}
+.button.secondary,
+.button.subtle {
+  background: var(--surface);
+  border-color: var(--border-strong);
+  color: var(--text);
+}
+.button.secondary:hover:not(:disabled),
+.button.subtle:hover:not(:disabled) {
+  background: var(--surface-hover);
+}
+.button.danger {
+  background: var(--danger-button);
+  color: var(--on-danger);
+}
+.button kbd {
+  margin-left: 2px;
+  border-color: transparent;
+  padding: 0;
+  color: inherit;
+  opacity: 0.7;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 24px;
+  padding: 0 9px;
+  border-radius: var(--radius-pill);
+  background: var(--surface-hover);
+  color: var(--text);
+  font-size: var(--text-sm);
+  font-weight: 500;
+  white-space: nowrap;
+}
+.chip.agent.claude {
+  background: var(--agent-claude-soft);
+  color: var(--agent-claude-text);
+}
+.chip.agent.codex {
+  background: var(--agent-codex-soft);
+  color: var(--agent-codex-text);
+}
+.chip.status.waiting {
+  background: var(--warning-soft);
+  color: var(--warning-text);
+}
+.chip.status.waiting svg {
+  color: var(--warning);
+}
+.chip.status.error {
+  background: var(--danger-soft);
+  color: var(--danger-text);
+}
+.chip.status.running::before,
+.chip.status.stopping::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--success);
+}

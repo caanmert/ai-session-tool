@@ -93,9 +93,10 @@ export default function Sidebar({
       <div className="sidebar-scroll">
         <h2 className="section-label">Agents</h2>
         {snapshot?.tools.map((tool) => {
-          const running = chats.filter(
-            (chat) => chat.tool === tool.name && busyChat(chat.status),
-          ).length;
+          const mine = chats.filter((chat) => chat.tool === tool.name);
+          const waiting = mine.filter((c) => c.status === "waiting").length;
+          const running =
+            mine.filter((c) => busyChat(c.status)).length - waiting;
           return (
             <div
               className="agent-row"
@@ -105,7 +106,13 @@ export default function Sidebar({
               <AgentMark tool={tool.name} dot />
               <span>{toolLabel(tool.name)}</span>
               {tool.available ? (
-                <small>{running ? `${running} running` : "Ready"}</small>
+                <small>
+                  {running
+                    ? `${running} running`
+                    : waiting
+                      ? `${waiting} waiting`
+                      : "Ready"}
+                </small>
               ) : (
                 <small className="missing">
                   <Icon name="alert" size={12} /> Not found
