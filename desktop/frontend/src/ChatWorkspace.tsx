@@ -173,6 +173,25 @@ export default function ChatWorkspace({
     return () => document.removeEventListener("keydown", key);
   }, [active, narrow]);
   const other = state.tool === "codex" ? "claude" : "codex";
+  // Add the paths of chosen files to the message. The agent opens them itself;
+  // nothing is uploaded or copied.
+  async function mentionFiles() {
+    try {
+      const paths = await api.PickFiles(state.id);
+      if (!paths.length) return;
+      const mentions = paths
+        .map((path) => (/\s/.test(path) ? `"${path}"` : path))
+        .join(" ");
+      updatePrompt(
+        prompt && !/\s$/.test(prompt)
+          ? `${prompt} ${mentions} `
+          : `${prompt}${mentions} `,
+      );
+      input.current?.focus();
+    } catch (e) {
+      setError(errorText(e));
+    }
+  }
   async function perform(action: () => Promise<void>) {
     if (operation.current || settingsOperation.current) return;
     operation.current = true;
@@ -532,6 +551,18 @@ export default function ChatWorkspace({
             />
           )}
           <div className="composer-footer">
+            {!state.review && (
+              <button
+                type="button"
+                className="icon-button"
+                aria-label="Mention files"
+                title="Mention files: adds their paths to your message"
+                disabled={working}
+                onClick={() => void mentionFiles()}
+              >
+                <Icon name="paperclip" size={16} />
+              </button>
+            )}
             <span>
               {state.review
                 ? "Reviewing a fixed snapshot of your uncommitted changes."

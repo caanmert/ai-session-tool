@@ -429,7 +429,9 @@ output folder for validation without replacing documentation images.
 The desktop app provides history browsing, graphical conversations and a
 cross-provider review/fix workflow and parallel-run dashboard on macOS. Titles,
 pins and tags can be edited from the History preview; they are ais annotations
-shared with the CLI, and the agent's own transcript is not changed. Attachment
-support, full provider slash-command
+shared with the CLI, and the agent's own transcript is not changed. The paperclip
+in the composer adds the paths of chosen files to your message; the agent opens
+them itself and nothing is uploaded. Image and binary attachments, full provider
+slash-command
 parity, Windows/Linux support, and signed releases remain
 future work. The CLI retains its session-management and parallel-task workflows.
