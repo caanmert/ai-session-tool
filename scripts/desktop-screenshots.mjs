@@ -401,6 +401,22 @@ try {
         .getBoundingClientRect().bottom <= innerHeight,
   );
   if (!approvalFits) throw Error("Approval composer overflow");
+  // The board shows the same request and stays inside the minimum window.
+  await page.getByRole("button", { name: /^Agents board/ }).click();
+  const board = page.getByRole("region", { name: "Agents board" });
+  await board.getByText("Needs approval").waitFor();
+  await checkContrast();
+  if (await page.evaluate(() => document.body.scrollWidth > innerWidth))
+    throw Error("The board overflows the minimum window");
+  await page.screenshot({
+    path: join(tmpdir(), `ais-board-small${suffix}.png`),
+  });
+  await resize(1360, 900);
+  await page.screenshot({ path: `${screenshots}/desktop-board${suffix}.png` });
+  await resize(960, 640);
+  await board
+    .getByRole("button", { name: "Make checkout retries safe" })
+    .click();
   await page.getByRole("button", { name: "Allow once" }).click();
   await page
     .getByRole("button", { name: "Review with Claude Code" })

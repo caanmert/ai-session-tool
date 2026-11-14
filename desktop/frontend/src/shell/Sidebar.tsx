@@ -9,12 +9,15 @@ function NavItem({
   label,
   current,
   count,
+  attention,
   onClick,
 }: {
   icon: IconName;
   label: string;
   current?: boolean;
   count?: ReactNode;
+  /** The count is something waiting for the user. */
+  attention?: boolean;
   onClick: () => void;
 }) {
   return (
@@ -25,7 +28,9 @@ function NavItem({
     >
       <Icon name={icon} size={17} />
       <span>{label}</span>
-      {count !== undefined && <b>{count}</b>}
+      {count !== undefined && (
+        <b className={attention ? "needs" : undefined}>{count}</b>
+      )}
     </button>
   );
 }
@@ -43,10 +48,11 @@ export default function Sidebar({
   onRuns,
   onSaved,
   onSettings,
+  onBoard,
   onSelectChat,
   onCloseChat,
 }: {
-  view: "history" | "runs" | "settings" | "chat";
+  view: "history" | "runs" | "settings" | "board" | "chat";
   snapshot?: Snapshot;
   chats: ChatState[];
   activeChat: string;
@@ -58,6 +64,7 @@ export default function Sidebar({
   onRuns: () => void;
   onSaved: () => void;
   onSettings: () => void;
+  onBoard: () => void;
   onSelectChat: (id: string) => void;
   onCloseChat: (id: string) => void;
 }) {
@@ -81,6 +88,14 @@ export default function Sidebar({
           current={view === "history"}
           count={snapshot?.sessions.length ?? "—"}
           onClick={onHistory}
+        />
+        <NavItem
+          icon="grid"
+          label="Agents board"
+          current={view === "board"}
+          count={needsYou || undefined}
+          attention={needsYou > 0}
+          onClick={onBoard}
         />
         <NavItem
           icon="branch"

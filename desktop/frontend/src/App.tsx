@@ -5,6 +5,7 @@ import ChatWorkspace, { chatBusy } from "./ChatWorkspace";
 import SavedWorkspace from "./SavedWorkspace";
 import { useAppearance } from "./Appearance";
 import Settings from "./settings/Settings";
+import Board from "./board/Board";
 import TopBar from "./shell/TopBar";
 import Sidebar from "./shell/Sidebar";
 import AgentsMissing from "./shell/AgentsMissing";
@@ -43,6 +44,12 @@ function tokens(session: Session) {
     maximumFractionDigits: 1,
   }).format(u.input + u.output + u.cacheRead + u.cacheWrite);
 }
+function boardSummary(chats: ChatState[]) {
+  if (!chats.length) return "Open conversations appear here, grouped by state.";
+  const count = (...statuses: string[]) =>
+    chats.filter((chat) => statuses.includes(chat.status)).length;
+  return `${count("running", "stopping")} working · ${count("waiting")} need you · ${chats.length} open`;
+}
 function basename(path: string) {
   return path.split("/").filter(Boolean).at(-1) || path;
 }
@@ -53,7 +60,9 @@ export default function App() {
   const [activeChat, setActiveChat] = useState("");
   const [project, setProject] = useState("");
   // The page behind any open conversation: History, Parallel runs or Settings.
-  const [page, setPage] = useState<"history" | "runs" | "settings">("history");
+  const [page, setPage] = useState<"history" | "runs" | "settings" | "board">(
+    "history",
+  );
   const showRuns = page === "runs";
   const otherPage = page !== "history";
   const setShowRuns = useCallback(
@@ -308,6 +317,16 @@ export default function App() {
         },
       },
       {
+        id: "board",
+        group: "Actions",
+        label: "Agents board",
+        icon: "grid",
+        run: () => {
+          setActiveChat("");
+          setPage("board");
+        },
+      },
+      {
         id: "settings",
         group: "Actions",
         label: "Settings",
@@ -504,6 +523,10 @@ export default function App() {
           setActiveChat("");
           setPage("settings");
         }}
+        onBoard={() => {
+          setActiveChat("");
+          setPage("board");
+        }}
         onNew={openNew}
         onHistory={showHistory}
         onRuns={() => {
@@ -525,20 +548,24 @@ export default function App() {
             <h1>
               {page === "settings"
                 ? "Settings"
-                : showRuns
-                  ? "Parallel runs"
-                  : project
-                    ? currentProject?.name || basename(project)
-                    : "Your conversations"}
+                : page === "board"
+                  ? "Agents board"
+                  : showRuns
+                    ? "Parallel runs"
+                    : project
+                      ? currentProject?.name || basename(project)
+                      : "Your conversations"}
             </h1>
             <p title={project}>
               {page === "settings"
                 ? "Appearance, agents and shortcuts for this Mac."
-                : showRuns
-                  ? project ||
-                    "Launch independent tasks and review their changes."
-                  : project ||
-                    "Every conversation. Every project. One place to pick up where you left off."}
+                : page === "board"
+                  ? boardSummary(chats)
+                  : showRuns
+                    ? project ||
+                      "Launch independent tasks and review their changes."
+                    : project ||
+                      "Every conversation. Every project. One place to pick up where you left off."}
             </p>
           </header>
         )}
@@ -698,6 +725,16 @@ export default function App() {
             onState={chatChanged}
           />
         ))}
+        {page === "board" && (
+          <Board
+            chats={chats}
+            tools={snapshot?.tools || []}
+            onOpen={(id) => {
+              setPage("history");
+              setActiveChat(id);
+            }}
+          />
+        )}
         {page === "settings" && (
           <Settings
             appearance={appearance}
