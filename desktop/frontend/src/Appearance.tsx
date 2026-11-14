@@ -13,7 +13,17 @@ function read(): Appearance {
   return "system";
 }
 
-export default function Appearance() {
+export type AppearanceControl = {
+  mode: Appearance;
+  error: string;
+  choose: (next: Appearance) => void;
+};
+
+/**
+ * Applies the appearance for the whole app and follows the system setting.
+ * Call it once, high in the tree, so it keeps working on every page.
+ */
+export function useAppearance(): AppearanceControl {
   const [mode, setMode] = useState<Appearance>(read);
   const [systemDark, setSystemDark] = useState(
     () => window.matchMedia?.("(prefers-color-scheme: dark)").matches || false,
@@ -51,6 +61,11 @@ export default function Appearance() {
       setError("Appearance changed for this visit. It could not be saved.");
     }
   }
+  return { mode, error, choose };
+}
+
+/** The System / Light / Dark control. */
+export function AppearanceSetting({ mode, error, choose }: AppearanceControl) {
   return (
     <div className="appearance">
       <label htmlFor="appearance">Appearance</label>
@@ -66,4 +81,9 @@ export default function Appearance() {
       {error && <p role="status">{error}</p>}
     </div>
   );
+}
+
+/** Self-contained control, for use where no parent owns the appearance. */
+export default function Appearance() {
+  return <AppearanceSetting {...useAppearance()} />;
 }

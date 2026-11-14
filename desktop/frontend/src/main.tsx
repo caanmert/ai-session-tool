@@ -7,6 +7,7 @@ import "./ui/controls.css";
 import "./shell/shell.css";
 import "./chat/chat.css";
 import "./chat/details.css";
+import "./settings/settings.css";
 createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
     <App />

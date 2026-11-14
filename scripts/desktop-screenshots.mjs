@@ -296,17 +296,27 @@ try {
     mode,
   );
   const opposite = mode === "dark" ? "light" : "dark";
+  // Appearance lives in Settings and must persist across a reload.
+  await page.getByRole("button", { name: "Settings" }).click();
   await page.getByLabel("Appearance", { exact: true }).selectOption(opposite);
   await page.reload();
   await page.waitForFunction(
     (theme) => document.documentElement.dataset.theme === theme,
     opposite,
   );
+  await page.getByRole("button", { name: "Settings" }).click();
   await page.getByLabel("Appearance", { exact: true }).selectOption(mode);
   const screenshots =
     process.env.AIS_SCREENSHOT_DIR ||
     fileURLToPath(new URL("../docs/screenshots/", import.meta.url));
   await mkdir(screenshots, { recursive: true });
+  const settingsContrast = await page.evaluate(contrastFailures);
+  if (settingsContrast.length)
+    throw Error(`Settings contrast: ${JSON.stringify(settingsContrast)}`);
+  await page.screenshot({
+    path: `${screenshots}/desktop-settings${suffix}.png`,
+  });
+  await page.getByRole("button", { name: /^History/ }).click();
   await page
     .getByRole("heading", { name: "Make checkout retries safe" })
     .waitFor();
