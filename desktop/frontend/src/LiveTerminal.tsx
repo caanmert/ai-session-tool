@@ -13,6 +13,19 @@ type Props = {
 
 // Keep visited terminals mounted while switching tabs: their screen, scrollback,
 // and escape-sequence parser state belong to the running process.
+// xterm needs concrete colors, so read them from the theme tokens.
+function terminalTheme() {
+  const styles = getComputedStyle(document.documentElement);
+  const token = (name: string) =>
+    styles.getPropertyValue(name).trim() || undefined;
+  return {
+    background: token("--terminal-bg"),
+    foreground: token("--terminal-text"),
+    cursor: token("--terminal-strong"),
+    selectionBackground: token("--terminal-selection"),
+  };
+}
+
 export default function LiveTerminal(props: Props) {
   const [visited, setVisited] = useState(props.active);
   useEffect(() => {
@@ -58,12 +71,15 @@ function TerminalScreen({ session, active, onExit, onClose }: Props) {
       cols: 100,
       rows: 30,
       allowProposedApi: false,
-      theme: {
-        background: "#151c19",
-        foreground: "#e5ebe3",
-        cursor: "#b6d2a4",
-        selectionBackground: "#426047",
-      },
+      theme: terminalTheme(),
+    });
+    // Follow appearance changes while the terminal is open.
+    const appearance = new MutationObserver(() => {
+      term.options.theme = terminalTheme();
+    });
+    appearance.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ["data-theme"],
     });
     const fit = new FitAddon();
     term.loadAddon(fit);
@@ -142,6 +158,7 @@ function TerminalScreen({ session, active, onExit, onClose }: Props) {
       clearTimeout(timer);
       clearTimeout(resizeTimer);
       observer.disconnect();
+      appearance.disconnect();
       input.dispose();
       clipboard.dispose();
       controls.current = null;

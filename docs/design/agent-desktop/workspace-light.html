@@ -1,0 +1,278 @@
+<!doctype html>
+<html lang="en">
+<!-- Static export of the ais agent-desktop design. Reference only: do not ship this markup. See README.md. -->
+<head>
+<meta charset="utf-8">
+<title>ais — Agent workspace (light)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#FAFAF9}
+a{color:#3D4249}a:hover{color:#0E0F11}
+</style>
+</head>
+<body>
+<div style="min-height: 980px; background: #FAFAF9; color: #1A1C1F; font-family: Inter, system-ui, sans-serif; font-size: 14px; line-height: 1.45; display: flex; flex-direction: column">
+
+<header style="display: flex; flex-wrap: wrap; align-items: center; gap: 12px; padding: 8px 16px; border-bottom: 1px solid #E2E2DE; background: #F3F3F1">
+<div style="display: flex; align-items: center; gap: 10px">
+<div style="width: 26px; height: 26px; border-radius: 7px; background: #1A1C1F; display: flex; align-items: center; justify-content: center">
+<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12h6l2-6 4 12 2-6h2"></path></svg>
+</div>
+<span style="font-weight: 600; font-size: 15px; letter-spacing: -0.01em">ais</span>
+</div>
+<button type="button" style="display: flex; align-items: center; gap: 8px; min-height: 36px; padding: 0 10px; background: transparent; border: 1px solid #E2E2DE; border-radius: 8px; color: #3D4249; font: inherit; cursor: pointer">
+<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path></svg>
+acme-platform
+<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"></path></svg>
+</button>
+<button type="button" style="flex: 1 1 280px; max-width: 520px; margin: 0 auto; display: flex; align-items: center; gap: 10px; min-height: 36px; padding: 0 12px; background: #FFFFFF; border: 1px solid #E2E2DE; border-radius: 8px; color: #5F6670; font: inherit; cursor: pointer; text-align: left">
+<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-3.5-3.5"></path></svg>
+<span style="flex: 1">Search sessions, files and commands</span>
+<kbd style="font-family: 'JetBrains Mono', monospace; font-size: 11px; padding: 2px 6px; border: 1px solid #D6D6D1; border-radius: 5px; color: #5F6670">⌘K</kbd>
+</button>
+<div style="display: flex; align-items: center; gap: 8px">
+<div style="display: flex; align-items: center; gap: 8px; padding: 6px 10px; border: 1px solid #E2E2DE; border-radius: 8px; font-size: 12px; color: #3D4249">
+<span style="width: 8px; height: 8px; border-radius: 2px; background: #D06A3F"></span>Claude 62%
+<span style="width: 1px; height: 14px; background: #D6D6D1"></span>
+<span style="width: 8px; height: 8px; border-radius: 50%; background: #3B7FE0"></span>Codex 28%
+</div>
+<button type="button" aria-label="Notifications, 2 unread" style="position: relative; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; background: transparent; border: 1px solid #E2E2DE; border-radius: 8px; color: #3D4249; cursor: pointer">
+<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"></path><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"></path></svg>
+<span style="position: absolute; top: 6px; right: 7px; width: 7px; height: 7px; border-radius: 50%; background: #C9850C"></span>
+</button>
+<div style="width: 32px; height: 32px; border-radius: 50%; background: #E4E4E0; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600">DZ</div>
+</div>
+</header>
+
+<div style="flex: 1; display: flex; flex-wrap: wrap; align-items: stretch">
+
+<nav aria-label="Primary" style="flex: 1 1 240px; max-width: 100%; box-sizing: border-box; padding: 14px 12px; border-right: 1px solid #E2E2DE; background: #F3F3F1; display: flex; flex-direction: column; gap: 18px">
+<button type="button" style="display: flex; align-items: center; gap: 8px; min-height: 40px; padding: 0 12px; background: #1A1C1F; color: #FFFFFF; border: 0; border-radius: 8px; font: inherit; font-weight: 600; cursor: pointer">
+<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"></path></svg>
+<span style="flex: 1; text-align: left">New task</span>
+<kbd style="font-family: 'JetBrains Mono', monospace; font-size: 11px; color: #9EA3AA">⌘N</kbd>
+</button>
+<div style="display: flex; flex-direction: column; gap: 2px">
+<a href="workspace-light.html" aria-current="page" style="display: flex; align-items: center; gap: 10px; min-height: 36px; padding: 0 10px; border-radius: 8px; background: #EBEBE8; color: #0E0F11; text-decoration: none; font-weight: 500">
+<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>Workspace</a>
+<a href="board-light.html" style="display: flex; align-items: center; gap: 10px; min-height: 36px; padding: 0 10px; border-radius: 8px; color: #3D4249; text-decoration: none">
+<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="18" rx="1.5"></rect><rect x="14" y="3" width="7" height="11" rx="1.5"></rect></svg><span style="flex: 1">Agents board</span><span style="font-size: 11px; font-weight: 600; padding: 1px 7px; border-radius: 999px; background: rgba(217,147,15,0.16); color: #8A5A00">2</span></a>
+<a href="settings-light.html" style="display: flex; align-items: center; gap: 10px; min-height: 36px; padding: 0 10px; border-radius: 8px; color: #3D4249; text-decoration: none">
+<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>Settings</a>
+</div>
+
+<div style="display: flex; flex-direction: column; gap: 4px">
+<div style="font-size: 11px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: #60666E; padding: 0 10px 4px">Agents</div>
+<div style="display: flex; align-items: center; gap: 10px; min-height: 34px; padding: 0 10px">
+<span style="width: 10px; height: 10px; border-radius: 3px; background: #D06A3F"></span><span style="flex: 1">Claude Code</span><span style="font-size: 12px; color: #5F6670">3 running</span></div>
+<div style="display: flex; align-items: center; gap: 10px; min-height: 34px; padding: 0 10px">
+<span style="width: 10px; height: 10px; border-radius: 50%; background: #3B7FE0"></span><span style="flex: 1">Codex</span><span style="font-size: 12px; color: #5F6670">2 running</span></div>
+<a href="settings-light.html" style="display: flex; align-items: center; gap: 10px; min-height: 34px; padding: 0 10px; color: #5F6670; text-decoration: none; font-size: 13px">
+<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"></path></svg>Add agent</a>
+</div>
+
+<div style="display: flex; flex-direction: column; gap: 2px">
+<div style="font-size: 11px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: #60666E; padding: 0 10px 4px">acme-platform</div>
+<a href="workspace-light.html" style="display: flex; flex-direction: column; gap: 2px; padding: 8px 10px; border-radius: 8px; background: #FFFFFF; border: 1px solid #D6D6D1; text-decoration: none; color: #1A1C1F">
+<span style="font-weight: 500">JWT rotation for auth middleware</span>
+<span style="display: flex; align-items: center; gap: 6px; font-size: 12px; color: #8A5A00"><span style="width: 8px; height: 8px; border-radius: 2px; background: #D06A3F"></span><span style="color: #5F6670">Claude ·</span> Needs approval</span></a>
+<a href="workspace-light.html" style="display: flex; flex-direction: column; gap: 2px; padding: 8px 10px; border-radius: 8px; text-decoration: none; color: #3D4249">
+<span>Fix flaky checkout e2e test</span>
+<span style="display: flex; align-items: center; gap: 6px; font-size: 12px; color: #8A5A00"><span style="width: 8px; height: 8px; border-radius: 50%; background: #3B7FE0"></span><span style="color: #5F6670">Codex ·</span> Has a question</span></a>
+<a href="workspace-light.html" style="display: flex; flex-direction: column; gap: 2px; padding: 8px 10px; border-radius: 8px; text-decoration: none; color: #3D4249">
+<span>Migrate billing webhooks</span>
+<span style="display: flex; align-items: center; gap: 6px; font-size: 12px; color: #5F6670"><span style="width: 8px; height: 8px; border-radius: 2px; background: #D06A3F"></span>Claude · Running · 12m</span></a>
+<a href="workspace-light.html" style="display: flex; flex-direction: column; gap: 2px; padding: 8px 10px; border-radius: 8px; text-decoration: none; color: #3D4249">
+<span>Optimize search query</span>
+<span style="display: flex; align-items: center; gap: 6px; font-size: 12px; color: #5F6670"><span style="width: 8px; height: 8px; border-radius: 2px; background: #D06A3F"></span><span style="width: 8px; height: 8px; border-radius: 50%; background: #3B7FE0; margin-left: -3px"></span>Comparing 2 agents</span></a>
+<a href="workspace-light.html" style="display: flex; flex-direction: column; gap: 2px; padding: 8px 10px; border-radius: 8px; text-decoration: none; color: #3D4249">
+<span>Generate API docs from spec</span>
+<span style="display: flex; align-items: center; gap: 6px; font-size: 12px; color: #5F6670"><span style="width: 8px; height: 8px; border-radius: 2px; background: #D06A3F"></span>Claude · Running · 4m</span></a>
+</div>
+
+<div style="display: flex; flex-direction: column; gap: 2px">
+<div style="font-size: 11px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: #60666E; padding: 0 10px 4px">mobile-app</div>
+<a href="workspace-light.html" style="display: flex; flex-direction: column; gap: 2px; padding: 8px 10px; border-radius: 8px; text-decoration: none; color: #3D4249">
+<span>Dark mode for settings screen</span>
+<span style="display: flex; align-items: center; gap: 6px; font-size: 12px; color: #5F6670"><span style="width: 8px; height: 8px; border-radius: 50%; background: #3B7FE0"></span>Codex · Running · 7m</span></a>
+<a href="workspace-light.html" style="display: flex; flex-direction: column; gap: 2px; padding: 8px 10px; border-radius: 8px; text-decoration: none; color: #3D4249">
+<span>Upgrade navigation library</span>
+<span style="display: flex; align-items: center; gap: 6px; font-size: 12px; color: #5F6670"><span style="width: 8px; height: 8px; border-radius: 2px; border: 1px solid #60666E; box-sizing: border-box"></span>Queued</span></a>
+</div>
+</nav>
+
+<main style="flex: 999 1 560px; min-width: 0; display: flex; flex-direction: column">
+<div style="padding: 18px 28px 0; display: flex; flex-direction: column; gap: 12px; border-bottom: 1px solid #E2E2DE">
+<div style="display: flex; flex-wrap: wrap; align-items: flex-start; gap: 16px">
+<div style="flex: 1 1 320px; min-width: 0; display: flex; flex-direction: column; gap: 6px">
+<div style="display: flex; align-items: center; gap: 6px; font-size: 12px; color: #5F6670; font-family: 'JetBrains Mono', monospace">
+<span>acme-platform</span><span>/</span>
+<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="6" cy="6" r="2.5"></circle><circle cx="6" cy="18" r="2.5"></circle><circle cx="18" cy="8" r="2.5"></circle><path d="M6 8.5v7M18 10.5c0 4-6 3-10.5 6"></path></svg>
+<span>feat/jwt-rotation</span><span style="color: #60666E">· worktree</span>
+</div>
+<h1 style="margin: 0; font-size: 22px; font-weight: 600; letter-spacing: -0.015em">JWT rotation for auth middleware</h1>
+<div style="display: flex; flex-wrap: wrap; align-items: center; gap: 10px; font-size: 12px; color: #5F6670">
+<span style="display: inline-flex; align-items: center; gap: 6px; padding: 3px 9px; border-radius: 999px; background: rgba(208,106,63,0.14); color: #A44A26; font-weight: 500"><span style="width: 8px; height: 8px; border-radius: 2px; background: #D06A3F"></span>Claude Code</span>
+<span style="display: inline-flex; align-items: center; gap: 6px; padding: 3px 9px; border-radius: 999px; background: rgba(217,147,15,0.14); color: #8A5A00; font-weight: 500">
+<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><path d="M10 4v16M14 4v16"></path></svg>Waiting for your approval</span>
+<span>Step 14</span><span>·</span><span>6m 12s</span><span>·</span><span>48k tokens</span>
+</div>
+</div>
+<div style="display: flex; flex-wrap: wrap; gap: 8px">
+<button type="button" style="display: flex; align-items: center; gap: 8px; min-height: 36px; padding: 0 12px; background: transparent; border: 1px solid #D6D6D1; border-radius: 8px; color: #1A1C1F; font: inherit; font-size: 13px; cursor: pointer">
+<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 7h11l-3-3M17 17H6l3 3"></path></svg>Hand off to Codex</button>
+<button type="button" style="display: flex; align-items: center; gap: 8px; min-height: 36px; padding: 0 12px; background: transparent; border: 1px solid #D6D6D1; border-radius: 8px; color: #1A1C1F; font: inherit; font-size: 13px; cursor: pointer">
+<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m16 18 6-6-6-6M8 6l-6 6 6 6"></path></svg>Open in editor</button>
+<button type="button" aria-label="Stop agent" style="width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; background: transparent; border: 1px solid #D6D6D1; border-radius: 8px; color: #1A1C1F; cursor: pointer">
+<svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><rect x="5" y="5" width="14" height="14" rx="2"></rect></svg></button>
+</div>
+</div>
+<div role="tablist" aria-label="Session views" style="display: flex; gap: 4px; margin-bottom: -1px">
+<button type="button" role="tab" aria-selected="true" style="min-height: 40px; padding: 0 12px; background: transparent; border: 0; border-bottom: 2px solid #1A1C1F; color: #0E0F11; font: inherit; font-weight: 500; cursor: pointer">Conversation</button>
+<button type="button" role="tab" aria-selected="false" style="min-height: 40px; padding: 0 12px; background: transparent; border: 0; border-bottom: 2px solid transparent; color: #5F6670; font: inherit; cursor: pointer">Plan</button>
+<button type="button" role="tab" aria-selected="false" style="min-height: 40px; padding: 0 12px; background: transparent; border: 0; border-bottom: 2px solid transparent; color: #5F6670; font: inherit; cursor: pointer">Terminal</button>
+<button type="button" role="tab" aria-selected="false" style="display: flex; align-items: center; gap: 6px; min-height: 40px; padding: 0 12px; background: transparent; border: 0; border-bottom: 2px solid transparent; color: #5F6670; font: inherit; cursor: pointer">Changes <span style="font-size: 11px; padding: 1px 6px; border-radius: 999px; background: #EBEBE8; color: #3D4249">7</span></button>
+</div>
+</div>
+
+<div style="flex: 1; padding: 24px 28px; display: flex; flex-direction: column; gap: 22px; max-width: 860px; width: 100%; box-sizing: border-box">
+
+<div style="display: flex; gap: 12px">
+<div style="flex: none; width: 28px; height: 28px; border-radius: 50%; background: #E4E4E0; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 600">DZ</div>
+<div style="display: flex; flex-direction: column; gap: 4px; padding-top: 3px">
+<div style="font-size: 12px; color: #5F6670">You · 14:02</div>
+<p style="margin: 0; color: #1A1C1F">Rotate the JWT signing keys every 24 hours and keep the previous key valid for verification so existing sessions don't break. Add tests.</p>
+</div>
+</div>
+
+<div style="display: flex; gap: 12px">
+<div style="flex: none; width: 28px; height: 28px; border-radius: 8px; background: rgba(208,106,63,0.16); display: flex; align-items: center; justify-content: center">
+<span style="width: 10px; height: 10px; border-radius: 3px; background: #D06A3F"></span></div>
+<div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 10px; padding-top: 3px">
+<div style="font-size: 12px; color: #5F6670">Claude Code · 14:02</div>
+<p style="margin: 0">I'll map where tokens are signed and verified, add a key store that keeps the current and previous key, then wire rotation into a scheduled job.</p>
+
+<div style="border: 1px solid #E2E2DE; border-radius: 10px; background: #FFFFFF; overflow: hidden">
+<div style="display: flex; align-items: center; gap: 10px; padding: 9px 12px; border-bottom: 1px solid #EDEDEA; font-size: 13px">
+<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#5F6670" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"></path><path d="M14 3v6h6"></path></svg>
+<span style="color: #5F6670">Read</span><code style="font-family: 'JetBrains Mono', monospace; font-size: 12px">src/auth/middleware.ts</code><span style="margin-left: auto; font-size: 12px; color: #60666E">182 lines</span></div>
+<div style="display: flex; align-items: center; gap: 10px; padding: 9px 12px; border-bottom: 1px solid #EDEDEA; font-size: 13px">
+<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#5F6670" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-3.5-3.5"></path></svg>
+<span style="color: #5F6670">Search</span><code style="font-family: 'JetBrains Mono', monospace; font-size: 12px">jwt.sign</code><span style="margin-left: auto; font-size: 12px; color: #60666E">4 matches in 3 files</span></div>
+<div style="display: flex; align-items: center; gap: 10px; padding: 9px 12px; font-size: 13px">
+<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#5F6670" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"></path><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"></path></svg>
+<span style="color: #5F6670">Edit</span><code style="font-family: 'JetBrains Mono', monospace; font-size: 12px">src/auth/keys.ts</code>
+<span style="margin-left: auto; font-family: 'JetBrains Mono', monospace; font-size: 12px"><span style="color: #1A6F3E">+64</span> <span style="color: #B4323A">−12</span></span>
+<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#60666E" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"></path></svg></div>
+<div style="font-family: 'JetBrains Mono', monospace; font-size: 12px; line-height: 1.7; border-top: 1px solid #EDEDEA; padding: 6px 0">
+<div style="display: flex; padding: 0 12px; color: #60666E"><span style="width: 34px">21</span><span>export function getSigningKey() {</span></div>
+<div style="display: flex; padding: 0 12px; background: rgba(208,69,77,0.08); color: #9E2A31"><span style="width: 34px">22</span><span>−  return process.env.JWT_SECRET;</span></div>
+<div style="display: flex; padding: 0 12px; background: rgba(46,158,91,0.1); color: #1B6B3C"><span style="width: 34px">22</span><span>+  return keyStore.current().secret;</span></div>
+<div style="display: flex; padding: 0 12px; background: rgba(46,158,91,0.1); color: #1B6B3C"><span style="width: 34px">23</span><span>+}</span></div>
+<div style="display: flex; padding: 0 12px; background: rgba(46,158,91,0.1); color: #1B6B3C"><span style="width: 34px">24</span><span>+export const verificationKeys = () =&gt; keyStore.active();</span></div>
+</div>
+</div>
+
+<div style="border: 1px solid #E2E2DE; border-radius: 10px; background: #F3F3F1; overflow: hidden">
+<div style="display: flex; align-items: center; gap: 10px; padding: 9px 12px; border-bottom: 1px solid #EDEDEA; font-size: 13px">
+<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#5F6670" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m4 17 6-6-6-6M12 19h8"></path></svg>
+<span style="color: #5F6670">Run</span><code style="font-family: 'JetBrains Mono', monospace; font-size: 12px">pnpm test auth</code>
+<span style="margin-left: auto; display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: #B4323A">
+<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"></path></svg>1 failed</span></div>
+<pre style="margin: 0; padding: 10px 12px; font-family: 'JetBrains Mono', monospace; font-size: 12px; line-height: 1.7; color: #5F6670; white-space: pre-wrap">PASS  test/auth/middleware.test.ts (21)
+FAIL  test/auth/keys.test.ts
+  ✕ verifies tokens signed with previous key
+Tests: 1 failed, 23 passed, 24 total</pre>
+</div>
+
+<p style="margin: 0">The failing test uses a fixture with a single static key. I've updated the fixture and need a migration that adds a <code style="font-family: 'JetBrains Mono', monospace; font-size: 12px; padding: 1px 5px; border-radius: 4px; background: #EBEBE8">signing_keys</code> table.</p>
+
+<div style="border: 1px solid rgba(201,133,12,0.55); border-radius: 12px; background: rgba(217,147,15,0.06); padding: 14px 16px; display: flex; flex-direction: column; gap: 12px">
+<div style="display: flex; align-items: center; gap: 10px">
+<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#C9850C" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2 2 20h20z"></path><path d="M12 9v5M12 17.5v.5"></path></svg>
+<span style="font-weight: 600">Claude Code wants to run a command</span>
+<span style="margin-left: auto; font-size: 12px; color: #5F6670">Touches your local database</span>
+</div>
+<code style="display: block; font-family: 'JetBrains Mono', monospace; font-size: 13px; padding: 10px 12px; border-radius: 8px; background: #F3F3F1; border: 1px solid #E2E2DE">pnpm db:migrate --name add_signing_keys</code>
+<div style="display: flex; flex-wrap: wrap; gap: 8px">
+<button type="button" style="display: flex; align-items: center; gap: 8px; min-height: 36px; padding: 0 14px; background: #1A1C1F; color: #FFFFFF; border: 0; border-radius: 8px; font: inherit; font-weight: 600; cursor: pointer">Allow once <kbd style="font-family: 'JetBrains Mono', monospace; font-size: 11px; color: #9EA3AA">⏎</kbd></button>
+<button type="button" style="display: flex; align-items: center; gap: 8px; min-height: 36px; padding: 0 14px; background: transparent; color: #1A1C1F; border: 1px solid #C4C4BE; border-radius: 8px; font: inherit; cursor: pointer">Always allow in this repo <kbd style="font-family: 'JetBrains Mono', monospace; font-size: 11px; color: #5F6670">⌘⏎</kbd></button>
+<button type="button" style="display: flex; align-items: center; gap: 8px; min-height: 36px; padding: 0 14px; background: transparent; color: #1A1C1F; border: 1px solid #C4C4BE; border-radius: 8px; font: inherit; cursor: pointer">Deny <kbd style="font-family: 'JetBrains Mono', monospace; font-size: 11px; color: #5F6670">Esc</kbd></button>
+</div>
+</div>
+</div>
+</div>
+</div>
+
+<div style="padding: 0 28px 22px; max-width: 860px; width: 100%; box-sizing: border-box">
+<div style="border: 1px solid #D6D6D1; border-radius: 14px; background: #FFFFFF; padding: 12px; display: flex; flex-direction: column; gap: 10px">
+<label for="composer" style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0)">Message the agent</label>
+<textarea id="composer" rows="2" placeholder="Reply, or type / for commands and @ to add files" style="resize: none; background: transparent; border: 0; outline: none; color: #1A1C1F; font: inherit; font-size: 14px; padding: 4px"></textarea>
+<div style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px">
+<button type="button" style="display: flex; align-items: center; gap: 8px; min-height: 32px; padding: 0 10px; background: #EBEBE8; border: 1px solid #D6D6D1; border-radius: 8px; color: #1A1C1F; font: inherit; font-size: 13px; cursor: pointer">
+<span style="width: 8px; height: 8px; border-radius: 2px; background: #D06A3F"></span>Claude Code
+<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"></path></svg></button>
+<div role="radiogroup" aria-label="Permission mode" style="display: flex; padding: 2px; background: #FAFAF9; border: 1px solid #E2E2DE; border-radius: 8px">
+<button type="button" role="radio" aria-checked="false" style="min-height: 28px; padding: 0 10px; background: transparent; border: 0; border-radius: 6px; color: #5F6670; font: inherit; font-size: 12px; cursor: pointer">Plan</button>
+<button type="button" role="radio" aria-checked="true" style="min-height: 28px; padding: 0 10px; background: #E2E2DE; border: 0; border-radius: 6px; color: #0E0F11; font: inherit; font-size: 12px; cursor: pointer">Auto-edit</button>
+<button type="button" role="radio" aria-checked="false" style="min-height: 28px; padding: 0 10px; background: transparent; border: 0; border-radius: 6px; color: #5F6670; font: inherit; font-size: 12px; cursor: pointer">Full auto</button>
+</div>
+<button type="button" aria-label="Attach files" style="width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; background: transparent; border: 0; border-radius: 8px; color: #5F6670; cursor: pointer">
+<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m21 11-8.6 8.6a5 5 0 0 1-7-7L14 4a3.3 3.3 0 0 1 4.7 4.7l-8.6 8.6a1.7 1.7 0 0 1-2.4-2.4L15.6 7"></path></svg></button>
+<span style="margin-left: auto; font-size: 12px; color: #60666E">Context 24%</span>
+<button type="button" aria-label="Send" style="width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; background: #1A1C1F; border: 0; border-radius: 9px; color: #FFFFFF; cursor: pointer">
+<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 19V5M5 12l7-7 7 7"></path></svg></button>
+</div>
+</div>
+</div>
+</main>
+
+<aside aria-label="Session details" style="flex: 1 1 300px; max-width: 100%; box-sizing: border-box; border-left: 1px solid #E2E2DE; background: #F3F3F1; padding: 18px 16px; display: flex; flex-direction: column; gap: 22px">
+<section style="display: flex; flex-direction: column; gap: 10px">
+<div style="display: flex; align-items: center; gap: 8px">
+<h2 style="margin: 0; font-size: 13px; font-weight: 600">Changes</h2>
+<span style="font-family: 'JetBrains Mono', monospace; font-size: 12px; color: #5F6670">7 files <span style="color: #1A6F3E">+212</span> <span style="color: #B4323A">−48</span></span>
+<a href="workspace-light.html" style="margin-left: auto; font-size: 12px">Review all</a>
+</div>
+<div style="display: flex; flex-direction: column; border: 1px solid #E2E2DE; border-radius: 10px; overflow: hidden; font-family: 'JetBrains Mono', monospace; font-size: 12px">
+<div style="display: flex; align-items: center; gap: 8px; padding: 8px 10px; background: #FFFFFF"><span style="width: 16px; color: #8A5A00">M</span><span style="flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap">src/auth/keys.ts</span><span style="color: #1A6F3E">+64</span><span style="color: #B4323A">−12</span></div>
+<div style="display: flex; align-items: center; gap: 8px; padding: 8px 10px; border-top: 1px solid #EDEDEA"><span style="width: 16px; color: #1A6F3E">A</span><span style="flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap">src/auth/rotate.ts</span><span style="color: #1A6F3E">+88</span></div>
+<div style="display: flex; align-items: center; gap: 8px; padding: 8px 10px; border-top: 1px solid #EDEDEA"><span style="width: 16px; color: #8A5A00">M</span><span style="flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap">src/auth/middleware.ts</span><span style="color: #1A6F3E">+28</span><span style="color: #B4323A">−9</span></div>
+<div style="display: flex; align-items: center; gap: 8px; padding: 8px 10px; border-top: 1px solid #EDEDEA"><span style="width: 16px; color: #1A6F3E">A</span><span style="flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap">db/0042_signing_keys.sql</span><span style="color: #1A6F3E">+18</span></div>
+<div style="display: flex; align-items: center; gap: 8px; padding: 8px 10px; border-top: 1px solid #EDEDEA"><span style="width: 16px; color: #8A5A00">M</span><span style="flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap">test/auth/keys.test.ts</span><span style="color: #1A6F3E">+14</span><span style="color: #B4323A">−27</span></div>
+<div style="padding: 8px 10px; border-top: 1px solid #EDEDEA; color: #5F6670; font-family: Inter, sans-serif">+ 2 more files</div>
+</div>
+<div style="display: flex; gap: 8px">
+<button type="button" style="flex: 1; min-height: 36px; background: #EBEBE8; border: 1px solid #D6D6D1; border-radius: 8px; color: #1A1C1F; font: inherit; font-size: 13px; cursor: pointer">Commit</button>
+<button type="button" style="flex: 1; min-height: 36px; background: #EBEBE8; border: 1px solid #D6D6D1; border-radius: 8px; color: #1A1C1F; font: inherit; font-size: 13px; cursor: pointer">Open PR</button>
+</div>
+</section>
+
+<section style="display: flex; flex-direction: column; gap: 10px">
+<h2 style="margin: 0; font-size: 13px; font-weight: 600">Checkpoints</h2>
+<ol style="list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column">
+<li style="display: flex; gap: 10px; padding-bottom: 12px"><span style="flex: none; width: 9px; height: 9px; margin-top: 5px; border-radius: 50%; border: 2px solid #C9850C; box-sizing: border-box"></span><span style="flex: 1">Waiting for approval</span><span style="font-size: 12px; color: #60666E">14:08</span></li>
+<li style="display: flex; gap: 10px; padding-bottom: 12px"><span style="flex: none; width: 9px; height: 9px; margin-top: 5px; border-radius: 50%; background: #A3A39D"></span><span style="flex: 1; color: #3D4249">Tests run · 1 failed</span><a href="workspace-light.html" style="font-size: 12px">Restore</a></li>
+<li style="display: flex; gap: 10px; padding-bottom: 12px"><span style="flex: none; width: 9px; height: 9px; margin-top: 5px; border-radius: 50%; background: #A3A39D"></span><span style="flex: 1; color: #3D4249">Edited 4 files</span><a href="workspace-light.html" style="font-size: 12px">Restore</a></li>
+<li style="display: flex; gap: 10px"><span style="flex: none; width: 9px; height: 9px; margin-top: 5px; border-radius: 50%; background: #A3A39D"></span><span style="flex: 1; color: #3D4249">Plan approved</span><span style="font-size: 12px; color: #60666E">14:03</span></li>
+</ol>
+</section>
+
+<section style="display: flex; flex-direction: column; gap: 12px">
+<h2 style="margin: 0; font-size: 13px; font-weight: 600">Session</h2>
+<div style="display: flex; flex-direction: column; gap: 6px">
+<div style="display: flex; font-size: 12px; color: #5F6670"><span style="flex: 1">Context window</span><span style="color: #1A1C1F">48k / 200k</span></div>
+<div style="height: 6px; border-radius: 999px; background: #EBEBE8; overflow: hidden"><div style="width: 24%; height: 100%; background: #D06A3F"></div></div>
+</div>
+<div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px">
+<div style="padding: 10px; border: 1px solid #E2E2DE; border-radius: 10px"><div style="font-size: 12px; color: #5F6670">Elapsed</div><div style="font-size: 16px; font-weight: 600">6m 12s</div></div>
+<div style="padding: 10px; border: 1px solid #E2E2DE; border-radius: 10px"><div style="font-size: 12px; color: #5F6670">Est. cost</div><div style="font-size: 16px; font-weight: 600">$0.84</div></div>
+</div>
+</div>
+</section>
+</aside>
+</div>
+</div>
+</body>
+</html>

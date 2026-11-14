@@ -1,17 +1,12 @@
-import {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-  type ReactNode,
-} from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Markdown from "react-markdown";
 import RunDashboard from "./RunDashboard";
 import ChatWorkspace, { chatBusy } from "./ChatWorkspace";
 import SavedWorkspace from "./SavedWorkspace";
 import Appearance from "./Appearance";
 import WorkspaceTabs from "./WorkspaceTabs";
+import Icon from "./Icon";
+import AgentMark from "./AgentMark";
 import {
   api,
   errorText,
@@ -22,86 +17,6 @@ import {
   type ToolName,
   type ChatState,
 } from "./api";
-
-function Icon({ name, size = 18 }: { name: string; size?: number }) {
-  const paths: Record<string, ReactNode> = {
-    folder: (
-      <>
-        <path d="M3 7V5a1 1 0 0 1 1-1h5l2 3h9a1 1 0 0 1 1 1v11a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V7Z" />
-      </>
-    ),
-    search: (
-      <>
-        <circle cx="10.5" cy="10.5" r="6.5" />
-        <path d="m16 16 5 5" />
-      </>
-    ),
-    plus: <path d="M12 5v14M5 12h14" />,
-    grid: (
-      <>
-        <rect x="3" y="3" width="7" height="7" rx="1" />
-        <rect x="14" y="3" width="7" height="7" rx="1" />
-        <rect x="3" y="14" width="7" height="7" rx="1" />
-        <rect x="14" y="14" width="7" height="7" rx="1" />
-      </>
-    ),
-    terminal: (
-      <>
-        <rect x="3" y="4" width="18" height="16" rx="3" />
-        <path d="m7 9 3 3-3 3m6 0h4" />
-      </>
-    ),
-    refresh: (
-      <>
-        <path d="M20 7v5h-5M4 17v-5h5" />
-        <path d="M6 7a7 7 0 0 1 12-1l2 3M4 15l2 3a7 7 0 0 0 12-1" />
-      </>
-    ),
-    branch: (
-      <>
-        <circle cx="6" cy="5" r="2" />
-        <circle cx="6" cy="19" r="2" />
-        <circle cx="18" cy="5" r="2" />
-        <path d="M6 7v10m12-10v2a6 6 0 0 1-6 6H6" />
-      </>
-    ),
-    arrow: <path d="M5 12h14m-5-5 5 5-5 5" />,
-    close: <path d="m6 6 12 12M6 18 18 6" />,
-    message: <path d="M21 11a8 8 0 0 1-8 8H5l-3 3V11a9 9 0 0 1 19 0Z" />,
-    check: <path d="m5 12 4 4L19 6" />,
-    pin: <path d="m9 3 6 0-1 6 4 4v2H6v-2l4-4-1-6Zm3 12v6" />,
-  };
-  return (
-    <svg
-      width={size}
-      height={size}
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.6"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      {paths[name] || paths.message}
-    </svg>
-  );
-}
-
-function AgentMark({ tool, small = false }: { tool: string; small?: boolean }) {
-  return (
-    <span
-      className={`agent-mark ${tool} ${small ? "small" : ""}`}
-      aria-hidden="true"
-    >
-      {tool === "claude" ? (
-        "✳"
-      ) : (
-        <Icon name="terminal" size={small ? 14 : 19} />
-      )}
-    </span>
-  );
-}
 
 function age(date: string) {
   const minutes = Math.max(
