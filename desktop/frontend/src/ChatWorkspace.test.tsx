@@ -205,14 +205,14 @@ describe("graphical conversations", () => {
     fireEvent.change(screen.getByLabelText("Message agent"), {
       target: { value: "Keep my request" },
     });
-    await userEvent.click(screen.getByRole("button", { name: "Send ↑" }));
+    await userEvent.click(screen.getByRole("button", { name: "Send" }));
     await screen.findByText("Offline");
     view.unmount();
     show();
     expect(screen.getByLabelText("Message agent")).toHaveValue(
       "Keep my request",
     );
-    await userEvent.click(screen.getByRole("button", { name: "Send ↑" }));
+    await userEvent.click(screen.getByRole("button", { name: "Send" }));
     await waitFor(() =>
       expect(screen.getByLabelText("Message agent")).toHaveValue(""),
     );
@@ -238,7 +238,7 @@ describe("graphical conversations", () => {
     expect(screen.getByLabelText("Message agent")).toHaveValue(
       "Still send this",
     );
-    await userEvent.click(screen.getByRole("button", { name: "Send ↑" }));
+    await userEvent.click(screen.getByRole("button", { name: "Send" }));
     expect(backend.SendChat).toHaveBeenCalledWith("chat", "Still send this");
   });
   it("warns when a sent draft cannot be removed from storage", async () => {
@@ -249,7 +249,7 @@ describe("graphical conversations", () => {
     vi.spyOn(Storage.prototype, "removeItem").mockImplementation(() => {
       throw Error("Unavailable");
     });
-    await userEvent.click(screen.getByRole("button", { name: "Send ↑" }));
+    await userEvent.click(screen.getByRole("button", { name: "Send" }));
     expect(await screen.findByRole("alert")).toHaveTextContent(
       "It may reappear",
     );
@@ -281,8 +281,8 @@ describe("graphical conversations", () => {
       screen.getByLabelText("Message agent"),
       "Explain checkout",
     );
-    fireEvent.click(screen.getByRole("button", { name: "Send ↑" }));
-    fireEvent.click(screen.getByRole("button", { name: "Send ↑" }));
+    fireEvent.click(screen.getByRole("button", { name: "Send" }));
+    fireEvent.click(screen.getByRole("button", { name: "Send" }));
     expect(backend.SendChat).toHaveBeenCalledTimes(1);
     state = {
       ...state,
@@ -312,7 +312,7 @@ describe("graphical conversations", () => {
       screen.getByLabelText("Message agent"),
       "Keep this draft",
     );
-    await userEvent.click(screen.getByRole("button", { name: "Send ↑" }));
+    await userEvent.click(screen.getByRole("button", { name: "Send" }));
     expect(await screen.findByRole("alert")).toHaveTextContent(
       "Agent unavailable",
     );
@@ -352,6 +352,69 @@ describe("graphical conversations", () => {
       screen.getByRole("button", { name: "Stop response" }),
     );
     expect(backend.StopChat).toHaveBeenCalledWith("chat");
+  });
+  it("shows the command and answers from the keyboard only while the card has focus", async () => {
+    state = {
+      ...state,
+      status: "waiting",
+      approvals: [
+        {
+          id: "approval",
+          title: "Run checkout tests",
+          detail: "npm test -- checkout",
+          questions: [],
+        },
+      ],
+    };
+    show();
+    const card = await screen.findByRole("region", {
+      name: "Run checkout tests",
+    });
+    const command = within(card).getByLabelText("Action details");
+    expect(command).toHaveTextContent("npm test -- checkout");
+    // Enter in the message box must not approve anything.
+    fireEvent.keyDown(screen.getByLabelText("Message agent"), {
+      key: "Escape",
+    });
+    expect(backend.AnswerChat).not.toHaveBeenCalled();
+    command.focus();
+    fireEvent.keyDown(command, { key: "Enter" });
+    expect(backend.AnswerChat).toHaveBeenCalledWith(
+      "chat",
+      "approval",
+      true,
+      {},
+    );
+  });
+  it("denies an approval with Escape inside the card", async () => {
+    state = {
+      ...state,
+      status: "waiting",
+      approvals: [
+        {
+          id: "approval",
+          title: "Delete build output",
+          detail: "rm -rf dist",
+          questions: [],
+        },
+      ],
+    };
+    show();
+    const card = await screen.findByRole("region", {
+      name: "Delete build output",
+    });
+    fireEvent.keyDown(
+      within(card).getByRole("button", { name: "Allow once" }),
+      {
+        key: "Escape",
+      },
+    );
+    expect(backend.AnswerChat).toHaveBeenCalledWith(
+      "chat",
+      "approval",
+      false,
+      {},
+    );
   });
   it("requires question answers and submits only one approval decision", async () => {
     state = {
@@ -499,11 +562,11 @@ it("does not send a message until model preferences finish saving", async () => 
   fireEvent.change(screen.getByLabelText("Model"), {
     target: { value: "model-a" },
   });
-  expect(screen.getByRole("button", { name: "Send ↑" })).toBeDisabled();
+  expect(screen.getByRole("button", { name: "Send" })).toBeDisabled();
   fireEvent.keyDown(screen.getByLabelText("Message agent"), { key: "Enter" });
   expect(backend.SendChat).not.toHaveBeenCalled();
   await act(async () => finish());
-  await userEvent.click(screen.getByRole("button", { name: "Send ↑" }));
+  await userEvent.click(screen.getByRole("button", { name: "Send" }));
   expect(backend.SendChat).toHaveBeenCalledTimes(1);
 });
 it("shows the reported response model independently of the selected model", async () => {

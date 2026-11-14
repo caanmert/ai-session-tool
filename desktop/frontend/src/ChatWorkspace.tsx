@@ -1,8 +1,9 @@
-import { memo, useEffect, useRef, useState } from "react";
-import Markdown from "react-markdown";
+import { useEffect, useRef, useState } from "react";
 import ModelPicker from "./ModelPicker";
 import DiffViewer from "./DiffViewer";
 import AgentMark from "./AgentMark";
+import Icon from "./Icon";
+import MessageList, { SafeMarkdown } from "./chat/MessageList";
 import { applyChatUpdate } from "./chatUpdates";
 import { useChatDraft } from "./useChatDraft";
 import {
@@ -11,7 +12,6 @@ import {
   toolLabel,
   type ChatState,
   type ChatApproval,
-  type ChatMessage,
   type ReviewDraft,
 } from "./api";
 
@@ -26,62 +26,6 @@ const statusLabel = (status: string) =>
     stopped: "Stopped",
     error: "Needs attention",
   })[status] || status;
-export const SafeMarkdown = memo(function SafeMarkdown({
-  text,
-}: {
-  text: string;
-}) {
-  return (
-    <Markdown
-      components={{
-        a: ({ children }) => (
-          <span className="transcript-link">{children}</span>
-        ),
-        img: () => <span>[Image omitted]</span>,
-      }}
-    >
-      {text}
-    </Markdown>
-  );
-});
-
-// Rows are memoized: while a reply streams, only its own row renders again.
-const ChatMessageRow = memo(function ChatMessageRow({
-  message,
-  agent,
-}: {
-  message: ChatMessage;
-  agent: string;
-}) {
-  if (message.kind === "tool")
-    return (
-      <details className="chat-tool">
-        <summary>
-          <span className={`tool-indicator ${message.status}`} />
-          <strong>{message.name || "Tool activity"}</strong>
-          <small>{message.status || "Saved"}</small>
-        </summary>
-        <pre>{message.text || "Waiting for output…"}</pre>
-      </details>
-    );
-  return (
-    <article className={`chat-message ${message.role}`}>
-      <div className="chat-message-author">
-        {message.role === "user"
-          ? "You"
-          : message.role === "system"
-            ? "ais"
-            : agent}
-      </div>
-      <div className="markdown">
-        {message.role === "assistant" && message.model && (
-          <div className="message-model">{message.model}</div>
-        )}
-        <SafeMarkdown text={message.text} />
-      </div>
-    </article>
-  );
-});
 type Props = {
   chat: ChatState;
   active: boolean;
@@ -213,22 +157,30 @@ export default function ChatWorkspace({
     >
       <header className="chat-header">
         <div className="chat-heading">
-          <AgentMark tool={state.tool} />
-          <div>
-            <h2>{state.title}</h2>
-            <p title={state.project}>
-              {toolLabel(state.tool)} <span>·</span> {state.project}
-            </p>
+          <p className="chat-breadcrumb" title={state.project}>
+            {state.project.split("/").filter(Boolean).at(-1) || state.project}
+          </p>
+          <h2>{state.title || "New conversation"}</h2>
+          <div className="chat-chips">
+            <span className={`chip agent ${state.tool}`}>
+              <AgentMark tool={state.tool} dot />
+              {toolLabel(state.tool)}
+            </span>
+            <span className={`chip status ${state.status}`}>
+              {(state.status === "waiting" || state.status === "error") && (
+                <Icon name="alert" size={12} />
+              )}
+              {statusLabel(state.status)}
+            </span>
+            {state.activeModel && !state.review && (
+              <span className="chat-meta">{state.activeModel}</span>
+            )}
           </div>
         </div>
         <div className="chat-actions">
-          <span className={`chat-status ${state.status}`}>
-            <i />
-            {statusLabel(state.status)}
-          </span>
           {!state.review && (
             <button
-              className="button subtle"
+              className="button secondary"
               disabled={busy || working || !reviewerAvailable}
               title={
                 reviewerAvailable
@@ -333,22 +285,16 @@ export default function ChatWorkspace({
             </div>
           </div>
         )}
-        {state.messages
-          .filter(
-            (message) =>
-              !(
-                state.review?.complete &&
-                message.role === "assistant" &&
-                message.kind === "text"
-              ),
-          )
-          .map((message) => (
-            <ChatMessageRow
-              key={message.id}
-              message={message}
-              agent={toolLabel(state.tool)}
-            />
-          ))}
+        <MessageList
+          tool={state.tool}
+          messages={
+            state.review?.complete
+              ? state.messages.filter(
+                  (m) => !(m.role === "assistant" && m.kind === "text"),
+                )
+              : state.messages
+          }
+        />
         {state.review?.complete && (
           <div className="review-findings">
             <div className="eyebrow">REVIEW RESULTS</div>
@@ -401,7 +347,7 @@ export default function ChatWorkspace({
             ))}
             {!!state.review.findings.length && (
               <button
-                className="button accent"
+                className="button primary"
                 disabled={!selected.length || working}
                 onClick={() =>
                   void perform(async () => {
@@ -530,7 +476,8 @@ export default function ChatWorkspace({
           {busy ? (
             <button
               type="button"
-              className="button subtle"
+              className="button secondary stop"
+              title="Ends the response. Edits already made are kept."
               disabled={working || state.status === "stopping"}
               onClick={() =>
                 void perform(async () => {
@@ -539,16 +486,18 @@ export default function ChatWorkspace({
                 })
               }
             >
-              Stop response
+              <Icon name="stop" size={13} /> Stop response
             </button>
           ) : (
             !state.review && (
               <button
                 type="submit"
-                className="button accent"
+                className="button primary send"
+                aria-label="Send"
+                title="Send (Enter)"
                 disabled={!prompt.trim() || working}
               >
-                Send ↑
+                <Icon name="arrow-up" size={17} />
               </button>
             )
           )}
@@ -603,13 +552,42 @@ function ApprovalCard({
     }
   }
   return (
-    <section className="approval-card" aria-label={approval.title}>
-      <div className="eyebrow">YOUR DECISION</div>
-      <h3>{approval.title}</h3>
-      <details>
-        <summary>Action details</summary>
-        <pre>{approval.detail}</pre>
-      </details>
+    <section
+      className="approval-card"
+      aria-label={approval.title}
+      onKeyDown={(e) => {
+        // Shortcuts apply only while focus is inside the card, and never
+        // while typing an answer.
+        const typing =
+          e.target instanceof HTMLInputElement ||
+          e.target instanceof HTMLSelectElement;
+        if (e.key === "Escape" && !busy) {
+          e.preventDefault();
+          void answer(false);
+        } else if (
+          e.key === "Enter" &&
+          !typing &&
+          !(e.target instanceof HTMLButtonElement) &&
+          !busy &&
+          !approval.questions.length
+        ) {
+          e.preventDefault();
+          void answer(true);
+        }
+      }}
+    >
+      <h3>
+        <Icon name="alert" size={17} />
+        {approval.title}
+      </h3>
+      {approval.detail && (
+        // Focusable so a long command can be scrolled from the keyboard, and
+        // so the card's shortcuts can be used without the pointer.
+        // eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex
+        <pre tabIndex={0} aria-label="Action details">
+          {approval.detail}
+        </pre>
+      )}
       {approval.questions.map((question) => (
         <label className="approval-question" key={question.id}>
           <strong>{question.text}</strong>
@@ -644,14 +622,7 @@ function ApprovalCard({
       {error && <p role="alert">{error}</p>}
       <div className="approval-actions">
         <button
-          className="button subtle"
-          disabled={busy}
-          onClick={() => void answer(false)}
-        >
-          Decline
-        </button>
-        <button
-          className="button accent"
+          className="button primary"
           disabled={
             busy || approval.questions.some((q) => !answers[q.id]?.trim())
           }
@@ -662,6 +633,13 @@ function ApprovalCard({
             : approval.questions.length
               ? "Send answers"
               : "Allow once"}
+        </button>
+        <button
+          className="button secondary"
+          disabled={busy}
+          onClick={() => void answer(false)}
+        >
+          Deny <kbd>Esc</kbd>
         </button>
       </div>
     </section>
