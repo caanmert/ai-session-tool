@@ -28,6 +28,16 @@ export type Project = {
   available: boolean;
   recent: boolean;
 };
+/** Result of asking an installed agent for its version and whether it still
+ * accepts the options ais uses. No model is contacted. */
+export type AgentHealth = {
+  tool: ToolName;
+  version: string;
+  /** Version the live checks last passed with. */
+  tested: string;
+  newer: boolean;
+  problem?: string;
+};
 export type AnnotationChange = {
   /** An empty title restores the agent's own title. */
   title?: string;
@@ -236,6 +246,9 @@ export interface Backend {
   SetAppearance(theme: "light" | "dark"): Promise<void>;
   /** Dock badge with the number of conversations waiting; `alert` bounces the icon. */
   SetAttention(count: number, alert: boolean): Promise<void>;
+  AgentHealth(): Promise<AgentHealth[]>;
+  /** Opens the conversation's project folder in Finder. */
+  RevealProject(id: string): Promise<void>;
   ChatModels(
     id: string,
     reviewer: boolean,
@@ -304,6 +317,8 @@ function backend(): Backend {
 export const api: Backend = {
   SetAppearance: async (theme) => backend().SetAppearance(theme),
   SetAttention: async (count, alert) => backend().SetAttention(count, alert),
+  AgentHealth: async () => backend().AgentHealth(),
+  RevealProject: async (id) => backend().RevealProject(id),
   ChatModels: async (id, reviewer, refresh) =>
     backend().ChatModels(id, reviewer, refresh),
   SetChatSettings: async (id, settings, reviewer) =>

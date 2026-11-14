@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -27,9 +28,23 @@ type App struct {
 	runs         *runner.Manager
 	// dockAttention updates the Dock icon; replaced in tests.
 	dockAttention func(count int, alert bool)
+	// openFolder shows a folder in Finder; replaced in tests.
+	openFolder func(path string) error
 }
 
-func NewApp() *App { return &App{terminals: newTerminals(), dockAttention: setDockAttention} }
+func NewApp() *App {
+	return &App{terminals: newTerminals(), dockAttention: setDockAttention, openFolder: revealFolder}
+}
+
+// revealFolder opens a folder with the system's file manager. The path is
+// passed as an argument, never through a shell.
+func revealFolder(path string) error {
+	info, err := os.Stat(path)
+	if err != nil || !info.IsDir() {
+		return errors.New("the project folder is not available")
+	}
+	return exec.Command("open", path).Run()
+}
 
 func (a *App) startup(ctx context.Context) {
 	a.ctx = ctx

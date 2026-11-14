@@ -76,6 +76,9 @@
   font-size: var(--text-sm);
   color: var(--muted);
 }
+.agent-card small.problem {
+  color: var(--danger-text);
+}
 .chip.status.found {
   background: var(--success-soft);
   color: var(--success-text);

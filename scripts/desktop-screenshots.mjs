@@ -147,6 +147,20 @@ try {
       main: {
         App: {
           SetAppearance: async () => {},
+          AgentHealth: async () => [
+            {
+              tool: "codex",
+              version: "0.167.1",
+              tested: "0.162.1",
+              newer: true,
+            },
+            {
+              tool: "claude",
+              version: "2.1.296",
+              tested: "2.1.296",
+              newer: false,
+            },
+          ],
           ChatModels: async (_id, reviewer) => ({
             defaultModel: reviewer ? "claude-demo" : "codex-demo",
             defaultEffort: "medium",

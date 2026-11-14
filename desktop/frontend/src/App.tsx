@@ -24,6 +24,7 @@ import {
   type ToolName,
   type ChatState,
   type AnnotationChange,
+  type AgentHealth,
 } from "./api";
 
 function age(date: string) {
@@ -70,6 +71,19 @@ export default function App() {
     [],
   );
   const appearance = useAppearance();
+  // Whether each installed agent still accepts what ais sends it. Checked at
+  // startup and on request; it never contacts a model.
+  const [health, setHealth] = useState<AgentHealth[]>([]);
+  const checkHealth = useCallback(() => {
+    api
+      .AgentHealth()
+      .then(setHealth)
+      .catch(() => setHealth([]));
+  }, []);
+  useEffect(() => {
+    checkHealth();
+  }, [checkHealth]);
+  const incompatible = health.filter((item) => item.problem);
   const [tool, setTool] = useState("all");
   const [historyView, setHistoryView] = useState("all");
   const [historySort, setHistorySort] = useState("recent");
@@ -670,6 +684,23 @@ export default function App() {
             </button>
           )}
         </div>
+        {incompatible.length > 0 && page !== "settings" && (
+          <div className="notice error" role="alert">
+            <span>
+              {incompatible.map((item) => toolLabel(item.tool)).join(" and ")}{" "}
+              may not work with this version of ais.
+            </span>
+            <button
+              className="text-button"
+              onClick={() => {
+                setActiveChat("");
+                setPage("settings");
+              }}
+            >
+              See details in Settings
+            </button>
+          </div>
+        )}
         {error && !showNew && (
           <div className="notice error" role="alert">
             <span>{error}</span>
@@ -739,8 +770,12 @@ export default function App() {
           <Settings
             appearance={appearance}
             tools={snapshot?.tools || []}
+            health={health}
             checking={loading}
-            onCheck={() => void refresh()}
+            onCheck={() => {
+              void refresh();
+              checkHealth();
+            }}
           />
         )}
         {showRuns && (
