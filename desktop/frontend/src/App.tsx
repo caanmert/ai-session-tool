@@ -548,15 +548,14 @@ export default function App() {
             <div className="eyebrow">
               WORKSPACE <span>/</span> {project ? "PROJECT" : "ALL PROJECTS"}
             </div>
-            <h1>
-              {showRuns
-                ? "Parallel runs"
-                : activeChat
-                  ? "Your coding workspace"
-                  : project
-                    ? currentProject?.name || basename(project)
-                    : "Your conversations"}
+            <h1 hidden={showRuns}>
+              {activeChat
+                ? "Your coding workspace"
+                : project
+                  ? currentProject?.name || basename(project)
+                  : "Your conversations"}
             </h1>
+            {showRuns && <h1>Parallel runs</h1>}
             <p title={project}>
               {showRuns
                 ? project ||
