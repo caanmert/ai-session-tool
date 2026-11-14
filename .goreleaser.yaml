@@ -22,6 +22,7 @@ archives:
       - README.md
       - docs/USAGE.md
       - docs/RELEASING.md
+      - docs/RELEASE-CHECKLIST.md
       - docs/screenshots/*
       - src: build/completions/*
         dst: completions

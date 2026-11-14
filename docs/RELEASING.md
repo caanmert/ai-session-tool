@@ -1,5 +1,9 @@
 # Publishing ais
 
+Use the [release validation checklist](RELEASE-CHECKLIST.md) before publication.
+It includes fixture-only CLI install/reinstall checks, extracted desktop artifact
+verification, a safe native fixture setup and explicit unverified release gates.
+
 The release workflow builds macOS and Linux binaries for ARM64 and AMD64,
 packages the usage guide and Bash/Zsh/Fish completions, and generates SHA-256
 checksums. It also creates a Homebrew formula using those archives, verifies
