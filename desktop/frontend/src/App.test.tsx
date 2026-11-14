@@ -416,6 +416,24 @@ describe("desktop workflows", () => {
     );
     expect(screen.getByRole("status")).toHaveTextContent("Nothing matches");
   });
+  it("explains what to do when no agent is installed", async () => {
+    backend.Refresh = vi.fn().mockResolvedValue({
+      ...snapshot,
+      sessions: [],
+      tools: snapshot.tools.map((tool) => ({ ...tool, available: false })),
+    });
+    render(<App />);
+    const setup = await screen.findByRole("region", { name: "Agent setup" });
+    expect(within(setup).getAllByText("Not found")).toHaveLength(2);
+    expect(
+      within(setup).getByText("npm install -g @anthropic-ai/claude-code"),
+    ).toBeVisible();
+    expect(within(setup).getByText(/Nothing is sent/)).toBeVisible();
+    await userEvent.click(
+      within(setup).getByRole("button", { name: "Check again" }),
+    );
+    expect(backend.Refresh).toHaveBeenCalledTimes(2);
+  });
   it("opens saved desktop work without starting or resuming a provider", async () => {
     backend.ListSavedChats = vi.fn().mockResolvedValue([
       {

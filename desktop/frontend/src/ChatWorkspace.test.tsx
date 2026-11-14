@@ -416,7 +416,22 @@ describe("graphical conversations", () => {
     await userEvent.click(
       screen.getByRole("button", { name: "Stop response" }),
     );
+    // Stopping asks first, says what is kept, and focuses the safe choice.
+    const confirm = await screen.findByRole("dialog", { name: "Stop Codex?" });
+    expect(within(confirm).getByText(/already edited stay/)).toBeVisible();
+    expect(
+      within(confirm).getByRole("button", { name: "Keep running" }),
+    ).toHaveFocus();
+    expect(backend.StopChat).not.toHaveBeenCalled();
+    await userEvent.click(
+      within(confirm).getByRole("button", { name: "Stop response" }),
+    );
     expect(backend.StopChat).toHaveBeenCalledWith("chat");
+    await waitFor(() =>
+      expect(
+        screen.queryByRole("dialog", { name: "Stop Codex?" }),
+      ).not.toBeInTheDocument(),
+    );
   });
   it("shows the command and answers from the keyboard only while the card has focus", async () => {
     state = {

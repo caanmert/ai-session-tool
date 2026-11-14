@@ -5,6 +5,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
@@ -197,22 +198,36 @@ func (a *App) StopTerminal(id string) error  { return a.terminals.stop(id) }
 func (a *App) CloseTerminal(id string) error { return a.terminals.remove(id) }
 
 func (a *App) beforeClose(ctx context.Context) bool {
-	running := false
+	running := 0
 	for _, session := range a.terminals.list() {
-		running = running || !session.Exited
+		if !session.Exited {
+			running++
+		}
 	}
 	if a.chats != nil {
 		for _, chat := range a.chats.list() {
-			running = running || busyChat(chat.Status)
+			if busyChat(chat.Status) {
+				running++
+			}
 		}
 	}
-	if !running {
+	if running == 0 {
 		return false
 	}
+	title, message := quitConfirmation(running)
+	// The safe choice is both the default and the Escape action.
 	answer, err := wailsruntime.MessageDialog(ctx, wailsruntime.MessageDialogOptions{
-		Type: wailsruntime.QuestionDialog, Title: "Stop active responses and quit?",
-		Message: "Quitting ais stops running agents. Conversations and review snapshots are saved locally so you can return to them.",
-		Buttons: []string{"Keep working", "Stop and quit"}, DefaultButton: "Keep working", CancelButton: "Keep working",
+		Type: wailsruntime.QuestionDialog, Title: title, Message: message,
+		Buttons: []string{"Cancel", "Quit and stop agents"}, DefaultButton: "Cancel", CancelButton: "Cancel",
 	})
-	return err != nil || answer != "Stop and quit"
+	return err != nil || answer != "Quit and stop agents"
+}
+
+// quitConfirmation says how many agents quitting would stop and what is kept.
+func quitConfirmation(running int) (title, message string) {
+	title = "Quit with 1 agent running?"
+	if running != 1 {
+		title = "Quit with " + strconv.Itoa(running) + " agents running?"
+	}
+	return title, "Quitting stops their responses. Files they already edited stay as they are, and your conversations, drafts and review snapshots are kept on this Mac."
 }

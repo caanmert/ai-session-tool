@@ -6,6 +6,7 @@ import SavedWorkspace from "./SavedWorkspace";
 import Appearance from "./Appearance";
 import TopBar from "./shell/TopBar";
 import Sidebar from "./shell/Sidebar";
+import AgentsMissing from "./shell/AgentsMissing";
 import CommandPalette, { type Command } from "./shell/CommandPalette";
 import { attentionChange } from "./shell/attention";
 import Icon from "./Icon";
@@ -950,6 +951,12 @@ export default function App() {
                   <span>Continue to interact live in the app</span>
                 </div>
               </>
+            ) : snapshot && !snapshot.tools.some((t) => t.available) ? (
+              <AgentsMissing
+                tools={snapshot.tools}
+                checking={loading}
+                onCheck={() => void refresh()}
+              />
             ) : (
               <div className="empty-panel welcome">
                 <div className="welcome-mark">
