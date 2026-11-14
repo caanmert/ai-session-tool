@@ -22,9 +22,17 @@ archives, then installs this host's binary into a temporary directory. It checks
 version, Bash/Zsh/Fish completions, read-only setup, fixture session discovery,
 and annotation/data retention after reinstall. It does not launch an agent,
 change shell configuration, or install into a user's executable path. The Linux
-packaging job runs the same smoke check against its packaged binary. Completion
+packaging job runs the same smoke check against its packaged binary. Separate
+install jobs download those exact snapshot archives and run them on macOS and
+Linux, each on ARM64 and AMD64. The jobs use fresh hosted runners, require all
+three completion shells, and assert the runner's actual OS/architecture.
+Completion
 syntax is checked when the corresponding shell is installed; missing shells are
 reported explicitly.
+
+The runner labels follow the [GitHub-hosted runner reference](https://docs.github.com/en/actions/reference/runners/github-hosted-runners).
+Passing these jobs establishes archive installation on the tested runner images;
+it does not test a published Homebrew tap or a desktop window.
 
 On macOS, download the desktop artifact from the exact CI run and verify it:
 
@@ -100,7 +108,7 @@ versions and usage scope. The current user requested fixture-only validation.
 | Native-window interactions | **Unverified:** computer-use connection timed out opening the fixture app; no interaction was claimed successful |
 | Paid/live provider turns | **Not run, as requested** |
 | Linux AMD64 packaged CLI smoke | Passed in [CI run 43572374305](https://github.com/caanmert/ai-session-tool/actions/runs/43572374305): 8 fixture sessions, Bash syntax, retained pin/data; Zsh/Fish interpreters unavailable |
-| Intel macOS / Linux ARM64 runtime installation | Not run; archives/checksums are checked and cross-built only |
+| Four-platform CLI runtime matrix with all completion shells | Added; record actual CI results before claiming these platform checks passed |
 | First Homebrew publication, Developer ID signing/notarization | Pending external publication/credentials; not performed |
 
 Re-run relevant checks after source, dependencies, packaging, or provider versions

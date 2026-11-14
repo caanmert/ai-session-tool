@@ -97,6 +97,57 @@ jobs:
           ruby -c dist/homebrew/ais.rb
       - name: Smoke-install the packaged CLI with fixtures
         run: python3 scripts/smoke_cli.py --dist dist --fixtures testdata
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: ais-cli-snapshot
+          path: |
+            dist/ais_*.tar.gz
+            dist/checksums.txt
+            dist/metadata.json
+          if-no-files-found: error
+          retention-days: 7
+
+  install:
+    name: Install (${{ matrix.platform }})
+    needs: packaging
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-24.04
+            platform: linux/amd64
+          - os: ubuntu-24.04-arm
+            platform: linux/arm64
+          - os: macos-15-intel
+            platform: darwin/amd64
+          - os: macos-15
+            platform: darwin/arm64
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: ais-cli-snapshot
+          path: dist
+      - name: Install completion shells on Linux
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install --no-install-recommends -y zsh fish
+      - name: Install completion shells on macOS
+        if: runner.os == 'macOS'
+        env:
+          HOMEBREW_NO_AUTO_UPDATE: 1
+          HOMEBREW_NO_INSTALL_CLEANUP: 1
+        run: |
+          command -v fish >/dev/null || brew install fish
+      - name: Smoke-install the downloaded CLI with fixtures
+        env:
+          AIS_EXPECTED_PLATFORM: ${{ matrix.platform }}
+        run: >-
+          python3 scripts/smoke_cli.py --dist dist --fixtures testdata
+          --require-shells --expect-platform "$AIS_EXPECTED_PLATFORM"
 
   lint:
     runs-on: ubuntu-latest
