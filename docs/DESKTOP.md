@@ -323,6 +323,8 @@ renames, pins and tags appear after refreshing.
 ```sh
 cd desktop/frontend
 npm ci
+npm run lint
+npm run format:check
 npm test
 npm run build
 cd ..
@@ -330,6 +332,13 @@ go vet ./...
 go test -race ./...
 wails dev
 ```
+
+After a frontend build, `sh scripts/ui-check.sh` (from the repository root, with
+Google Chrome installed) runs the fixture-based browser checks in light and dark:
+text contrast, overflow and the 960×640 minimum window. CI runs the same script.
+It installs a pinned Playwright into a temporary folder unless
+`AIS_PLAYWRIGHT_MODULE` points at one, and writes captures to
+`AIS_SCREENSHOT_DIR` if set.
 
 Build the frontend before ordinary Go tests because the app embeds `frontend/dist`.
 `wails dev` starts Go and Vite together; opening Vite alone does not provide the

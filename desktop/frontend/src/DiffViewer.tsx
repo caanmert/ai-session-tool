@@ -108,6 +108,8 @@ export default function DiffViewer({
             </button>
           ))}
         </aside>
+        {/* A scrollable region must be focusable to scroll it from the keyboard. */}
+        {/* eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex */}
         <div className="diff-code" aria-label="Reviewed diff" tabIndex={0}>
           {lines.map((text, index) => {
             const hunk = text.match(/^@@ -(\d+)(?:,\d+)? \+(\d+)(?:,\d+)? @@/);

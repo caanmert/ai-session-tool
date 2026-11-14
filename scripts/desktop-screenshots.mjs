@@ -19,6 +19,16 @@ try {
     deviceScaleFactor: 1,
   });
   const errors = [];
+  // Captures taken straight after a resize can show the previous frame.
+  async function resize(width, height) {
+    await page.setViewportSize({ width, height });
+    await page.evaluate(
+      () =>
+        new Promise((done) =>
+          requestAnimationFrame(() => requestAnimationFrame(done)),
+        ),
+    );
+  }
   page.on("pageerror", (e) => errors.push(String(e)));
   const mode = process.env.AIS_APPEARANCE || "system";
   const suffix = mode === "dark" ? "-dark" : "";
@@ -293,12 +303,12 @@ try {
   await page.screenshot({
     path: `${screenshots}/desktop-history${suffix}.png`,
   });
-  await page.setViewportSize({ width: 960, height: 640 });
+  await resize(960, 640);
   await page.getByRole("button", { name: "Pinned 1" }).click();
   await page
     .getByRole("combobox", { name: "Sort conversations" })
     .selectOption("title");
-  await page.screenshot({ path: join(tmpdir(), "ais-history-small.png") });
+  await page.screenshot({ path: join(tmpdir(), `ais-history-small${suffix}.png`) });
   const historyOverflow = await page.evaluate(() => ({
     body: document.body.scrollWidth > innerWidth,
     previewWidth: document.querySelector(".conversation").clientWidth,
@@ -314,7 +324,7 @@ try {
   await page
     .getByRole("combobox", { name: "Sort conversations" })
     .selectOption("recent");
-  await page.setViewportSize({ width: 1360, height: 900 });
+  await resize(1360, 900);
   await page.getByRole("button", { name: /Codex · checkout/ }).click();
   await page
     .getByRole("region", { name: "Codex conversation" })
@@ -341,7 +351,7 @@ try {
   });
   await page.getByRole("button", { name: "Allow once" }).waitFor();
   await checkContrast();
-  await page.setViewportSize({ width: 960, height: 640 });
+  await resize(960, 640);
   await page.screenshot({ path: join(tmpdir(), `ais-approval${suffix}.png`) });
   const approvalFits = await page.evaluate(
     () =>
@@ -366,7 +376,7 @@ try {
     window.__aisDemo.source.version++;
   });
   await page.getByRole("alert").waitFor({ state: "hidden" });
-  await page.setViewportSize({ width: 1360, height: 900 });
+  await resize(1360, 900);
   await page.getByRole("button", { name: "Review with Claude Code" }).click();
   await page.getByRole("dialog").waitFor();
   await page.waitForFunction(
@@ -387,8 +397,8 @@ try {
   await page.getByRole("button", { name: "src/checkout.ts:6" }).click();
   if ((await page.locator(".diff-line.focused").count()) !== 1)
     throw Error("Missing finding highlight");
-  await page.setViewportSize({ width: 960, height: 640 });
-  await page.screenshot({ path: join(tmpdir(), "ais-review-small.png") });
+  await resize(960, 640);
+  await page.screenshot({ path: join(tmpdir(), `ais-review-small${suffix}.png`) });
   await page
     .getByRole("button", { name: "Close Review with Claude Code", exact: true })
     .click();
@@ -409,9 +419,9 @@ try {
   if (libraryOverflow)
     throw Error("Saved workspace overflows the minimum window size");
   await page.screenshot({
-    path: join(tmpdir(), "ais-saved-workspace-small.png"),
+    path: join(tmpdir(), `ais-saved-workspace-small${suffix}.png`),
   });
-  await page.setViewportSize({ width: 1360, height: 900 });
+  await resize(1360, 900);
   await checkContrast();
   await page.screenshot({
     path: `${screenshots}/desktop-saved-workspace${suffix}.png`,
@@ -428,7 +438,7 @@ try {
     .getByRole("button", { name: "Reopen Review with Claude Code" })
     .click();
   await page.getByText("Stop retrying permanent payment failures").waitFor();
-  await page.setViewportSize({ width: 960, height: 640 });
+  await resize(960, 640);
   const overflow = await page.evaluate(() => ({
     body: document.body.scrollWidth > innerWidth,
     composer:
