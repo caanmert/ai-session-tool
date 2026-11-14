@@ -1,0 +1,163 @@
+/*
+ * Proposed design tokens for the ais agent-desktop design.
+ *
+ * These use the SAME variable names as desktop/frontend/src/themes.css so the
+ * existing components pick them up. Merge them into themes.css; do not import
+ * this file as-is.
+ *
+ * - Both themes are full proposals. See the *-light.html and *.html mockups.
+ * - Contrast: every text token passes 4.5:1 on every surface in its theme
+ *   (canvas, sidebar, surface, surface-hover). Dots, strokes and switch tracks
+ *   pass 3:1. Re-check if you change a value.
+ * - New tokens are marked NEW. Everything else replaces an existing value.
+ * - The light theme drops the current green tint for the same neutral look as
+ *   dark, so the two themes read as one product.
+ */
+
+:root {
+  color-scheme: light;
+
+  /* Warm off-white surfaces (replace the current green-tinted light values) */
+  --canvas: #fafaf9; /* main content background */
+  --sidebar: #f3f3f1; /* sidebar, top bar, right panel, code blocks */
+  --surface: #ffffff; /* cards, inputs, composer, selected session row */
+  --surface-soft: #ffffff;
+  --surface-hover: #ebebe8; /* hover, active nav item, secondary buttons */
+  --text: #1a1c1f;
+  --muted: #5f6670; /* meta text */
+  --border: #e2e2de;
+  --selected: #ebebe8;
+  --selected-border: #3d4249;
+
+  /* Primary actions are near-black on off-white (mirror of the dark theme) */
+  --brand: #1a1c1f;
+  --brand-hover: #000000;
+  --on-brand: #ffffff;
+
+  /* Keep --accent* as-is for now; agent colors move to the tokens below */
+
+  --success: #2e9e5b; /* dots, icons */
+  --success-text: #1a6f3e; /* "+12", "Tests pass", "Connected" */
+  --success-soft: #2e9e5b1a;
+  --danger: #d0454d;
+  --danger-text: #b4323a;
+  --danger-soft: #d0454d14;
+  --warning: #c9850c; /* "needs you": strokes, dots */
+  --warning-text: #8a5a00; /* amber on white is unreadable; use this for text */
+  --warning-soft: #d9930f24; /* chips; approval card uses #d9930f0f + border #c9850c8c */
+
+  --focus: #956029;
+  --focus-soft: #f9e5b7;
+  --shadow-color: #15171a2e; /* dialogs and the details drawer: 0 24px 48px */
+  --overlay: #1a1c1f38; /* scrim behind dialogs and the drawer (light enough for gray text on it) */
+
+  /* NEW — destructive buttons (Stop response, Quit and stop agents) */
+  --danger-button: #b4323a; /* white text passes 4.5:1; #d0454d would not */
+  --on-danger: #ffffff;
+
+  /* The live terminal (Terminal tab, xterm) stays dark in both themes.
+     Inline command output in the conversation uses --sidebar instead. */
+  --terminal-bg: #151719;
+  --terminal-text: #d7dade;
+
+  /* NEW — agent identity (darker shades so text passes on white) */
+  --agent-claude: #d06a3f; /* square dot, bars */
+  --agent-claude-soft: #d06a3f24; /* chip and mark background */
+  --agent-claude-text: #a44a26;
+  --agent-codex: #3b7fe0; /* round dot, bars */
+  --agent-codex-soft: #3b7fe029;
+  --agent-codex-text: #2257b0;
+
+  /* NEW — secondary borders */
+  --border-subtle: #ededea; /* row dividers inside a card */
+  --border-strong: #d6d6d1; /* secondary button and input borders */
+  --border-dashed: #c4c4be; /* "add" placeholders */
+  --switch-off: #858b93; /* switch track when off (3:1 on white) */
+
+  /* NEW — diff rows */
+  --diff-add-bg: #2e9e5b1a;
+  --diff-add-text: #1b6b3c;
+  --diff-del-bg: #d0454d14;
+  --diff-del-text: #9e2a31;
+}
+
+:root {
+  /* NEW — shared shape and type scale (theme-independent) */
+
+  /* NEW — shared shape and type scale (theme-independent) */
+  --radius-control: 8px; /* buttons, inputs, selects, list rows */
+  --radius-card: 12px; /* task cards, tool-step groups, setting groups */
+  --radius-panel: 14px; /* composer, agent cards */
+  --radius-pill: 999px; /* status chips, counters */
+  --font-mono: "JetBrains Mono", "SF Mono", ui-monospace, monospace;
+  --text-xs: 11px; /* section labels (uppercase, 0.06em tracking), kbd */
+  --text-sm: 12px; /* meta, timestamps, chips */
+  --text-md: 13px; /* secondary buttons, settings sub-nav */
+  --text-base: 14px; /* body */
+  --text-lg: 15px;
+  --text-title: 22px; /* session title */
+  --text-page: 24px; /* page title (Board, Settings) */
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+
+  /* Neutral graphite surfaces (replace the current green-tinted dark values) */
+  --canvas: #0e0f11; /* main content background */
+  --sidebar: #0b0c0e; /* sidebar, top bar, right panel */
+  --surface: #121417; /* cards, tool-step groups */
+  --surface-soft: #16181b; /* inputs, search, selected session row */
+  --surface-hover: #1b1e22; /* hover, active nav item, secondary buttons */
+  --text: #e8eaed;
+  --muted: #a0a7b1; /* meta text — passes 4.5:1 on every surface above */
+  --border: #262a30; /* default 1px border */
+  --selected: #1b1e22;
+  --selected-border: #c9cdd3;
+
+  /* Primary actions are near-white on graphite (no green brand in this design) */
+  --brand: #e8eaed;
+  --brand-hover: #ffffff;
+  --on-brand: #0e0f11;
+
+  /* Keep --accent* as-is for now; agent colors move to the tokens below */
+
+  --success: #5bd18b;
+  --success-text: #9be3b6;
+  --success-soft: #5bd18b1a;
+  --danger: #f07178;
+  --danger-text: #f4a3a8;
+  --danger-soft: #f071781a;
+  --warning: #f2b544; /* "needs you": approvals, questions */
+  --warning-text: #f2b544;
+  --warning-soft: #f2b5441f;
+
+  --terminal-bg: #0a0b0d;
+  --terminal-text: #a0a7b1;
+
+  /* NEW — agent identity (dark theme) */
+  --agent-claude: #e8875f;
+  --agent-claude-soft: #e8875f24;
+  --agent-claude-text: #f0a383;
+  --agent-codex: #74aeff;
+  --agent-codex-soft: #74aeff24;
+  --agent-codex-text: #9cc5ff;
+
+  /* NEW — secondary borders used inside cards and on stronger controls */
+  --border-subtle: #1f2227; /* row dividers inside a card */
+  --border-strong: #2e333a; /* secondary button and input borders */
+  --border-dashed: #3a3f46; /* "add" placeholders, queued "any agent" cards */
+  --switch-off: #3a3f46;
+
+  --shadow-color: #00000080;
+  --overlay: #0000008c;
+
+  /* NEW — destructive buttons */
+  --danger-button: #f07178;
+  --on-danger: #0e0f11;
+
+  /* NEW — diff rows */
+  --diff-add-bg: #5bd18b1a;
+  --diff-add-text: #9be3b6;
+  --diff-del-bg: #f071781a;
+  --diff-del-text: #f4a3a8;
+}
