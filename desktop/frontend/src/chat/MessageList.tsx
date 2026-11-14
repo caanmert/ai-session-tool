@@ -1,28 +1,8 @@
 import { memo, useEffect, useState } from "react";
-import Markdown from "react-markdown";
+import { SafeMarkdown } from "../ui/SafeMarkdown";
 import AgentMark from "../AgentMark";
 import Icon, { type IconName } from "../Icon";
 import { toolLabel, type ChatMessage } from "../api";
-
-/** Provider output is rendered without active HTML, links or remote images. */
-export const SafeMarkdown = memo(function SafeMarkdown({
-  text,
-}: {
-  text: string;
-}) {
-  return (
-    <Markdown
-      components={{
-        a: ({ children }) => (
-          <span className="transcript-link">{children}</span>
-        ),
-        img: () => <span>[Image omitted]</span>,
-      }}
-    >
-      {text}
-    </Markdown>
-  );
-});
 
 // Claude Code reports tool names (Read, Edit, Bash); Codex reports the command
 // line itself. Pick an icon from the name and treat anything else as a command.

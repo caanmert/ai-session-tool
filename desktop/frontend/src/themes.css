@@ -71,6 +71,14 @@
   --agent-codex-soft: #3b7fe029;
   --agent-codex-text: #2257b0;
 
+  /* Code highlighting, readable on --sidebar */
+  --syntax-comment: #5f6670;
+  --syntax-keyword: #6f42c1;
+  --syntax-string: #0b6e4f;
+  --syntax-value: #0550ae;
+  --syntax-name: #8a4600;
+  --syntax-attr: #116329;
+
   --diff-add-bg: #2e9e5b1a;
   --diff-add-text: #1b6b3c;
   --diff-del-bg: #d0454d14;
@@ -170,6 +178,13 @@
   --agent-codex: #74aeff;
   --agent-codex-soft: #74aeff24;
   --agent-codex-text: #9cc5ff;
+
+  --syntax-comment: #a0a7b1;
+  --syntax-keyword: #c9a5ff;
+  --syntax-string: #9be3b6;
+  --syntax-value: #9cc5ff;
+  --syntax-name: #f0c674;
+  --syntax-attr: #8fd6c4;
 
   --diff-add-bg: #5bd18b1a;
   --diff-add-text: #9be3b6;
