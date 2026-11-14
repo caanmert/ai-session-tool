@@ -28,6 +28,13 @@ export type Project = {
   available: boolean;
   recent: boolean;
 };
+export type AnnotationChange = {
+  /** An empty title restores the agent's own title. */
+  title?: string;
+  pinned?: boolean;
+  addTags?: string[];
+  removeTags?: string[];
+};
 export type Tool = { name: ToolName; available: boolean; path: string };
 export type Snapshot = {
   sessions: Session[];
@@ -260,6 +267,7 @@ export interface Backend {
   StartReview(id: string): Promise<ChatState>;
   SendReviewFindings(id: string, findings: string[]): Promise<string>;
   Refresh(): Promise<Snapshot>;
+  AnnotateSession(key: string, change: AnnotationChange): Promise<Snapshot>;
   Search(query: string): Promise<string[]>;
   Transcript(key: string): Promise<Preview>;
   PickProject(): Promise<string>;
@@ -316,6 +324,8 @@ export const api: Backend = {
   SendReviewFindings: async (id, findings) =>
     backend().SendReviewFindings(id, findings),
   Refresh: async () => backend().Refresh(),
+  AnnotateSession: async (key, change) =>
+    backend().AnnotateSession(key, change),
   Search: async (q) => backend().Search(q),
   Transcript: async (key) => backend().Transcript(key),
   PickProject: async () => backend().PickProject(),
