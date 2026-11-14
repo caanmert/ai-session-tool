@@ -6,6 +6,8 @@ import SavedWorkspace from "./SavedWorkspace";
 import Appearance from "./Appearance";
 import TopBar from "./shell/TopBar";
 import Sidebar from "./shell/Sidebar";
+import CommandPalette, { type Command } from "./shell/CommandPalette";
+import { attentionChange } from "./shell/attention";
 import Icon from "./Icon";
 import AgentMark from "./AgentMark";
 import {
@@ -67,7 +69,7 @@ export default function App() {
   const [newProject, setNewProject] = useState("");
   const [newTool, setNewTool] = useState<ToolName>("codex");
   const searchInput = useRef<HTMLInputElement>(null);
-  const focusHistory = useRef(false);
+  const [showPalette, setShowPalette] = useState(false);
   const sessionRows = useRef<HTMLDivElement>(null);
   const modal = useRef<HTMLDivElement>(null);
   const newButton = useRef<HTMLButtonElement>(null);
@@ -121,6 +123,18 @@ export default function App() {
     },
     [refresh],
   );
+  // Tell the Dock how many conversations are waiting for the user, and bounce
+  // its icon when one starts waiting or a response ends in the background.
+  const attention = useRef({ waiting: 0, busy: 0 });
+  useEffect(() => {
+    const { now, update } = attentionChange(attention.current, chats);
+    attention.current = now;
+    // The Dock is a convenience; the sidebar shows the same state.
+    if (update)
+      api
+        .SetAttention(update.count, update.alert && !document.hasFocus())
+        .catch(() => {});
+  }, [chats]);
   function chatClosed(id: string) {
     setChats((items) => items.filter((item) => item.id !== id));
     setActiveChat((current) => (current === id ? "" : current));
@@ -251,6 +265,83 @@ export default function App() {
     setError("");
     setShowNew(true);
   }, [project, selected, snapshot]);
+  // Everything the command palette can jump to. Choosing a saved conversation
+  // only shows it in History; it never starts or resumes an agent.
+  const commands = useMemo<Command[]>(() => {
+    const folder = (path: string) => basename(path);
+    return [
+      {
+        id: "new",
+        group: "Actions",
+        label: "New task",
+        icon: "plus",
+        shortcut: "⌘N",
+        run: openNew,
+      },
+      {
+        id: "history",
+        group: "Actions",
+        label: "History",
+        icon: "message",
+        run: showHistory,
+      },
+      {
+        id: "runs",
+        group: "Actions",
+        label: "Parallel runs",
+        icon: "branch",
+        run: () => {
+          setActiveChat("");
+          setShowRuns(true);
+        },
+      },
+      {
+        id: "saved",
+        group: "Actions",
+        label: "Saved workspace",
+        icon: "folder",
+        run: () => setShowLibrary(true),
+      },
+      ...chats.map((chat): Command => ({
+        id: `open-${chat.id}`,
+        group: "Open conversations",
+        label: chat.title || "New conversation",
+        hint: `${toolLabel(chat.tool)} · ${folder(chat.project)}`,
+        icon: "message",
+        run: () => {
+          setShowRuns(false);
+          setActiveChat(chat.id);
+        },
+      })),
+      ...(snapshot?.projects || []).map((p): Command => ({
+        id: `project-${p.path}`,
+        group: "Projects",
+        label: p.name || p.path,
+        hint: p.path,
+        icon: "folder",
+        run: () => {
+          showHistory();
+          setProject(p.path);
+          setQuery("");
+        },
+      })),
+      ...(snapshot?.sessions || []).map((s): Command => ({
+        id: `session-${s.key}`,
+        group: "Conversations",
+        label: s.title || "Untitled conversation",
+        hint: `${toolLabel(s.tool)} · ${folder(s.project)}`,
+        icon: "file",
+        run: () => {
+          showHistory();
+          setProject("");
+          setQuery("");
+          setTool("all");
+          setHistoryView("all");
+          setSelectedKey(s.key);
+        },
+      })),
+    ];
+  }, [chats, snapshot, openNew, showHistory]);
   useEffect(() => {
     function key(event: KeyboardEvent) {
       if (showLibrary || document.querySelector("dialog[open]")) return;
@@ -260,13 +351,7 @@ export default function App() {
         !showNew
       ) {
         event.preventDefault();
-        focusHistory.current = true;
-        setShowRuns(false);
-        setActiveChat("");
-        if (!activeChat && !showRuns) {
-          searchInput.current?.focus();
-          focusHistory.current = false;
-        }
+        setShowPalette(true);
       }
       if (
         (event.metaKey || event.ctrlKey) &&
@@ -301,12 +386,6 @@ export default function App() {
     document.addEventListener("keydown", key);
     return () => document.removeEventListener("keydown", key);
   }, [showNew, showLibrary, busy, openNew, snapshot, activeChat, showRuns]);
-  useEffect(() => {
-    if (focusHistory.current && !activeChat && !showRuns) {
-      searchInput.current?.focus();
-      focusHistory.current = false;
-    }
-  }, [activeChat, showRuns]);
   useEffect(() => {
     if (showNew) modal.current?.querySelector<HTMLElement>("button")?.focus();
   }, [showNew]);
@@ -372,31 +451,13 @@ export default function App() {
         snapshot={snapshot}
         project={project}
         busy={busy}
-        query={query}
-        searchInput={searchInput}
         onProject={(path) => {
           showHistory();
           setProject(path);
           setQuery("");
         }}
         onAddProject={() => void pickProject()}
-        onQuery={(value) => {
-          setQuery(value);
-          // Search results live in History, so typing goes there.
-          if (value) showHistory();
-        }}
-        onSearchKey={(e) => {
-          if (e.key === "Escape") {
-            e.preventDefault();
-            setQuery("");
-          }
-          if (e.key === "ArrowDown" && sessions.length) {
-            e.preventDefault();
-            sessionRows.current
-              ?.querySelector<HTMLButtonElement>('[tabindex="0"]')
-              ?.focus();
-          }
-        }}
+        onSearch={() => setShowPalette(true)}
       />
       <Sidebar
         view={showRuns ? "runs" : activeChat ? "chat" : "history"}
@@ -442,6 +503,40 @@ export default function App() {
           </header>
         )}
         <div className="toolbar" hidden={!!activeChat || showRuns}>
+          <label className="history-filter">
+            <Icon name="filter" size={15} />
+            <input
+              ref={searchInput}
+              aria-label="Search sessions"
+              placeholder="Filter by title, project or tag…"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Escape") {
+                  e.preventDefault();
+                  setQuery("");
+                }
+                if (e.key === "ArrowDown" && sessions.length) {
+                  e.preventDefault();
+                  sessionRows.current
+                    ?.querySelector<HTMLButtonElement>('[tabindex="0"]')
+                    ?.focus();
+                }
+              }}
+            />
+            {query && (
+              <button
+                className="icon-button"
+                aria-label="Clear search"
+                onClick={() => {
+                  setQuery("");
+                  searchInput.current?.focus();
+                }}
+              >
+                <Icon name="close" size={14} />
+              </button>
+            )}
+          </label>
           <div className="tool-filter" aria-label="Filter by agent">
             {["all", "codex", "claude"].map((value) => (
               <button
@@ -884,6 +979,12 @@ export default function App() {
           </section>
         </div>
       </main>
+      {showPalette && (
+        <CommandPalette
+          commands={commands}
+          onClose={() => setShowPalette(false)}
+        />
+      )}
       {showLibrary && (
         <SavedWorkspace
           project={project}

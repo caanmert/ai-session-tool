@@ -95,6 +95,7 @@ let backend: Backend;
 beforeEach(() => {
   backend = {
     SetAppearance: vi.fn().mockResolvedValue(undefined),
+    SetAttention: vi.fn().mockResolvedValue(undefined),
     ChatModels: vi
       .fn()
       .mockResolvedValue({ models: [], defaultModel: "", defaultEffort: "" }),
@@ -364,7 +365,7 @@ describe("desktop workflows", () => {
     expect(document.querySelector(".messages script")).toBeNull();
     expect(document.querySelector(".messages a")).toBeNull();
   });
-  it("returns from runs to history search after the view becomes visible", async () => {
+  it("opens the command palette with ⌘K and jumps to a saved conversation without starting an agent", async () => {
     render(<App />);
     await screen.findByRole("heading", { name: "Retry webhook delivery" });
     await userEvent.click(
@@ -372,16 +373,48 @@ describe("desktop workflows", () => {
     );
     await screen.findByText("No runs yet");
     fireEvent.keyDown(document, { key: "k", metaKey: true });
-    await waitFor(() =>
-      expect(
-        screen.getByRole("textbox", { name: "Search sessions" }),
-      ).toHaveFocus(),
-    );
-    screen.getByRole("textbox", { name: "Search sessions" }).blur();
-    fireEvent.keyDown(document, { key: "k", metaKey: true });
+    const palette = await screen.findByRole("dialog", {
+      name: "Search and commands",
+    });
+    const input = within(palette).getByRole("combobox");
     expect(
-      screen.getByRole("textbox", { name: "Search sessions" }),
-    ).toHaveFocus();
+      within(palette).getByRole("option", { name: /New task/ }),
+    ).toHaveAttribute("aria-selected", "true");
+    await userEvent.type(input, "document claude");
+    const options = within(palette).getAllByRole("option");
+    expect(options).toHaveLength(1);
+    expect(options[0]).toHaveTextContent("Document installation");
+    await userEvent.keyboard("{Enter}");
+    expect(
+      screen.queryByRole("dialog", { name: "Search and commands" }),
+    ).not.toBeInTheDocument();
+    await screen.findByRole("heading", { name: "Document installation" });
+    expect(backend.ResumeChat).not.toHaveBeenCalled();
+    expect(backend.NewChat).not.toHaveBeenCalled();
+  });
+  it("moves through palette results with the arrow keys and reports no matches", async () => {
+    render(<App />);
+    await screen.findByRole("heading", { name: "Retry webhook delivery" });
+    await userEvent.click(
+      screen.getByRole("button", { name: /Search conversations, projects/ }),
+    );
+    const palette = await screen.findByRole("dialog", {
+      name: "Search and commands",
+    });
+    await userEvent.keyboard("{ArrowDown}{ArrowDown}");
+    expect(
+      within(palette).getByRole("option", { name: /Parallel runs/ }),
+    ).toHaveAttribute("aria-selected", "true");
+    await userEvent.keyboard("{Enter}");
+    await screen.findByText("No runs yet");
+    fireEvent.keyDown(document, { key: "k", metaKey: true });
+    await userEvent.type(
+      within(
+        await screen.findByRole("dialog", { name: "Search and commands" }),
+      ).getByRole("combobox"),
+      "zzzz",
+    );
+    expect(screen.getByRole("status")).toHaveTextContent("Nothing matches");
   });
   it("opens saved desktop work without starting or resuming a provider", async () => {
     backend.ListSavedChats = vi.fn().mockResolvedValue([
