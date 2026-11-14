@@ -68,6 +68,7 @@ beforeEach(() => {
     AnswerChat: vi.fn().mockResolvedValue(undefined),
     PrepareReview: vi.fn().mockResolvedValue(draft),
     PickFiles: vi.fn().mockResolvedValue([]),
+    RevealProject: vi.fn().mockResolvedValue(undefined),
     ChatChanges: vi.fn().mockResolvedValue({
       available: true,
       files: [
@@ -110,6 +111,16 @@ describe("graphical conversations", () => {
     expect(backend.ChatDiff).toHaveBeenCalledWith("chat");
     expect(await within(dialog).findByText(/after/)).toBeVisible();
     expect(within(dialog).getByText(/read-only/)).toBeVisible();
+  });
+  it("shows the project folder in Finder on request", async () => {
+    show();
+    const panel = await screen.findByRole("complementary", {
+      name: "Conversation details",
+    });
+    await userEvent.click(
+      within(panel).getByRole("button", { name: "Show in Finder" }),
+    );
+    expect(backend.RevealProject).toHaveBeenCalledWith("chat");
   });
   it("opens details as a drawer in a narrow window and returns focus on Escape", async () => {
     Object.defineProperty(window, "matchMedia", {

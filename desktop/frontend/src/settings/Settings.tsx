@@ -1,7 +1,7 @@
 import AgentMark from "../AgentMark";
 import { AppearanceSetting, type AppearanceControl } from "../Appearance";
 import Icon from "../Icon";
-import { toolLabel, type Tool } from "../api";
+import { toolLabel, type AgentHealth, type Tool } from "../api";
 
 const install: Record<string, string> = {
   claude: "npm install -g @anthropic-ai/claude-code",
@@ -21,11 +21,13 @@ const shortcuts: [string, string][] = [
 export default function Settings({
   appearance,
   tools,
+  health,
   checking,
   onCheck,
 }: {
   appearance: AppearanceControl;
   tools: Tool[];
+  health: AgentHealth[];
   checking: boolean;
   onCheck: () => void;
 }) {
@@ -59,33 +61,53 @@ export default function Settings({
           looks in your PATH, ~/.local/bin, /opt/homebrew/bin and
           /usr/local/bin.
         </p>
-        {tools.map((tool) => (
-          <div
-            className={`setting-group agent-card ${tool.available ? "" : "missing"}`}
-            key={tool.name}
-          >
-            <AgentMark tool={tool.name} />
-            <div>
-              <strong>{toolLabel(tool.name)}</strong>
-              <code>{tool.available ? tool.path : install[tool.name]}</code>
-              {!tool.available && (
-                <small>
-                  Install it with the command above, sign in from its command
-                  line, then check again.
-                </small>
+        {tools.map((tool) => {
+          const state = health.find((item) => item.tool === tool.name);
+          return (
+            <div
+              className={`setting-group agent-card ${tool.available && !state?.problem ? "" : "missing"}`}
+              key={tool.name}
+            >
+              <AgentMark tool={tool.name} />
+              <div>
+                <strong>{toolLabel(tool.name)}</strong>
+                <code>{tool.available ? tool.path : install[tool.name]}</code>
+                {!tool.available && (
+                  <small>
+                    Install it with the command above, sign in from its command
+                    line, then check again.
+                  </small>
+                )}
+                {tool.available && state?.version && (
+                  <small>Version {state.version}</small>
+                )}
+                {state?.problem && (
+                  <small className="problem" role="alert">
+                    {state.problem} Updating ais, or installing version{" "}
+                    {state.tested} of this agent, should fix it.
+                  </small>
+                )}
+              </div>
+              {tool.available && state?.problem ? (
+                <span className="chip status error">
+                  <Icon name="alert" size={12} /> Not compatible
+                </span>
+              ) : tool.available ? (
+                <span className="chip status found">
+                  <Icon name="check" size={12} /> Found
+                </span>
+              ) : (
+                <span className="chip status error">
+                  <Icon name="alert" size={12} /> Not found
+                </span>
               )}
             </div>
-            {tool.available ? (
-              <span className="chip status found">
-                <Icon name="check" size={12} /> Found
-              </span>
-            ) : (
-              <span className="chip status error">
-                <Icon name="alert" size={12} /> Not found
-              </span>
-            )}
-          </div>
-        ))}
+          );
+        })}
+        <p className="setting-note">
+          Checking asks each agent for its version and options only. It does not
+          contact a model.
+        </p>
       </section>
 
       <section aria-labelledby="settings-shortcuts">

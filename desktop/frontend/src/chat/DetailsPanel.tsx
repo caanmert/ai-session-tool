@@ -146,6 +146,7 @@ export default function DetailsPanel({
   onClose: () => void;
 }) {
   const [review, setReview] = useState<string>();
+  const [revealError, setRevealError] = useState("");
   const close = useRef<HTMLButtonElement>(null);
   useEffect(() => {
     if (drawer) close.current?.focus();
@@ -274,6 +275,22 @@ export default function DetailsPanel({
             <dd title={chat.project}>{chat.project}</dd>
           </div>
         </dl>
+        <button
+          className="button secondary reveal"
+          onClick={() => {
+            setRevealError("");
+            api
+              .RevealProject(chat.id)
+              .catch((e) => setRevealError(errorText(e)));
+          }}
+        >
+          <Icon name="folder" size={14} /> Show in Finder
+        </button>
+        {revealError && (
+          <p className="details-note error" role="alert">
+            {revealError}
+          </p>
+        )}
       </aside>
       {review !== undefined && (
         <ChangesDialog

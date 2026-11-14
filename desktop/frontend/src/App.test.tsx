@@ -96,6 +96,8 @@ beforeEach(() => {
   backend = {
     SetAppearance: vi.fn().mockResolvedValue(undefined),
     SetAttention: vi.fn().mockResolvedValue(undefined),
+    AgentHealth: vi.fn().mockResolvedValue([]),
+    RevealProject: vi.fn(),
     AnnotateSession: vi.fn(),
     ChatModels: vi
       .fn()
@@ -537,6 +539,42 @@ describe("desktop workflows", () => {
     );
     expect(await screen.findByRole("alert")).toHaveTextContent("invalid tag");
     expect(backend.ResumeChat).not.toHaveBeenCalled();
+  });
+  it("warns when an installed agent no longer accepts what ais sends, and explains it in Settings", async () => {
+    backend.AgentHealth = vi.fn().mockResolvedValue([
+      { tool: "codex", version: "0.167.1", tested: "0.162.1" },
+      {
+        tool: "claude",
+        version: "3.0.0",
+        tested: "2.1.296",
+        problem: "This version rejects an option ais relies on: unknown option",
+      },
+    ]);
+    render(<App />);
+    await screen.findByRole("heading", { name: "Retry webhook delivery" });
+    const warning = await screen.findByText(
+      /Claude Code may not work with this version of ais/,
+    );
+    await userEvent.click(
+      within(warning.closest("[role=alert]") as HTMLElement).getByRole(
+        "button",
+        { name: "See details in Settings" },
+      ),
+    );
+    const settings = screen.getByRole("region", { name: "Settings" });
+    expect(within(settings).getByText("Not compatible")).toBeVisible();
+    expect(within(settings).getByText(/unknown option/)).toBeVisible();
+    // A newer version that still works is shown without comment.
+    expect(within(settings).getByText("Version 0.167.1")).toBeVisible();
+    expect(within(settings).queryByText(/newer than/)).not.toBeInTheDocument();
+    expect(
+      within(settings).getByText(/does not contact a model/),
+    ).toBeVisible();
+    // Check again asks the agents again.
+    await userEvent.click(
+      within(settings).getByRole("button", { name: "Check again" }),
+    );
+    expect(backend.AgentHealth).toHaveBeenCalledTimes(2);
   });
   it("opens saved desktop work without starting or resuming a provider", async () => {
     backend.ListSavedChats = vi.fn().mockResolvedValue([

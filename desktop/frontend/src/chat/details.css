@@ -135,6 +135,10 @@
 .review-all {
   width: 100%;
 }
+.chat-details .reveal {
+  align-self: flex-start;
+  margin-top: 12px;
+}
 .details-empty,
 .details-note {
   font-size: var(--text-sm);

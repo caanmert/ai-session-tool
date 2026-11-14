@@ -13,7 +13,7 @@ import (
 )
 
 func (m *chatManager) runClaude(ctx context.Context, c *chatSession, state ChatState, text string) (string, error) {
-	args := []string{"-p", "--input-format", "stream-json", "--output-format", "stream-json", "--verbose", "--include-partial-messages", "--permission-prompt-tool", "stdio", "--permission-mode", "default"}
+	args := append([]string{}, claudeBaseArgs...)
 	if state.Settings.Configured {
 		project := state.Project
 		if state.Review != nil {
