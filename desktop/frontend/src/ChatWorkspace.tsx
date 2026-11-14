@@ -1,8 +1,9 @@
-import { useEffect, useRef, useState } from "react";
+import { memo, useEffect, useRef, useState } from "react";
 import Markdown from "react-markdown";
 import ModelPicker from "./ModelPicker";
 import DiffViewer from "./DiffViewer";
 import AgentMark from "./AgentMark";
+import { applyChatUpdate } from "./chatUpdates";
 import { useChatDraft } from "./useChatDraft";
 import {
   api,
@@ -10,6 +11,7 @@ import {
   toolLabel,
   type ChatState,
   type ChatApproval,
+  type ChatMessage,
   type ReviewDraft,
 } from "./api";
 
@@ -24,7 +26,11 @@ const statusLabel = (status: string) =>
     stopped: "Stopped",
     error: "Needs attention",
   })[status] || status;
-export function SafeMarkdown({ text }: { text: string }) {
+export const SafeMarkdown = memo(function SafeMarkdown({
+  text,
+}: {
+  text: string;
+}) {
   return (
     <Markdown
       components={{
@@ -37,7 +43,45 @@ export function SafeMarkdown({ text }: { text: string }) {
       {text}
     </Markdown>
   );
-}
+});
+
+// Rows are memoized: while a reply streams, only its own row renders again.
+const ChatMessageRow = memo(function ChatMessageRow({
+  message,
+  agent,
+}: {
+  message: ChatMessage;
+  agent: string;
+}) {
+  if (message.kind === "tool")
+    return (
+      <details className="chat-tool">
+        <summary>
+          <span className={`tool-indicator ${message.status}`} />
+          <strong>{message.name || "Tool activity"}</strong>
+          <small>{message.status || "Saved"}</small>
+        </summary>
+        <pre>{message.text || "Waiting for output…"}</pre>
+      </details>
+    );
+  return (
+    <article className={`chat-message ${message.role}`}>
+      <div className="chat-message-author">
+        {message.role === "user"
+          ? "You"
+          : message.role === "system"
+            ? "ais"
+            : agent}
+      </div>
+      <div className="markdown">
+        {message.role === "assistant" && message.model && (
+          <div className="message-model">{message.model}</div>
+        )}
+        <SafeMarkdown text={message.text} />
+      </div>
+    </article>
+  );
+});
 type Props = {
   chat: ChatState;
   active: boolean;
@@ -84,15 +128,25 @@ export default function ChatWorkspace({
     let disposed = false;
     let timer: ReturnType<typeof setTimeout>;
     let version = -1;
+    let current: ChatState | undefined;
     let lastStatus = chat.status;
     let lastTitle = chat.title;
+    // The backend holds each read until the conversation changes, so this loop
+    // costs nothing while idle. Updates carry only the messages that changed.
     async function poll() {
       try {
         const update = await api.ReadChat(chat.id, version);
         if (disposed) return;
+        const next = applyChatUpdate(current, update);
+        if (!next) {
+          // A partial update did not fit: read the whole conversation again.
+          version = -1;
+          timer = setTimeout(() => void poll(), 0);
+          return;
+        }
         version = update.version;
         if (update.state) {
-          const next = update.state;
+          current = next;
           setState(next);
           if (next.status !== lastStatus || next.title !== lastTitle) {
             notify.current(next);
@@ -100,7 +154,13 @@ export default function ChatWorkspace({
             lastTitle = next.title;
           }
         }
-        timer = setTimeout(() => void poll(), activeRef.current ? 120 : 500);
+        // A reply without changes means the backend's wait ran out, or the
+        // backend answers at once (tests, browser fixtures): pause before
+        // asking again.
+        timer = setTimeout(
+          () => void poll(),
+          update.state ? 0 : activeRef.current ? 120 : 500,
+        );
       } catch (e) {
         if (!disposed) setError(errorText(e));
       }
@@ -282,37 +342,13 @@ export default function ChatWorkspace({
                 message.kind === "text"
               ),
           )
-          .map((message) =>
-            message.kind === "tool" ? (
-              <details key={message.id} className="chat-tool">
-                <summary>
-                  <span className={`tool-indicator ${message.status}`} />
-                  <strong>{message.name || "Tool activity"}</strong>
-                  <small>{message.status || "Saved"}</small>
-                </summary>
-                <pre>{message.text || "Waiting for output…"}</pre>
-              </details>
-            ) : (
-              <article
-                key={message.id}
-                className={`chat-message ${message.role}`}
-              >
-                <div className="chat-message-author">
-                  {message.role === "user"
-                    ? "You"
-                    : message.role === "system"
-                      ? "ais"
-                      : toolLabel(state.tool)}
-                </div>
-                <div className="markdown">
-                  {message.role === "assistant" && message.model && (
-                    <div className="message-model">{message.model}</div>
-                  )}
-                  <SafeMarkdown text={message.text} />
-                </div>
-              </article>
-            ),
-          )}
+          .map((message) => (
+            <ChatMessageRow
+              key={message.id}
+              message={message}
+              agent={toolLabel(state.tool)}
+            />
+          ))}
         {state.review?.complete && (
           <div className="review-findings">
             <div className="eyebrow">REVIEW RESULTS</div>

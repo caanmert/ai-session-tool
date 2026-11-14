@@ -93,10 +93,10 @@ func (a *App) SetAppearance(theme string) error {
 	}
 	if theme == "dark" {
 		wailsruntime.WindowSetDarkTheme(a.ctx)
-		wailsruntime.WindowSetBackgroundColour(a.ctx, 17, 25, 22, 255)
+		wailsruntime.WindowSetBackgroundColour(a.ctx, 14, 15, 17, 255) // --canvas, dark
 	} else {
 		wailsruntime.WindowSetLightTheme(a.ctx)
-		wailsruntime.WindowSetBackgroundColour(a.ctx, 246, 247, 243, 255)
+		wailsruntime.WindowSetBackgroundColour(a.ctx, 250, 250, 249, 255) // --canvas, light
 	}
 	return nil
 }

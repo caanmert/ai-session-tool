@@ -102,7 +102,9 @@ func (a *App) ReadChat(id string, version int64) (ChatUpdate, error) {
 	if err := a.chatReady(); err != nil {
 		return ChatUpdate{}, err
 	}
-	return a.chats.read(id, version)
+	// Each bound call runs on its own goroutine, so waiting here does not hold
+	// up other calls. The wait ends early when the app shuts down.
+	return a.chats.watch(a.ctx, id, version, 20*time.Second)
 }
 func (a *App) SendChat(id, text string) error {
 	if err := a.chatReady(); err != nil {

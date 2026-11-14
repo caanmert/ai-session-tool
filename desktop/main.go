@@ -17,7 +17,7 @@ func main() {
 	if err := wails.Run(&options.App{
 		Title: "ais — your coding workspace", Width: 1360, Height: 900,
 		MinWidth: 960, MinHeight: 640,
-		BackgroundColour: &options.RGBA{R: 248, G: 247, B: 244, A: 255},
+		BackgroundColour: &options.RGBA{R: 250, G: 250, B: 249, A: 255}, // --canvas, light
 		AssetServer:      &assetserver.Options{Assets: assets},
 		OnStartup:        app.startup, OnShutdown: app.shutdown, OnBeforeClose: app.beforeClose,
 		Bind: []interface{}{app},

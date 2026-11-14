@@ -80,6 +80,57 @@ function show() {
   );
 }
 describe("graphical conversations", () => {
+  it("applies partial updates and reads everything again after a missed one", async () => {
+    const text = (id: string, value: string) => ({
+      id,
+      role: "assistant",
+      kind: "text",
+      text: value,
+    });
+    const replies = [
+      { version: 1, state: { ...initial, messages: [text("a", "First")] } },
+      {
+        version: 2,
+        partial: true,
+        first: "a",
+        count: 2,
+        state: { ...initial, version: 2, messages: [text("b", "Second")] },
+      },
+      // Claims three messages, but the reader only has two: out of step.
+      {
+        version: 4,
+        partial: true,
+        first: "a",
+        count: 4,
+        state: { ...initial, version: 4, messages: [text("d", "Fourth")] },
+      },
+      {
+        version: 4,
+        state: {
+          ...initial,
+          version: 4,
+          messages: [
+            text("a", "First"),
+            text("b", "Second"),
+            text("c", "Third"),
+            text("d", "Fourth"),
+          ],
+        },
+      },
+    ];
+    const read = vi.fn(
+      async (_id: string, _version: number) =>
+        replies.shift() ?? { version: 4, state: null },
+    );
+    backend.ReadChat = read;
+    show();
+    await screen.findByText("Fourth");
+    expect(screen.getByText("First")).toBeVisible();
+    expect(screen.getByText("Third")).toBeVisible();
+    expect(read.mock.calls.slice(0, 4).map((call) => call[1])).toEqual([
+      -1, 1, 2, -1,
+    ]);
+  });
   it("respects reading position and offers a jump back to the latest reply", async () => {
     const view = show();
     const messages = view.container.querySelector(
