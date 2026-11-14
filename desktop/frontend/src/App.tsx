@@ -9,6 +9,8 @@ import {
 import Markdown from "react-markdown";
 import ChatWorkspace, { chatBusy } from "./ChatWorkspace";
 import SavedWorkspace from "./SavedWorkspace";
+import Appearance from "./Appearance";
+import WorkspaceTabs from "./WorkspaceTabs";
 import {
   api,
   errorText,
@@ -142,6 +144,8 @@ export default function App() {
   const [busy, setBusy] = useState(false);
   const [showNew, setShowNew] = useState(false);
   const [showLibrary, setShowLibrary] = useState(false);
+  const [closingChat, setClosingChat] = useState("");
+  const closingOperation = useRef(false);
   const [newProject, setNewProject] = useState("");
   const [newTool, setNewTool] = useState<ToolName>("codex");
   const searchInput = useRef<HTMLInputElement>(null);
@@ -201,6 +205,20 @@ export default function App() {
   function chatClosed(id: string) {
     setChats((items) => items.filter((item) => item.id !== id));
     setActiveChat((current) => (current === id ? "" : current));
+  }
+  async function closeChat(id: string) {
+    if (closingOperation.current) return;
+    closingOperation.current = true;
+    setClosingChat(id);
+    try {
+      await api.CloseChat(id);
+      chatClosed(id);
+    } catch (e) {
+      setError(errorText(e));
+    } finally {
+      closingOperation.current = false;
+      setClosingChat("");
+    }
   }
   function openChat(chat: ChatState) {
     setChats((items) =>
@@ -268,6 +286,7 @@ export default function App() {
     });
   }, [scopedSessions, historyView, historySort]);
   const selected = sessions.find((s) => s.key === selectedKey) || sessions[0];
+  const activeConversation = chats.find((chat) => chat.id === activeChat);
   const hasFilters = !!query || tool !== "all" || historyView !== "all";
   function clearFilters() {
     setQuery("");
@@ -493,6 +512,7 @@ export default function App() {
           </button>
         </div>
         <div className="sidebar-bottom">
+          <Appearance />
           <div className="section-heading">YOUR AGENTS</div>
           {snapshot?.tools.map((t) => (
             <div className="agent-status" key={t.name}>
@@ -519,7 +539,7 @@ export default function App() {
             </div>
             <h1>
               {activeChat
-                ? "Your coding workspace"
+                ? basename(activeConversation?.project || "") || "Workspace"
                 : project
                   ? currentProject?.name || basename(project)
                   : "Your conversations"}
@@ -679,33 +699,13 @@ export default function App() {
           </details>
         )}
         {chats.length > 0 && (
-          <nav className="live-tabs" aria-label="Workspace tabs">
-            <button
-              className={!activeChat ? "active" : ""}
-              aria-pressed={!activeChat}
-              onClick={() => setActiveChat("")}
-            >
-              History
-            </button>
-            {chats.map((live, i) => (
-              <button
-                key={live.id}
-                className={activeChat === live.id ? "active" : ""}
-                aria-pressed={activeChat === live.id}
-                onClick={() => setActiveChat(live.id)}
-                title={live.project}
-              >
-                <span
-                  className={`status-dot ${chatBusy(live.status) ? "online" : ""}`}
-                />
-                {toolLabel(live.tool)} · {basename(live.project)}{" "}
-                <small>
-                  #{i + 1}
-                  {live.review ? " · Review" : ""}
-                </small>
-              </button>
-            ))}
-          </nav>
+          <WorkspaceTabs
+            chats={chats}
+            active={activeChat}
+            onSelect={setActiveChat}
+            onClose={(id) => void closeChat(id)}
+            closing={closingChat}
+          />
         )}
         {chats.map((live) => (
           <ChatWorkspace
@@ -723,7 +723,6 @@ export default function App() {
                 .catch((e) => setError(errorText(e)));
             }}
             onState={chatChanged}
-            onClose={chatClosed}
           />
         ))}
         <div className="session-workspace" hidden={!!activeChat}>

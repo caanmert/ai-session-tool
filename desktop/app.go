@@ -80,6 +80,24 @@ func (a *App) ready() error {
 	return nil
 }
 
+// SetAppearance keeps the native window and WebView surfaces in the same mode.
+func (a *App) SetAppearance(theme string) error {
+	if theme != "light" && theme != "dark" {
+		return errors.New("choose light or dark appearance")
+	}
+	if a.ctx == nil {
+		return errors.New("the window is starting")
+	}
+	if theme == "dark" {
+		wailsruntime.WindowSetDarkTheme(a.ctx)
+		wailsruntime.WindowSetBackgroundColour(a.ctx, 17, 25, 22, 255)
+	} else {
+		wailsruntime.WindowSetLightTheme(a.ctx)
+		wailsruntime.WindowSetBackgroundColour(a.ctx, 246, 247, 243, 255)
+	}
+	return nil
+}
+
 func (a *App) Refresh() (application.Snapshot, error) {
 	if err := a.ready(); err != nil {
 		return application.Snapshot{}, err

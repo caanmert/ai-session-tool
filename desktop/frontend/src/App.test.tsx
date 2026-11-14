@@ -94,6 +94,7 @@ const snapshot: Snapshot = {
 let backend: Backend;
 beforeEach(() => {
   backend = {
+    SetAppearance: vi.fn().mockResolvedValue(undefined),
     ChatModels: vi
       .fn()
       .mockResolvedValue({ models: [], defaultModel: "", defaultEffort: "" }),
