@@ -6,6 +6,7 @@ import SavedWorkspace from "./SavedWorkspace";
 import { useAppearance } from "./Appearance";
 import Settings from "./settings/Settings";
 import Board from "./board/Board";
+import { sessionCost, sessionTokens } from "./ui/format";
 import TopBar from "./shell/TopBar";
 import Sidebar from "./shell/Sidebar";
 import AgentsMissing from "./shell/AgentsMissing";
@@ -19,7 +20,6 @@ import {
   errorText,
   toolLabel,
   type Preview,
-  type Session,
   type Snapshot,
   type ToolName,
   type ChatState,
@@ -37,13 +37,6 @@ function age(date: string) {
   if (minutes < 60) return `${minutes}m ago`;
   if (minutes < 1440) return `${Math.floor(minutes / 60)}h ago`;
   return `${Math.floor(minutes / 1440)}d ago`;
-}
-function tokens(session: Session) {
-  const u = session.usage;
-  return new Intl.NumberFormat("en", {
-    notation: "compact",
-    maximumFractionDigits: 1,
-  }).format(u.input + u.output + u.cacheRead + u.cacheWrite);
 }
 function boardSummary(chats: ChatState[]) {
   if (!chats.length) return "Open conversations appear here, grouped by state.";
@@ -742,6 +735,9 @@ export default function App() {
           <ChatWorkspace
             key={live.id}
             chat={live}
+            session={snapshot?.sessions.find(
+              (s) => s.tool === live.tool && s.id === live.sessionId,
+            )}
             active={activeChat === live.id && !otherPage}
             reviewerAvailable={
               !!snapshot?.tools.some((t) => t.name !== live.tool && t.available)
@@ -879,7 +875,7 @@ export default function App() {
                   <div className="row-bottom">
                     <span>
                       {s.userTurns + s.assistantTurns} messages <span>·</span>{" "}
-                      {tokens(s)} tokens
+                      {sessionTokens(s)} tokens
                     </span>
                     {s.live && (
                       <span className="live-label">
@@ -966,7 +962,12 @@ export default function App() {
                   <div className="session-facts">
                     <span>{selected.userTurns} prompts</span>
                     <span>{selected.assistantTurns} replies</span>
-                    <span>{tokens(selected)} tokens</span>
+                    <span>{sessionTokens(selected)} tokens</span>
+                    {sessionCost(selected) && (
+                      <span title="What this usage would cost at API list prices. A subscription is not billed this way.">
+                        {sessionCost(selected)} at API prices
+                      </span>
+                    )}
                     {selected.model && <span>{selected.model}</span>}
                     <SessionTags session={selected} onChange={annotate} />
                   </div>

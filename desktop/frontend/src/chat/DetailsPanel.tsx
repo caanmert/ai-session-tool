@@ -7,7 +7,19 @@ import {
   type ChangeSummary,
   type ChatState,
   type ReviewSnapshot,
+  type Session,
 } from "../api";
+import { sessionCost, sessionTokens } from "../ui/format";
+
+const usageBreakdown = (session: Session) =>
+  [
+    ["Input", session.usage.input],
+    ["output", session.usage.output],
+    ["cache read", session.usage.cacheRead],
+    ["cache write", session.usage.cacheWrite],
+  ]
+    .map(([name, count]) => name + " " + count.toLocaleString())
+    .join(" · ");
 
 const statusName: Record<string, string> = {
   M: "Modified",
@@ -131,6 +143,7 @@ function ChangesDialog({
 
 export default function DetailsPanel({
   chat,
+  session,
   summary,
   error,
   drawer,
@@ -138,6 +151,7 @@ export default function DetailsPanel({
   onClose,
 }: {
   chat: ChatState;
+  session?: Session;
   summary?: ChangeSummary;
   error: string;
   /** Shown over the conversation at narrow widths, with a close button. */
@@ -270,6 +284,26 @@ export default function DetailsPanel({
               {chat.activeModel || chat.settings?.model || "Agent default"}
             </dd>
           </div>
+          {session && (
+            <>
+              <div>
+                <dt>Turns</dt>
+                <dd>
+                  {session.userTurns} prompts · {session.assistantTurns} replies
+                </dd>
+              </div>
+              <div title={usageBreakdown(session)}>
+                <dt>Tokens</dt>
+                <dd>{sessionTokens(session)}</dd>
+              </div>
+              {sessionCost(session) && (
+                <div title="What this usage would cost at API list prices. A subscription is not billed this way.">
+                  <dt>At API prices</dt>
+                  <dd>{sessionCost(session)}</dd>
+                </div>
+              )}
+            </>
+          )}
           <div>
             <dt>Project</dt>
             <dd title={chat.project}>{chat.project}</dd>
