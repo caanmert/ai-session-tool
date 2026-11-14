@@ -2,10 +2,10 @@ import { useState } from "react";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { expect, it, vi } from "vitest";
-import WorkspaceTabs from "./WorkspaceTabs";
-import type { ChatState } from "./api";
+import OpenSessions from "./OpenSessions";
+import type { ChatState } from "../api";
 
-it("uses titles and explicit states, supports keyboard switching and guards busy tabs", async () => {
+it("groups by project, shows explicit states, supports keyboard switching and guards busy rows", async () => {
   const close = vi.fn();
   const chats = [
     {
@@ -24,9 +24,9 @@ it("uses titles and explicit states, supports keyboard switching and guards busy
     },
   ] as ChatState[];
   function Tabs() {
-    const [active, setActive] = useState("");
+    const [active, setActive] = useState("one");
     return (
-      <WorkspaceTabs
+      <OpenSessions
         chats={chats}
         active={active}
         onSelect={setActive}
@@ -36,19 +36,23 @@ it("uses titles and explicit states, supports keyboard switching and guards busy
     );
   }
   render(<Tabs />);
-  screen.getByRole("button", { name: "History" }).focus();
+  expect(screen.getByRole("heading", { name: "api" })).toBeVisible();
+  screen.getByRole("button", { name: /Fix webhook retries Codex/ }).focus();
   await userEvent.keyboard("{End}");
-  expect(
-    screen.getByRole("button", { name: /Review checkout Claude/ }),
-  ).toHaveFocus();
-  expect(screen.getByRole("img", { name: "Needs your input" })).toBeVisible();
+  const review = screen.getByRole("button", {
+    name: /Review checkout Claude · Needs your input/,
+  });
+  expect(review).toHaveFocus();
+  expect(review).toHaveAttribute("aria-pressed", "true");
   expect(
     screen.getByRole("button", { name: "Close Review checkout" }),
   ).toBeDisabled();
-  await userEvent.keyboard("{ArrowLeft}");
+  await userEvent.keyboard("{ArrowUp}");
   expect(
     screen.getByRole("button", { name: /Fix webhook retries Codex/ }),
   ).toHaveAttribute("aria-pressed", "true");
+  await userEvent.keyboard("{ArrowUp}");
+  expect(review).toHaveAttribute("aria-pressed", "true");
   await userEvent.click(
     screen.getByRole("button", { name: "Close Fix webhook retries" }),
   );

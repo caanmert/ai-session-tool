@@ -221,8 +221,9 @@ describe("desktop workflows", () => {
   it("loads sessions, filters projects, and resumes the selected session", async () => {
     render(<App />);
     await screen.findByRole("heading", { name: "Retry webhook delivery" });
-    await userEvent.click(
-      screen.getByRole("button", { name: "docs 1 session" }),
+    await userEvent.selectOptions(
+      screen.getByRole("combobox", { name: "Project" }),
+      "/demo/docs",
     );
     await screen.findByRole("heading", { name: "Document installation" });
     await userEvent.click(
@@ -243,7 +244,7 @@ describe("desktop workflows", () => {
     );
     render(<App />);
     await screen.findByRole("heading", { name: "Retry webhook delivery" });
-    await userEvent.click(screen.getByRole("button", { name: "New session" }));
+    await userEvent.click(screen.getByRole("button", { name: /New task/ }));
     const dialog = screen.getByRole("dialog");
     await userEvent.selectOptions(
       within(dialog).getByLabelText("Project"),
@@ -264,7 +265,7 @@ describe("desktop workflows", () => {
       expect(screen.queryByRole("dialog")).not.toBeInTheDocument(),
     );
   });
-  it("switches between history and a live session without duplicating its tab", async () => {
+  it("switches between history and a live session without duplicating its sidebar row", async () => {
     render(<App />);
     await screen.findByRole("heading", { name: "Retry webhook delivery" });
     await userEvent.click(
@@ -273,7 +274,7 @@ describe("desktop workflows", () => {
     expect(
       await screen.findByRole("region", { name: "Chat conversation" }),
     ).toBeVisible();
-    await userEvent.click(screen.getByRole("button", { name: "History" }));
+    await userEvent.click(screen.getByRole("button", { name: /^History/ }));
     expect(
       screen.queryByRole("region", { name: "Chat conversation" }),
     ).not.toBeInTheDocument();
@@ -281,7 +282,7 @@ describe("desktop workflows", () => {
       screen.getByRole("button", { name: "Continue in app" }),
     );
     expect(
-      screen.getAllByRole("button", { name: /Claude Code · docs/ }),
+      screen.getAllByRole("button", { name: /Claude · Ready/ }),
     ).toHaveLength(1);
     expect(
       screen.getByRole("region", { name: "Chat conversation" }),
@@ -303,8 +304,9 @@ describe("desktop workflows", () => {
     );
     render(<App />);
     await screen.findByRole("heading", { name: "Retry webhook delivery" });
-    await userEvent.click(
-      screen.getByRole("button", { name: "docs 1 session" }),
+    await userEvent.selectOptions(
+      screen.getByRole("combobox", { name: "Project" }),
+      "/demo/docs",
     );
     await screen.findByText("The docs conversation");
     await act(async () =>
