@@ -84,3 +84,98 @@
   border-radius: 50%;
   background: var(--success);
 }
+
+/* Confirmation dialog */
+.confirm-dialog {
+  width: min(440px, calc(100vw - 48px));
+  padding: 20px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-panel);
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: 0 24px 48px var(--shadow-color);
+}
+.confirm-dialog::backdrop {
+  background: var(--overlay);
+}
+.confirm-dialog h2 {
+  font-size: var(--text-lg);
+  font-weight: 600;
+}
+.confirm-body {
+  margin: 8px 0 18px;
+  font-size: var(--text-md);
+  line-height: 1.55;
+  color: var(--muted);
+}
+.confirm-body p + p {
+  margin-top: 8px;
+}
+.confirm-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+/* Full-panel empty and error states */
+.empty-state {
+  max-width: 520px;
+  margin: auto;
+  padding: 32px 28px;
+}
+.empty-state h2 {
+  font-size: var(--text-title);
+  font-weight: 600;
+  letter-spacing: -0.015em;
+}
+.empty-state > p {
+  margin-top: 6px;
+  font-size: var(--text-md);
+  line-height: 1.55;
+  color: var(--muted);
+}
+.empty-state ul {
+  margin: 18px 0;
+  padding: 0;
+  list-style: none;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  background: var(--surface);
+}
+.empty-state li {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 4px 12px;
+  padding: 12px 14px;
+}
+.empty-state li + li {
+  border-top: 1px solid var(--border-subtle);
+}
+.empty-state li strong {
+  font-size: var(--text-base);
+  font-weight: 600;
+}
+.empty-state li .state {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: var(--text-sm);
+  color: var(--success-text);
+}
+.empty-state li .state.missing {
+  color: var(--danger-text);
+}
+.empty-state li code {
+  grid-column: 2 / -1;
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+.empty-state .actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 16px;
+}

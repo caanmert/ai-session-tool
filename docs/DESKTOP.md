@@ -159,9 +159,11 @@ remain available from History as before.
 
 ![Saved desktop conversations and reviews](screenshots/desktop-saved-workspace.png)
 
-Quitting asks for confirmation if an agent is running. **Keep working** cancels
-the quit; **Stop and quit** stops the local processes. Running responses do not
-survive an app restart. An interrupted saved tab shows a stopped state, with no
+Quitting asks for confirmation if an agent is running. **Cancel** keeps the app
+open; **Quit and stop agents** stops the local processes. Files the agents already
+edited, conversations, drafts and review snapshots are kept. **Stop response** in
+a conversation asks in the same way before ending a response. Running responses do
+not survive an app restart. An interrupted conversation shows a stopped state, with no
 stale approval buttons. Existing external terminal processes are not attached;
 avoid simultaneously continuing the same native session in two applications.
 

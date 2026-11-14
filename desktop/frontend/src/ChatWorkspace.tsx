@@ -5,6 +5,7 @@ import AgentMark from "./AgentMark";
 import Icon from "./Icon";
 import MessageList, { SafeMarkdown } from "./chat/MessageList";
 import DetailsPanel, { useChanges } from "./chat/DetailsPanel";
+import ConfirmDialog from "./ui/ConfirmDialog";
 import { applyChatUpdate } from "./chatUpdates";
 import { useChatDraft } from "./useChatDraft";
 import {
@@ -145,6 +146,7 @@ export default function ChatWorkspace({
   // 1200px. Reviews have their own fixed snapshot instead.
   const narrow = useNarrow();
   const [detailsOpen, setDetailsOpen] = useState(false);
+  const [confirmStop, setConfirmStop] = useState(false);
   const detailsToggle = useRef<HTMLButtonElement>(null);
   const showDetails = !state.review && (!narrow || detailsOpen);
   const changes = useChanges(state, active && !state.review);
@@ -534,12 +536,7 @@ export default function ChatWorkspace({
                 className="button secondary stop"
                 title="Ends the response. Edits already made are kept."
                 disabled={working || state.status === "stopping"}
-                onClick={() =>
-                  void perform(async () => {
-                    await api.StopChat(state.id);
-                    setRetry((n) => n + 1);
-                  })
-                }
+                onClick={() => setConfirmStop(true)}
               >
                 <Icon name="stop" size={13} /> Stop response
               </button>
@@ -579,6 +576,30 @@ export default function ChatWorkspace({
           />
         )}
       </div>
+      {confirmStop && (
+        <ConfirmDialog
+          title={`Stop ${toolLabel(state.tool)}?`}
+          confirmLabel="Stop response"
+          cancelLabel="Keep running"
+          busy={working}
+          onCancel={() => setConfirmStop(false)}
+          onConfirm={() =>
+            void perform(async () => {
+              try {
+                await api.StopChat(state.id);
+                setRetry((n) => n + 1);
+              } finally {
+                setConfirmStop(false);
+              }
+            })
+          }
+        >
+          <p>
+            The response ends now. Files the agent already edited stay as they
+            are, and the conversation is kept so you can continue it.
+          </p>
+        </ConfirmDialog>
+      )}
       {showDetails && (
         <DetailsPanel
           chat={state}
