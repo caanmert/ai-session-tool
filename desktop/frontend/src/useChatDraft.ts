@@ -8,7 +8,10 @@ const draftKey = (id: string) => `ais:chat-draft:v1:${id}`;
 export function useChatDraft(id: string) {
   const [initial] = useState(() => {
     try {
-      return { text: window.localStorage.getItem(draftKey(id)) || "", error: "" };
+      return {
+        text: window.localStorage.getItem(draftKey(id)) || "",
+        error: "",
+      };
     } catch {
       return {
         text: "",

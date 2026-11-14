@@ -12,6 +12,6 @@
 Before calling a change done, run what CI runs (`.github/workflows/ci.yml`) for the parts you touched:
 
 - **CLI (repo root):** `go vet ./...` and `go test -race ./...`. CI also lints with golangci-lint v2.5.
-- **Desktop app:** the Go code embeds `desktop/frontend/dist`, so build the frontend first. In `desktop/frontend`, run `npm ci`, `npm test` and `npm run build`. Then in `desktop/`, run `go vet ./...` and `go test -race ./...`.
+- **Desktop app:** the Go code embeds `desktop/frontend/dist`, so build the frontend first. In `desktop/frontend`, run `npm ci`, `npm run lint`, `npm run format:check`, `npm test` and `npm run build`. For UI changes also run `sh scripts/ui-check.sh` from the repo root (needs Google Chrome): it checks contrast, overflow and the 960×640 minimum window in light and dark with fixture data. Then in `desktop/`, run `go vet ./...` and `go test -race ./...`.
 - **Packaging:** `python3 -m unittest discover -s scripts -v`.
 - **Live agent checks:** the authenticated checks of the desktop chat backends are opt-in and use real model usage. See `docs/DESKTOP.md`.

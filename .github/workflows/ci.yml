@@ -26,10 +26,16 @@ jobs:
           cache-dependency-path: desktop/frontend/package-lock.json
       - run: npm ci
         working-directory: desktop/frontend
+      - run: npm run lint
+        working-directory: desktop/frontend
+      - run: npm run format:check
+        working-directory: desktop/frontend
       - run: npm test
         working-directory: desktop/frontend
       - run: npm run build
         working-directory: desktop/frontend
+      - name: Browser checks (contrast, overflow, minimum window; light and dark)
+        run: sh scripts/ui-check.sh
       - run: go vet ./...
         working-directory: desktop
       - run: go test -race ./...

@@ -45,9 +45,10 @@ export default function WorkspaceTabs({
         else return;
         e.preventDefault();
         onSelect(ids[index]);
-        e.currentTarget
-          .querySelectorAll<HTMLButtonElement>("[data-workspace-tab]")
-          [index]?.focus();
+        const tabs = e.currentTarget.querySelectorAll<HTMLButtonElement>(
+          "[data-workspace-tab]",
+        );
+        tabs[index]?.focus();
       }}
     >
       <button

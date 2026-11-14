@@ -739,9 +739,11 @@ export default function App() {
                 e.preventDefault();
                 if (sessions[next]) {
                   setSelectedKey(sessions[next].key);
-                  sessionRows.current
-                    ?.querySelectorAll<HTMLButtonElement>(".session-row")
-                    [next]?.focus();
+                  const rows =
+                    sessionRows.current?.querySelectorAll<HTMLButtonElement>(
+                      ".session-row",
+                    );
+                  rows?.[next]?.focus();
                 }
               }}
             >
@@ -1004,6 +1006,8 @@ export default function App() {
         />
       )}
       {showNew && (
+        // Clicking the scrim dismisses the dialog; Escape and Cancel do the same.
+        // eslint-disable-next-line jsx-a11y/no-static-element-interactions
         <div
           className="modal-overlay"
           onMouseDown={(e) => {
