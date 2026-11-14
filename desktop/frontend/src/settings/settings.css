@@ -47,8 +47,6 @@
 }
 .settings .appearance select {
   min-width: 140px;
-  height: 32px;
-  font-size: var(--text-md);
 }
 .agent-card {
   display: grid;

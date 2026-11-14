@@ -88,6 +88,12 @@ const paths = {
     </>
   ),
   code: <path d="m9 7-5 5 5 5m6-10 5 5-5 5" />,
+  copy: (
+    <>
+      <rect x="9" y="9" width="11" height="11" rx="2" />
+      <path d="M5 15V6a2 2 0 0 1 2-2h8" />
+    </>
+  ),
   settings: (
     <>
       <circle cx="12" cy="12" r="3.5" />

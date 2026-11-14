@@ -97,6 +97,29 @@
   line-height: 20px;
   color: var(--muted);
 }
+.message-copy {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 20px;
+  margin-left: auto;
+  padding: 0 5px;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--muted);
+  font-size: var(--text-xs);
+  opacity: 0;
+}
+.chat-message:hover .message-copy,
+.message-copy:focus-visible,
+.message-copy:has(span:not(:empty)) {
+  opacity: 1;
+}
+.message-copy:hover {
+  background: var(--surface-hover);
+  color: var(--text);
+}
 .message-model {
   font-family: var(--font-mono);
   font-size: var(--text-xs);
@@ -255,8 +278,7 @@
   margin-bottom: 12px;
   font-size: var(--text-md);
 }
-.approval-question input,
-.approval-question select {
+.approval-question input {
   height: 32px;
   padding: 0 9px;
   border: 1px solid var(--border-strong);
@@ -270,30 +292,32 @@
   gap: 8px;
 }
 
-/* Composer */
+/* Composer: one panel with the message on top and a single toolbar below. */
 .chat-composer {
   flex-shrink: 0;
   margin: 0 max(28px, calc((100% - 860px) / 2)) 18px;
-  padding: 12px 14px 10px;
+  padding: 12px 12px 10px 16px;
   border: 1px solid var(--border-strong);
   border-radius: var(--radius-panel);
   background: var(--surface);
+  transition: border-color 0.12s;
 }
 .chat-composer:focus-within {
-  border-color: var(--selected-border);
+  border-color: var(--border-focus);
 }
 .chat-composer textarea {
   display: block;
   width: 100%;
-  min-height: 52px;
-  max-height: 180px;
-  padding: 2px;
+  min-height: 44px;
+  max-height: 200px;
+  padding: 2px 4px 2px 0;
   border: 0;
   outline: 0;
   resize: none;
   background: transparent;
   color: var(--text);
   font: inherit;
+  font-size: var(--text-lg);
   line-height: 1.5;
 }
 .chat-composer textarea::placeholder {
@@ -306,7 +330,7 @@
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 2px 2px 6px;
+  padding: 4px 0 2px;
   font-size: var(--text-sm);
   color: var(--muted);
 }
@@ -324,34 +348,35 @@
 .composer-footer {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding-top: 6px;
+  flex-wrap: wrap;
+  gap: 6px 8px;
+  margin-left: -6px;
+  padding-top: 8px;
 }
-.composer-footer > span {
-  flex: 1;
+.composer-hint {
+  margin-left: auto;
   font-size: var(--text-sm);
   color: var(--muted);
+  white-space: nowrap;
 }
-.composer-footer > .icon-button {
-  margin-left: -4px;
+.review-footer .composer-hint {
+  margin-left: 6px;
+  margin-right: auto;
+  white-space: normal;
 }
 .button.send {
   width: 34px;
   min-height: 34px;
   padding: 0;
-  border-radius: 10px;
+  border-radius: 50%;
 }
 
 /* Model and reasoning choice */
-.model-settings {
-  padding: 6px 0 2px;
-}
 .model-settings-fields {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: 8px 12px;
+  gap: 6px;
 }
 .model-settings label {
   display: flex;
@@ -361,28 +386,41 @@
   color: var(--muted);
 }
 .model-settings select {
-  height: 28px;
   max-width: 220px;
-  padding: 0 6px;
-  border: 1px solid var(--border-strong);
-  border-radius: var(--radius-control);
-  background: var(--surface);
-  color: var(--text);
-  font-size: var(--text-sm);
 }
 .model-settings label:nth-child(2) select {
-  max-width: 140px;
+  max-width: 150px;
 }
-.model-settings-note,
-.model-settings .text-button {
-  margin: 0;
+.model-settings-note {
   font-size: var(--text-sm);
   color: var(--muted);
 }
 .model-settings-error {
+  flex-basis: 100%;
   padding-top: 6px;
   font-size: var(--text-sm);
   color: var(--danger-text);
+}
+.model-settings .icon-button.spinning svg {
+  animation: spin 0.9s linear infinite;
+}
+/* In the composer the dropdowns are compact pills and their labels are for
+   assistive technology only. */
+.chat-composer .model-settings {
+  min-width: 0;
+}
+.chat-composer .model-settings label > span {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+.chat-composer .model-settings select {
+  height: 28px;
+  border-radius: var(--radius-pill);
+  font-size: var(--text-sm);
 }
 .review-dialog > .model-settings {
   padding: 0 24px 18px;

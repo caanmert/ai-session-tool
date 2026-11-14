@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import Icon from "./Icon";
 import { api, errorText, type ModelCatalog, type ModelSettings } from "./api";
 
 export const defaultModelSettings: ModelSettings = {
@@ -154,22 +155,23 @@ export default function ModelPicker({
         </label>
         <button
           type="button"
-          className="text-button"
+          className={`icon-button ${loading ? "spinning" : ""}`}
           disabled={loading || saving || disabled}
           onClick={() => setRevision((n) => n + 1)}
           aria-label={reviewer ? "Refresh reviewer models" : "Refresh models"}
+          title={loading ? "Loading models…" : "Refresh the model list"}
         >
-          {loading ? "Loading models…" : "Refresh"}
+          <Icon name="refresh" size={14} />
         </button>
-        <span className="model-settings-note">
-          {saving
-            ? "Saving…"
-            : disabled
-              ? "Available after this response"
-              : reviewer
-                ? "Saved separately for reviews"
-                : "Applies to your next message"}
-        </span>
+        {(saving || disabled || reviewer) && (
+          <span className="model-settings-note" role="status">
+            {saving
+              ? "Saving…"
+              : disabled
+                ? "Model changes apply after this response"
+                : "Saved separately for reviews"}
+          </span>
+        )}
       </div>
       {error && (
         <p className="model-settings-error" role="alert">

@@ -28,6 +28,25 @@ const statusLabel = (status: string) =>
     stopped: "Stopped",
     error: "Needs attention",
   })[status] || status;
+// Time since this view first saw the agent working on the current response.
+// It restarts with the app; it is a guide, not a record.
+function Elapsed() {
+  const [start] = useState(() => Date.now());
+  const [now, setNow] = useState(start);
+  useEffect(() => {
+    const timer = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(timer);
+  }, []);
+  const seconds = Math.floor((now - start) / 1000);
+  return (
+    <span className="elapsed" aria-hidden="true">
+      {seconds < 60
+        ? `${seconds}s`
+        : `${Math.floor(seconds / 60)}m ${String(seconds % 60).padStart(2, "0")}s`}
+    </span>
+  );
+}
+
 // True below the width where the details panel leaves the layout.
 function useNarrow() {
   const query = "(max-width: 1199px)";
@@ -148,6 +167,13 @@ export default function ChatWorkspace({
     if (following.current && messages.current)
       messages.current.scrollTop = messages.current.scrollHeight;
   }, [state.version, active]);
+  // The message box grows with its text, up to the CSS max-height.
+  useEffect(() => {
+    const el = input.current;
+    if (!el) return;
+    el.style.height = "auto";
+    if (el.scrollHeight) el.style.height = `${el.scrollHeight}px`;
+  }, [prompt, active]);
   const busy = chatBusy(state.status);
   // Details sit beside the conversation on wide windows and in a drawer below
   // 1200px. Reviews have their own fixed snapshot instead.
@@ -240,6 +266,7 @@ export default function ChatWorkspace({
                   <Icon name="alert" size={12} />
                 )}
                 {statusLabel(state.status)}
+                {state.status === "running" && <Elapsed />}
               </span>
               {state.activeModel && !state.review && (
                 <span className="chat-meta">{state.activeModel}</span>
@@ -540,16 +567,6 @@ export default function ChatWorkspace({
               )}
             </div>
           )}
-          {!state.review && (
-            <ModelPicker
-              id={state.id}
-              settings={state.settings}
-              active={active}
-              disabled={busy || actionWorking}
-              onPending={settingsPending}
-              onSaved={() => setRetry((n) => n + 1)}
-            />
-          )}
           <div className="composer-footer">
             {!state.review && (
               <button
@@ -563,10 +580,24 @@ export default function ChatWorkspace({
                 <Icon name="paperclip" size={16} />
               </button>
             )}
-            <span>
-              {state.review
-                ? "Reviewing a fixed snapshot of your uncommitted changes."
-                : "Enter to send · Shift+Enter for a new line"}
+            {!state.review && (
+              <ModelPicker
+                id={state.id}
+                settings={state.settings}
+                active={active}
+                disabled={busy || actionWorking}
+                onPending={settingsPending}
+                onSaved={() => setRetry((n) => n + 1)}
+              />
+            )}
+            <span className="composer-hint">
+              {state.review ? (
+                "Reviewing a fixed snapshot of your uncommitted changes."
+              ) : (
+                <>
+                  <kbd>⏎</kbd> send · <kbd>⇧⏎</kbd> new line
+                </>
+              )}
             </span>
             {busy ? (
               <button
