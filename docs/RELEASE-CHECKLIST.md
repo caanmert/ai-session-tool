@@ -131,7 +131,7 @@ versions and usage scope. The current user requested fixture-only validation.
 | Downloaded UI PR #22 artifact, CI run 43569006757 | Passed signature, executable permissions, ARM64 and binary/advertised macOS 13.0 checks |
 | Downloaded ZIP SHA-256 | `21bcecb5b4f9428151c85e71623bd4d8ac0a926d776e8b88f02b23597cbd6428` |
 | Native fixture preparation | Passed; fake-agent app built/prepared and signature verified |
-| Native-window interactions | **Unverified:** computer-use connection timed out opening the fixture app; no interaction was claimed successful |
+| Native-window interactions | **Unverified:** computer-use connection timed out opening the fixture app; an alternative non-prompting macOS Accessibility check returned unavailable for the automation process. No window interaction was claimed successful and no system permissions were changed |
 | Paid/live provider turns | **Not run, as requested** |
 | Linux AMD64 packaged CLI smoke | Passed in [CI run 43572374305](https://github.com/caanmert/ai-session-tool/actions/runs/43572374305): 8 fixture sessions, Bash syntax, retained pin/data; Zsh/Fish interpreters unavailable |
 | Four-platform CLI runtime matrix with all completion shells | Passed in [CI run 43573511848](https://github.com/caanmert/ai-session-tool/actions/runs/43573511848): macOS 15 and Ubuntu 24.04, each on AMD64/ARM64; all three shell syntax checks, 8 fixture sessions and retained annotations/data |
