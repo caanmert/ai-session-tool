@@ -7,11 +7,22 @@ const browser = await chromium.launch({ channel: "chrome", headless: true });
 const output = process.env.AIS_SCREENSHOT_DIR || "/tmp/ais-run-check";
 await mkdir(output, { recursive: true });
 const mode = process.env.AIS_APPEARANCE || "light";
+const contrast = process.env.AIS_CONTRAST_MODULE
+  ? await import(process.env.AIS_CONTRAST_MODULE)
+  : undefined;
 try {
   const page = await browser.newPage({
     viewport: { width: 1360, height: 900 },
   });
   const errors = [];
+  let contrastChecks = 0;
+  async function checkContrast(stage) {
+    if (!contrast) return;
+    const failures = await page.evaluate(contrast.contrastFailures);
+    if (failures.length)
+      throw Error(`${stage} text contrast: ${JSON.stringify(failures)}`);
+    contrastChecks++;
+  }
   page.on("pageerror", (error) => errors.push(String(error)));
   await page.addInitScript((mode) => {
     localStorage.setItem("ais:appearance:v1", mode);
@@ -128,9 +139,9 @@ try {
             return structuredClone(next);
           },
           PickProject: async () => "",
+          RunAttachCommand: async () => "tmux attach-session -t %1",
         },
       },
-      RunAttachCommand: async (id, task) => `tmux attach-session -t %1`,
     };
   }, mode);
   await page.goto(process.argv[2] || "http://127.0.0.1:5183");
@@ -140,6 +151,17 @@ try {
   await page
     .getByText("+  const key = crypto.randomUUID();", { exact: true })
     .waitFor();
+  await page.context().grantPermissions(["clipboard-read", "clipboard-write"]);
+  await page.getByRole("button", { name: "Copy attach command" }).click();
+  await page
+    .getByRole("status")
+    .filter({ hasText: "Attach command copied" })
+    .waitFor();
+  if (
+    (await page.evaluate(() => navigator.clipboard.readText())) !==
+    "tmux attach-session -t %1"
+  )
+    throw Error("Task attach command was not copied");
   await page.getByRole("button", { name: /task-2.*Test permanent/ }).click();
   await page.getByRole("button", { name: /test\/checkout.test.ts/ }).click();
   await page.getByRole("button", { name: "Refresh runs" }).click();
@@ -158,6 +180,7 @@ try {
     throw Error("Refresh lost file selection");
   await page.getByRole("button", { name: /task-1.*Bound checkout/ }).click();
   await page.getByRole("button", { name: /src\/checkout.ts/ }).click();
+  await checkContrast("Run workspace");
   await page.screenshot({ path: `${output}/desktop-runs-${mode}.png` });
   await page.setViewportSize({ width: 960, height: 640 });
   await page.reload();
@@ -168,6 +191,7 @@ try {
   await page
     .getByText("+  const key = crypto.randomUUID();", { exact: true })
     .waitFor();
+  await checkContrast("Minimum window");
   await page.screenshot({ path: `${output}/desktop-runs-small-${mode}.png` });
   const layout = await page.evaluate(() => ({
     overflow: document.body.scrollWidth > innerWidth,
@@ -184,8 +208,10 @@ try {
     .getByRole("alert")
     .filter({ hasText: "Fixture worktree" })
     .waitFor();
+  await checkContrast("Missing worktree");
   await page.getByRole("button", { name: /task-1.*Bound checkout/ }).click();
   await page.getByRole("button", { name: "Stop run…" }).click();
+  await checkContrast("Stop confirmation");
   await page.getByRole("button", { name: "Keep running" }).click();
   if (await page.evaluate(() => window.__aisRuns.stopCalls.length))
     throw Error("Stop confirmation was bypassed");
@@ -198,6 +224,7 @@ try {
     .getByLabel("Task 1", { exact: true })
     .fill("Fix checkout\nKeep the API");
   await page.getByLabel("Task 2", { exact: true }).fill("Add regression tests");
+  await checkContrast("Launch dialog");
   await page.screenshot({ path: `${output}/desktop-run-launch-${mode}.png` });
   await page
     .getByRole("button", { name: "Launch 2 agents" })
@@ -216,7 +243,7 @@ try {
     throw Error("Launch prompts or duplicate guard failed");
   if (errors.length) throw Error(JSON.stringify(errors));
   console.log(
-    JSON.stringify({ mode, layout, launchCalls: calls.length, errors }),
+    JSON.stringify({ mode, layout, launchCalls: calls.length, contrastChecks, errors }),
   );
 } finally {
   await browser.close();
