@@ -86,7 +86,7 @@ try {
           role: "assistant",
           kind: "text",
           model: "codex-demo",
-          text: "The focused tests pass. The changes are ready for a second review.\n\n- Reuse one request key across retries\n- Retry transient failures up to three times\n- Return the last response to the caller",
+          text: "The focused tests pass. The changes are ready for a second review.\n\n- Reuse one request key across retries\n- Retry transient failures up to three times\n- Return the last response to the caller\n\n```ts\n// Retry transient failures only\nexport async function charge(order: Order) {\n  const key = crypto.randomUUID();\n  return retry(() => client.charge(order, { key }), 3);\n}\n```\n\n| Case | Result |\n| --- | --- |\n| Timeout | Retried with the same key |\n| Declined card | Returned at once |",
         },
       ],
     };

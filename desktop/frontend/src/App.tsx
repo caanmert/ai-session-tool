@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import Markdown from "react-markdown";
+import { SafeMarkdown } from "./ui/SafeMarkdown";
 import RunDashboard from "./RunDashboard";
 import ChatWorkspace, { chatBusy } from "./ChatWorkspace";
 import SavedWorkspace from "./SavedWorkspace";
@@ -1024,22 +1024,10 @@ export default function App() {
                               )}
                             </div>
                             <div className="markdown">
-                              <Markdown
-                                components={{
-                                  a: ({ children }) => (
-                                    <span className="transcript-link">
-                                      {children}
-                                    </span>
-                                  ),
-                                  img: () => (
-                                    <span className="preview-note">
-                                      [Image omitted from preview]
-                                    </span>
-                                  ),
-                                }}
-                              >
-                                {message.text || ""}
-                              </Markdown>
+                              <SafeMarkdown
+                                text={message.text || ""}
+                                imageNote="[Image omitted from preview]"
+                              />
                             </div>
                           </article>
                         ) : (

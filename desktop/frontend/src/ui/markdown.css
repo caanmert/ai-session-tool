@@ -1,0 +1,232 @@
+/* Rendered agent and transcript text. */
+.markdown {
+  color: var(--text);
+  overflow-wrap: anywhere;
+}
+.markdown > :first-child {
+  margin-top: 0;
+}
+.markdown > :last-child {
+  margin-bottom: 0;
+}
+.markdown p {
+  margin: 0 0 10px;
+}
+.markdown ul,
+.markdown ol {
+  margin: 6px 0 12px;
+  padding-left: 22px;
+}
+.markdown li {
+  margin: 3px 0;
+  padding-left: 2px;
+}
+.markdown li > p {
+  margin: 0;
+}
+.markdown strong {
+  font-weight: 600;
+}
+.markdown h1,
+.markdown h2,
+.markdown h3,
+.markdown h4 {
+  margin: 18px 0 8px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  line-height: 1.35;
+}
+.markdown h1 {
+  font-size: 18px;
+}
+.markdown h2 {
+  font-size: 16px;
+}
+.markdown h3,
+.markdown h4 {
+  font-size: var(--text-lg);
+}
+.markdown blockquote {
+  margin: 12px 0;
+  padding-left: 12px;
+  border-left: 3px solid var(--border-strong);
+  color: var(--muted);
+}
+.markdown hr {
+  margin: 16px 0;
+  border: 0;
+  border-top: 1px solid var(--border);
+}
+.markdown del {
+  color: var(--muted);
+}
+.transcript-link {
+  text-decoration: underline;
+  text-decoration-color: var(--border-strong);
+  text-underline-offset: 2px;
+}
+.image-note {
+  color: var(--muted);
+}
+
+/* Inline code and code blocks */
+.markdown code {
+  padding: 1px 5px;
+  border-radius: 5px;
+  background: var(--surface-hover);
+  font-family: var(--font-mono);
+  font-size: 0.9em;
+}
+.code-block {
+  margin: 10px 0 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  background: var(--sidebar);
+  overflow: hidden;
+}
+.code-block-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 30px;
+  padding: 0 6px 0 12px;
+  border-bottom: 1px solid var(--border-subtle);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--muted);
+}
+.code-block-bar button {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 22px;
+  padding: 0 7px;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--muted);
+  font-family: var(--font-sans);
+  font-size: var(--text-xs);
+}
+.code-block-bar button:hover {
+  background: var(--surface-hover);
+  color: var(--text);
+}
+.code-block pre {
+  margin: 0;
+  padding: 12px 14px;
+  overflow: auto;
+  font-size: var(--text-sm);
+  line-height: 1.6;
+}
+.code-block pre code {
+  padding: 0;
+  border-radius: 0;
+  background: none;
+  font-size: inherit;
+  white-space: pre;
+  overflow-wrap: normal;
+}
+
+/* Syntax colors come from the theme tokens. */
+.hljs-comment,
+.hljs-quote {
+  color: var(--syntax-comment);
+  font-style: italic;
+}
+.hljs-keyword,
+.hljs-selector-tag,
+.hljs-meta,
+.hljs-doctag {
+  color: var(--syntax-keyword);
+}
+.hljs-string,
+.hljs-regexp,
+.hljs-addition,
+.hljs-attribute,
+.hljs-symbol {
+  color: var(--syntax-string);
+}
+.hljs-number,
+.hljs-literal,
+.hljs-built_in,
+.hljs-type,
+.hljs-variable.language_ {
+  color: var(--syntax-value);
+}
+.hljs-title,
+.hljs-section,
+.hljs-name,
+.hljs-selector-id,
+.hljs-selector-class {
+  color: var(--syntax-name);
+}
+.hljs-attr,
+.hljs-property,
+.hljs-tag {
+  color: var(--syntax-attr);
+}
+.hljs-deletion {
+  color: var(--diff-del-text);
+}
+.hljs-emphasis {
+  font-style: italic;
+}
+.hljs-strong {
+  font-weight: 600;
+}
+
+/* Tables scroll sideways instead of stretching the conversation. */
+.table-scroll {
+  margin: 10px 0 14px;
+  overflow-x: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+}
+.markdown table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--text-md);
+}
+.markdown th,
+.markdown td {
+  padding: 7px 12px;
+  text-align: left;
+  vertical-align: top;
+  overflow-wrap: normal;
+}
+.markdown th {
+  background: var(--sidebar);
+  font-weight: 600;
+  white-space: nowrap;
+}
+.markdown tr + tr td,
+.markdown thead + tbody td {
+  border-top: 1px solid var(--border-subtle);
+}
+.markdown td + td,
+.markdown th + th {
+  border-left: 1px solid var(--border-subtle);
+}
+
+/* Task lists */
+.markdown li:has(> .task-box),
+.markdown li:has(> p > .task-box) {
+  list-style: none;
+  margin-left: -20px;
+}
+.task-box {
+  display: inline-grid;
+  place-items: center;
+  width: 14px;
+  height: 14px;
+  margin-right: 8px;
+  border: 1px solid var(--border-strong);
+  border-radius: 4px;
+  vertical-align: -2px;
+}
+.task-box.done {
+  border-color: var(--brand);
+  background: var(--brand);
+  color: var(--on-brand);
+}
