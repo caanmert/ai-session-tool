@@ -65,11 +65,11 @@ is not yet published. The Homebrew CLI package does not install the desktop app.
 
 ## Screenshots
 
-Choose **System**, **Light**, or **Dark** under **Appearance** in the sidebar.
+Choose **System**, **Light**, or **Dark** under **Settings › Look**.
 System follows macOS appearance changes; an explicit choice stays active until
 you change it. The app remembers the preference in its WebView storage and applies
 it before the workspace loads. If the preference cannot be saved, it still
-applies for the current visit and the sidebar explains that limitation.
+applies for the current visit and Settings explains that limitation.
 
 These show the real React interface with fictional conversations and review data.
 They demonstrate the layout, not output from a live model run.
@@ -82,30 +82,63 @@ They demonstrate the layout, not output from a live model run.
 
 ![Review findings linked to files and ready to send back](screenshots/desktop-review.png)
 
+![Open conversations grouped by what they need](screenshots/desktop-board.png)
+
+![Command palette](screenshots/desktop-palette.png)
+
+![Settings](screenshots/desktop-settings.png)
+
+## Finding your way around
+
+- **Top bar**: the project switcher (with a button to add a project folder) and
+  the search field, which opens the command palette.
+- **Sidebar**: **New task**, then **History**, **Agents board**, **Parallel runs**,
+  **Saved workspace** and **Settings**; the two agents with how many of their
+  conversations are running or waiting; and your open conversations grouped by
+  project. A conversation that needs you is marked with an icon and warning text,
+  and the Dock icon shows how many are waiting.
+- **Command palette** (**⌘K**): jump to an action, an open conversation, a project
+  or any saved conversation. Choosing a saved conversation only shows it in
+  History; it never starts an agent.
+- **Agents board**: every open conversation in three columns, **Needs you** first.
+  A simple approval can be allowed once or denied on its card; requests with
+  questions are answered in the conversation.
+- **Changes** (right of a conversation, or the **Changes** button and **⌘\\** in
+  a narrow window): the project's uncommitted files against the last commit, with
+  added and removed line counts. Click a file or **Review all changes** to read the
+  diff. This is read-only: nothing is committed, pushed or reverted from the app.
+  A folder that is not a Git repository simply says so.
+
 ## Start or continue a conversation
 
-1. Select a project or **All sessions**. Search titles, project paths, branches,
-   tags and conversation contents; use the provider filters to narrow results.
+1. Open **History** and, if you like, pick a project in the top bar. Filter by
+   titles, project paths, branches, tags and conversation contents; use the agent
+   filters to narrow results.
 2. Select a saved conversation to preview it. **Continue in app** opens that
    provider's saved session in its recorded directory.
-3. For a fresh conversation, choose **New session**, select a project and provider,
+3. For a fresh conversation, choose **New task**, select a project and agent,
    then **Start in app**. Use **Browse** to choose another folder. The app remembers
    the twelve most recently added project folders.
 4. Type in the message box. **Enter** sends; **Shift+Enter** inserts a new line.
    A new provider process starts when you send the first message. Responses stream
-   into message bubbles, and expandable tool cards show commands and their output.
-5. Answer questions or choose **Allow once** / **Decline** on approval cards.
+   into the conversation. Consecutive tool calls are grouped into one block with a
+   row per step; expand a row to see its output. The paperclip adds the paths of
+   files you choose to your message.
+5. Answer questions or choose **Allow once** / **Deny** on approval cards. While
+   focus is inside a card, **Enter** allows a simple request and **Esc** denies it.
    Approvals retain the installed agent's normal permission behavior; ais does
    not bypass permissions. Unsupported requests fail closed and may require the CLI.
 
-Switch tabs or return to **History** while an agent works. **⌘K** opens history
-search, **⌘N** opens New session, and **Esc** closes the new-session dialog.
-History refreshes when a response finishes; the refresh button rescans manually.
+Switch conversations in the sidebar or return to **History** while an agent works.
+**⌘K** opens the command palette, **⌘N** opens New task, and **Esc** closes
+dialogs. History refreshes when a response finishes; the refresh button rescans
+manually. **Settings** lists all shortcuts.
 
-Tabs show conversation titles, agent/project context, and working, waiting or
-error states. **←/→**, **Home**, and **End** move between tabs when a tab has
-keyboard focus. Close a stopped or idle tab with its close button; saved work
-and drafts remain available. Busy tabs ask you to stop the response first.
+Sidebar rows show conversation titles, the agent, and working, waiting or error
+states in words. **↑/↓**, **Home**, and **End** move between open conversations
+when a row has keyboard focus. Close a stopped or idle conversation with its close
+button; saved work and drafts remain available. A busy conversation asks you to
+stop the response first.
 
 When you scroll back through a conversation, new messages keep your reading
 position. **Jump to latest** returns to the newest reply and resumes following.
@@ -116,44 +149,45 @@ Use **Pinned** or **Live** above history to narrow the list; their counts follow
 the current project, agent, and search. Choose **Pinned · Recent**, **Oldest first**,
 or **Title A–Z** to sort. Recent order keeps pinned conversations first. **Clear
 filters** resets search, agent, and status while keeping the selected project.
-The search clear button (or **Esc** in search) clears just the query.
+The filter's clear button (or **Esc** in the filter) clears just the query.
 
-Press **↓** in search to enter the list. **↑/↓**, **Home**, and **End** select and
+Press **↓** in the filter to enter the list. **↑/↓**, **Home**, and **End** select and
 preview conversations; **Enter** continues the focused conversation in the app.
-Tab moves to the other controls. Pinned conversations can be managed with
-`ais pin <id>` and `ais unpin <id>` in the CLI.
+Tab moves to the other controls. Rename, pin and tag the selected conversation from
+its preview, or with `ais rename`, `ais pin` and `ais tag` in the CLI; both edit
+the same ais annotations.
 
 ![Session history with status filters and sorting](screenshots/desktop-history.png)
 
-**Stop response** terminates that response's local process group. Files already
+**Stop response** asks first, then terminates that response's local process group. Files already
 changed remain changed; stopping is not an undo. Send a new message to continue
 using the provider's saved session. Up to eight responses can run concurrently,
-with up to 100 open tabs. Continuing an already-open native session selects the
+with up to 100 open conversations. Continuing an already-open native session selects the
 existing conversation instead of creating another copy.
 
 Unsent messages are saved on this Mac as you type, separately for each desktop
-conversation. Closing a tab or restarting the app keeps the draft. It is cleared
+conversation. Closing a conversation or restarting the app keeps the draft. It is cleared
 after a successful send or when you choose **Discard draft**; a failed send keeps
 the text. Drafts use the app WebView's local storage, separate from provider
 transcripts and `desktop-chats` records. Clearing the app's website data removes
 them. If storage is unavailable or full, the composer tells you to keep a copy;
 you can still write and send messages.
 
-Open tabs and review metadata persist across restarts. Closing a tab hides it
-and retains its local record. Normal provider conversations can be reopened from
+Open conversations and review metadata persist across restarts. Closing a
+conversation hides it and retains its local record. Normal provider conversations can be reopened from
 History; a review can also reopen its original conversation.
 
-Choose **Saved workspace** in the sidebar to find desktop conversations and independent reviews, including closed tabs and fresh
+Choose **Saved workspace** in the sidebar to find desktop conversations and independent reviews, including closed ones and fresh
 conversations that have not sent a message yet. Filter by project or type, or
 search titles, project paths and agents. The list includes review completion,
 finding/sent counts and file counts.
 
-**Reopen** restores the same tab and its saved state; **View** selects an already
-open tab. Neither starts an agent or consumes model usage. Reviews retain their
+**Reopen** restores the same conversation and its saved state; **View** selects an
+already open one. Neither starts an agent or consumes model usage. Reviews retain their
 captured diff and findings, including sent markers, even if their project folder
 has moved or is temporarily unavailable. Sending messages or requesting fixes
 still requires an available project and the normal snapshot checks. Opening a
-review's **Original conversation** link also saves that tab's reopened state.
+review's **Original conversation** link also saves that conversation's reopened state.
 Use **Esc** or the close button to leave the library. Native provider sessions
 remain available from History as before.
 
