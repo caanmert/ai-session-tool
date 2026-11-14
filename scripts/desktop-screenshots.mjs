@@ -325,7 +325,7 @@ try {
     .getByRole("combobox", { name: "Sort conversations" })
     .selectOption("recent");
   await resize(1360, 900);
-  await page.getByRole("button", { name: /Codex · checkout/ }).click();
+  await page.getByRole("button", { name: /Make checkout retries safe Codex/ }).click();
   await page
     .getByRole("region", { name: "Codex conversation" })
     .getByText("The focused tests pass.", { exact: false })

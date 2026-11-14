@@ -4,7 +4,8 @@ import RunDashboard from "./RunDashboard";
 import ChatWorkspace, { chatBusy } from "./ChatWorkspace";
 import SavedWorkspace from "./SavedWorkspace";
 import Appearance from "./Appearance";
-import WorkspaceTabs from "./WorkspaceTabs";
+import TopBar from "./shell/TopBar";
+import Sidebar from "./shell/Sidebar";
 import Icon from "./Icon";
 import AgentMark from "./AgentMark";
 import {
@@ -205,7 +206,6 @@ export default function App() {
     });
   }, [scopedSessions, historyView, historySort]);
   const selected = sessions.find((s) => s.key === selectedKey) || sessions[0];
-  const activeConversation = chats.find((chat) => chat.id === activeChat);
   const hasFilters = !!query || tool !== "all" || historyView !== "all";
   function clearFilters() {
     setQuery("");
@@ -230,6 +230,10 @@ export default function App() {
     };
   }, [selected?.key, selected?.updatedAt]);
   const currentProject = snapshot?.projects.find((p) => p.path === project);
+  const showHistory = useCallback(() => {
+    setActiveChat("");
+    setShowRuns(false);
+  }, []);
 
   const openNew = useCallback(() => {
     setNewProject(
@@ -364,133 +368,70 @@ export default function App() {
 
   return (
     <div className="app-shell">
-      <aside className="sidebar" aria-label="Projects">
-        <div className="brand">
-          <span className="brand-symbol">
-            a<span>✳</span>
-          </span>
-          <div>
-            <strong>ais</strong>
-            <span>YOUR CODING WORKSPACE</span>
-          </div>
-        </div>
-        <div className="sidebar-main">
-          <button
-            className={`nav-all ${!project && !showRuns ? "active" : ""}`}
-            onClick={() => {
-              setActiveChat("");
-              setShowRuns(false);
-              setProject("");
-              setQuery("");
-            }}
-          >
-            <Icon name="grid" />
-            <span>All sessions</span>
-            <b>{snapshot?.sessions.length ?? "—"}</b>
-          </button>
-          <button className="nav-saved" onClick={() => setShowLibrary(true)}>
-            <Icon name="message" />
-            <span>Saved workspace</span>
-          </button>
-          <button
-            className="nav-saved"
-            aria-pressed={showRuns}
-            onClick={() => {
-              setActiveChat("");
-              setShowRuns(true);
-            }}
-          >
-            <Icon name="branch" />
-            <span>Parallel runs</span>
-          </button>
-          <div className="section-heading">
-            <span>PROJECTS</span>
-            <button
-              aria-label="Add project"
-              className="icon-button"
-              onClick={() => void pickProject()}
-              disabled={busy}
-            >
-              <Icon name="plus" size={16} />
-            </button>
-          </div>
-          <div className="project-list">
-            {snapshot?.projects.map((p) => (
-              <button
-                key={p.path}
-                className={`project-item ${project === p.path ? "active" : ""}`}
-                title={p.path}
-                onClick={() => {
-                  setActiveChat("");
-                  setShowRuns(false);
-                  setProject(p.path);
-                  setQuery("");
-                }}
-              >
-                <Icon name="folder" />
-                <span>
-                  <strong>{p.name || p.path}</strong>
-                  <small>
-                    {p.available
-                      ? `${p.sessions} ${p.sessions === 1 ? "session" : "sessions"}`
-                      : "Folder unavailable"}
-                  </small>
-                </span>
-                {p.recent && (
-                  <i className="recent-dot" title="Recently added" />
-                )}
-              </button>
-            ))}
-          </div>
-          {snapshot && !snapshot.projects.length && (
-            <p className="sidebar-hint">
-              Add a project folder to start your first conversation.
-            </p>
-          )}
-          <button
-            className="add-project"
-            onClick={() => void pickProject()}
-            disabled={busy}
-          >
-            <Icon name="plus" size={16} /> Add project folder
-          </button>
-        </div>
-        <div className="sidebar-bottom">
-          <Appearance />
-          <div className="section-heading">YOUR AGENTS</div>
-          {snapshot?.tools.map((t) => (
-            <div className="agent-status" key={t.name}>
-              <AgentMark tool={t.name} small />
-              <span>{toolLabel(t.name)}</span>
-              <span
-                className={`status-dot ${t.available ? "online" : ""}`}
-                title={t.available ? t.path : "Not installed"}
-              />
-              <small>{t.available ? "Ready" : "Missing"}</small>
-            </div>
-          ))}
-          <div className="local-note">
-            <span className="status-dot online" />
-            Local sessions. Your machine.
-          </div>
-        </div>
-      </aside>
+      <TopBar
+        snapshot={snapshot}
+        project={project}
+        busy={busy}
+        query={query}
+        searchInput={searchInput}
+        onProject={(path) => {
+          showHistory();
+          setProject(path);
+          setQuery("");
+        }}
+        onAddProject={() => void pickProject()}
+        onQuery={(value) => {
+          setQuery(value);
+          // Search results live in History, so typing goes there.
+          if (value) showHistory();
+        }}
+        onSearchKey={(e) => {
+          if (e.key === "Escape") {
+            e.preventDefault();
+            setQuery("");
+          }
+          if (e.key === "ArrowDown" && sessions.length) {
+            e.preventDefault();
+            sessionRows.current
+              ?.querySelector<HTMLButtonElement>('[tabindex="0"]')
+              ?.focus();
+          }
+        }}
+      />
+      <Sidebar
+        view={showRuns ? "runs" : activeChat ? "chat" : "history"}
+        snapshot={snapshot}
+        chats={chats}
+        activeChat={showRuns ? "" : activeChat}
+        closingChat={closingChat}
+        newButton={newButton}
+        canStart={!!snapshot && !busy}
+        footer={<Appearance />}
+        onNew={openNew}
+        onHistory={showHistory}
+        onRuns={() => {
+          setActiveChat("");
+          setShowRuns(true);
+        }}
+        onSaved={() => setShowLibrary(true)}
+        onSelectChat={(id) => {
+          setShowRuns(false);
+          setActiveChat(id);
+        }}
+        onCloseChat={(id) => void closeChat(id)}
+      />
       <main
         className={`workspace ${activeChat ? "has-chat" : ""} ${showRuns ? "has-runs" : ""}`}
       >
-        <header className="workspace-header">
-          <div>
-            <div className="eyebrow">
-              WORKSPACE <span>/</span> {project ? "PROJECT" : "ALL PROJECTS"}
-            </div>
-            <h1 hidden={showRuns}>
-              {activeChat
-                ? basename(activeConversation?.project || "") || "Workspace"
+        {!activeChat && (
+          <header className="workspace-header">
+            <h1>
+              {showRuns
+                ? "Parallel runs"
                 : project
                   ? currentProject?.name || basename(project)
                   : "Your conversations"}
             </h1>
-            {showRuns && <h1>Parallel runs</h1>}
             <p title={project}>
               {showRuns
                 ? project ||
@@ -498,55 +439,9 @@ export default function App() {
                 : project ||
                   "Every conversation. Every project. One place to pick up where you left off."}
             </p>
-          </div>
-          {!showRuns && (
-            <button
-              ref={newButton}
-              className="button primary"
-              onClick={openNew}
-              disabled={!snapshot || busy}
-            >
-              <Icon name="plus" size={17} /> New session
-            </button>
-          )}
-        </header>
+          </header>
+        )}
         <div className="toolbar" hidden={!!activeChat || showRuns}>
-          <label className="search">
-            <Icon name="search" />
-            <input
-              ref={searchInput}
-              aria-label="Search sessions"
-              placeholder="Search conversations, projects, or tags…"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Escape") {
-                  e.preventDefault();
-                  setQuery("");
-                }
-                if (e.key === "ArrowDown" && sessions.length) {
-                  e.preventDefault();
-                  sessionRows.current
-                    ?.querySelector<HTMLButtonElement>('[tabindex="0"]')
-                    ?.focus();
-                }
-              }}
-            />
-            {query ? (
-              <button
-                className="icon-button"
-                aria-label="Clear search"
-                onClick={() => {
-                  setQuery("");
-                  searchInput.current?.focus();
-                }}
-              >
-                <Icon name="close" size={14} />
-              </button>
-            ) : (
-              <kbd>⌘ K</kbd>
-            )}
-          </label>
           <div className="tool-filter" aria-label="Filter by agent">
             {["all", "codex", "claude"].map((value) => (
               <button
@@ -649,15 +544,6 @@ export default function App() {
               <p key={i}>{w}</p>
             ))}
           </details>
-        )}
-        {chats.length > 0 && (
-          <WorkspaceTabs
-            chats={chats}
-            active={activeChat}
-            onSelect={setActiveChat}
-            onClose={(id) => void closeChat(id)}
-            closing={closingChat}
-          />
         )}
         {chats.map((live) => (
           <ChatWorkspace
