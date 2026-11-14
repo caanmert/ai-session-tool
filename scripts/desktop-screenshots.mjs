@@ -152,13 +152,11 @@ try {
               tool: "codex",
               version: "0.167.1",
               tested: "0.162.1",
-              newer: true,
             },
             {
               tool: "claude",
               version: "2.1.296",
               tested: "2.1.296",
-              newer: false,
             },
           ],
           ChatModels: async (_id, reviewer) => ({

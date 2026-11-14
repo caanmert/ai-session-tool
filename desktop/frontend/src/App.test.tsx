@@ -542,12 +542,11 @@ describe("desktop workflows", () => {
   });
   it("warns when an installed agent no longer accepts what ais sends, and explains it in Settings", async () => {
     backend.AgentHealth = vi.fn().mockResolvedValue([
-      { tool: "codex", version: "0.167.1", tested: "0.162.1", newer: true },
+      { tool: "codex", version: "0.167.1", tested: "0.162.1" },
       {
         tool: "claude",
         version: "3.0.0",
         tested: "2.1.296",
-        newer: true,
         problem: "This version rejects an option ais relies on: unknown option",
       },
     ]);
@@ -565,11 +564,9 @@ describe("desktop workflows", () => {
     const settings = screen.getByRole("region", { name: "Settings" });
     expect(within(settings).getByText("Not compatible")).toBeVisible();
     expect(within(settings).getByText(/unknown option/)).toBeVisible();
-    expect(
-      within(settings).getByText(
-        /Version 0\.167\.1 · newer than the last version checked with ais \(0\.162\.1\)/,
-      ),
-    ).toBeVisible();
+    // A newer version that still works is shown without comment.
+    expect(within(settings).getByText("Version 0.167.1")).toBeVisible();
+    expect(within(settings).queryByText(/newer than/)).not.toBeInTheDocument();
     expect(
       within(settings).getByText(/does not contact a model/),
     ).toBeVisible();

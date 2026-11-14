@@ -79,11 +79,7 @@ export default function Settings({
                   </small>
                 )}
                 {tool.available && state?.version && (
-                  <small>
-                    Version {state.version}
-                    {state.newer &&
-                      ` · newer than the last version checked with ais (${state.tested})`}
-                  </small>
+                  <small>Version {state.version}</small>
                 )}
                 {state?.problem && (
                   <small className="problem" role="alert">

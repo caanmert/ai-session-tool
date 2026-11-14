@@ -33,9 +33,8 @@ export type Project = {
 export type AgentHealth = {
   tool: ToolName;
   version: string;
-  /** Version the live checks last passed with. */
+  /** A version known to work, offered when the installed one is not compatible. */
   tested: string;
-  newer: boolean;
   problem?: string;
 };
 export type AnnotationChange = {

@@ -5,7 +5,6 @@ import (
 	"context"
 	"os/exec"
 	"regexp"
-	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -24,28 +23,14 @@ var testedAgentVersions = map[string]string{
 type AgentHealth struct {
 	Tool    string `json:"tool"`
 	Version string `json:"version"`
-	// Tested is the version the live checks last passed with.
+	// Tested is the version the live checks last passed with. It is offered
+	// as a known-good version when the installed one is not compatible.
 	Tested string `json:"tested"`
-	// Newer is set when the installed version is newer than Tested.
-	Newer bool `json:"newer"`
 	// Problem is set when the tool rejects an option ais depends on.
 	Problem string `json:"problem,omitempty"`
 }
 
 var versionPattern = regexp.MustCompile(`\d+\.\d+\.\d+`)
-
-// newerVersion reports whether a is a later release than b.
-func newerVersion(a, b string) bool {
-	left, right := strings.Split(a, "."), strings.Split(b, ".")
-	for i := 0; i < len(left) && i < len(right); i++ {
-		x, _ := strconv.Atoi(left[i])
-		y, _ := strconv.Atoi(right[i])
-		if x != y {
-			return x > y
-		}
-	}
-	return false
-}
 
 // claudeBaseArgs are the fixed options every Claude Code conversation starts
 // with. Conversations and the compatibility check share them so they cannot
@@ -83,7 +68,6 @@ func (m *chatManager) health(ctx context.Context, tool string) AgentHealth {
 		return result
 	}
 	result.Version = versionPattern.FindString(version)
-	result.Newer = result.Version != "" && result.Tested != "" && newerVersion(result.Version, result.Tested)
 	probe := []string{"app-server", "--help"}
 	if tool == "claude" {
 		probe = claudeProbeArgs

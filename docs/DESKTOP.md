@@ -395,10 +395,10 @@ frontend reads the whole conversation again.
 At startup, and from **Settings › Agents › Check again**, the app asks each
 installed agent for its version and whether it still accepts the options ais
 starts it with (`claude … --version` with the conversation options, and
-`codex app-server --help`). This contacts no model. Settings shows the version,
-notes when it is newer than the one the live checks last passed with
-(`testedAgentVersions` in `desktop/chat_health.go`), and reports **Not compatible**
-with the tool's own error if an option is rejected. Claude Code's
+`codex app-server --help`). This contacts no model. Settings shows the version
+and reports **Not compatible** with the tool's own error if an option is rejected,
+naming a version known to work (`testedAgentVersions` in `desktop/chat_health.go`).
+ais always runs the agent version installed on the Mac; it does not pin one. Claude Code's
 `--permission-prompt-tool` option is not listed in its `--help`, and newer versions
 list `manual` rather than `default` for `--permission-mode`; both were still
 accepted by Claude Code 2.1.325 on 2026-11-14.

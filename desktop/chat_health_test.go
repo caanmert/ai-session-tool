@@ -22,12 +22,12 @@ func TestAgentHealth(t *testing.T) {
 	ctx := context.Background()
 
 	ok := fakeTool(t, `echo "2.1.325 (Claude Code)"`).health(ctx, "claude")
-	if ok.Version != "2.1.325" || ok.Tested != "2.1.296" || !ok.Newer || ok.Problem != "" {
-		t.Fatalf("a newer, compatible version: %+v", ok)
+	if ok.Version != "2.1.325" || ok.Tested != "2.1.296" || ok.Problem != "" {
+		t.Fatalf("a newer version that still works is simply reported: %+v", ok)
 	}
 
 	same := fakeTool(t, `echo "codex-cli 0.162.1"`).health(ctx, "codex")
-	if same.Version != "0.162.1" || same.Newer || same.Problem != "" {
+	if same.Version != "0.162.1" || same.Problem != "" {
 		t.Fatalf("the tested version: %+v", same)
 	}
 
@@ -55,17 +55,6 @@ func TestAgentHealth(t *testing.T) {
 	for _, option := range []string{"--permission-prompt-tool stdio", "--permission-mode default", "--input-format stream-json", "--version"} {
 		if !strings.Contains(joined, option) {
 			t.Errorf("probe is missing %q: %s", option, joined)
-		}
-	}
-}
-
-func TestNewerVersion(t *testing.T) {
-	for _, tc := range []struct {
-		a, b string
-		want bool
-	}{{"2.1.325", "2.1.296", true}, {"2.1.296", "2.1.296", false}, {"2.0.999", "2.1.0", false}, {"10.0.0", "9.9.9", true}} {
-		if got := newerVersion(tc.a, tc.b); got != tc.want {
-			t.Errorf("newerVersion(%s, %s) = %v", tc.a, tc.b, got)
 		}
 	}
 }
