@@ -350,6 +350,12 @@ Codex uses the [app-server protocol](https://learn.chatgpt.com/docs/app-server).
 Claude Code uses its bidirectional stream-JSON CLI interface, including the
 [streaming output](https://code.claude.com/docs/en/agent-sdk/streaming-output) and
 [user-input control flow](https://code.claude.com/docs/en/agent-sdk/user-input).
+The conversation view does not poll on a timer. `ReadChat` waits in the backend
+until the conversation changes (up to 20 seconds), then returns only the messages
+changed since the caller's version; the frontend merges them and re-renders only
+those rows (`frontend/src/chatUpdates.ts`). If a partial update does not fit, the
+frontend reads the whole conversation again.
+
 Each response starts a provider process, resumes its native conversation ID where
 available, and reaps the process on completion or stop. CLI compatibility is
 version-sensitive. On October 12, 2026, authenticated backend smoke checks passed

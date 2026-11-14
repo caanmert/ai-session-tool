@@ -26,6 +26,9 @@ type ChatMessage struct {
 	Name   string `json:"name,omitempty"`
 	Status string `json:"status,omitempty"`
 	Model  string `json:"model,omitempty"`
+	// rev is the conversation version that last changed this message. It lets
+	// a reader that is already up to version N receive only newer messages.
+	rev int64
 }
 type ChatQuestion struct {
 	ID      string   `json:"id"`
@@ -59,9 +62,17 @@ type ChatState struct {
 	Version          int64          `json:"version"`
 	Closed           bool           `json:"closed"`
 }
+
+// ChatUpdate answers a read. State is nil when nothing changed. When Partial
+// is set, State.Messages holds only the messages changed since the reader's
+// version, in conversation order; First and Count describe the full list so
+// the reader can drop trimmed messages and detect a missed update.
 type ChatUpdate struct {
 	Version int64      `json:"version"`
 	State   *ChatState `json:"state"`
+	Partial bool       `json:"partial,omitempty"`
+	First   string     `json:"first,omitempty"`
+	Count   int        `json:"count,omitempty"`
 }
 type approvalReply struct {
 	Allow   bool
@@ -80,6 +91,7 @@ type chatSession struct {
 	done       chan struct{}
 	pending    map[string]*pendingApproval
 	dismissed  map[string]bool
+	changed    chan struct{} // closed on the next change; guarded by mu
 	saveMu     sync.Mutex
 	reviewMu   sync.Mutex
 	settingsMu sync.Mutex
@@ -151,7 +163,14 @@ func cloneState(state ChatState) ChatState {
 	_ = json.Unmarshal(data, &copy)
 	return copy
 }
-func (c *chatSession) change() { c.state.Version++; c.state.UpdatedAt = time.Now() }
+func (c *chatSession) change() {
+	c.state.Version++
+	c.state.UpdatedAt = time.Now()
+	if c.changed != nil {
+		close(c.changed)
+		c.changed = nil
+	}
+}
 func (m *chatManager) get(id string) (*chatSession, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -186,18 +205,62 @@ func (m *chatManager) list() []ChatState {
 	sort.Slice(result, func(i, j int) bool { return result[i].UpdatedAt.Before(result[j].UpdatedAt) })
 	return result
 }
+
+// read returns the whole conversation.
 func (m *chatManager) read(id string, version int64) (ChatUpdate, error) {
+	return m.watch(context.Background(), id, version, 0)
+}
+
+// watch returns what changed since version. A reader that is up to date waits
+// up to wait for the next change, so an idle conversation costs no polling.
+// Readers that are behind by a known amount receive a partial update.
+func (m *chatManager) watch(ctx context.Context, id string, version int64, wait time.Duration) (ChatUpdate, error) {
 	c, err := m.get(id)
 	if err != nil {
 		return ChatUpdate{}, err
 	}
 	c.mu.Lock()
+	if version == c.state.Version && wait > 0 {
+		if c.changed == nil {
+			c.changed = make(chan struct{})
+		}
+		changed := c.changed
+		c.mu.Unlock()
+		timer := time.NewTimer(wait)
+		select {
+		case <-changed:
+		case <-ctx.Done():
+		case <-timer.C:
+		}
+		timer.Stop()
+		c.mu.Lock()
+	}
 	defer c.mu.Unlock()
 	result := ChatUpdate{Version: c.state.Version}
-	if version != c.state.Version {
-		s := cloneState(c.state)
-		result.State = &s
+	if version == c.state.Version {
+		return result, nil
 	}
+	// Copy everything except messages through JSON, then copy only the
+	// messages the reader needs. Message text is immutable once copied.
+	head := c.state
+	head.Messages = nil
+	s := cloneState(head)
+	if version > 0 && version < c.state.Version {
+		result.Partial = true
+		result.Count = len(c.state.Messages)
+		if result.Count > 0 {
+			result.First = c.state.Messages[0].ID
+		}
+		s.Messages = []ChatMessage{}
+		for _, message := range c.state.Messages {
+			if message.rev > version {
+				s.Messages = append(s.Messages, message)
+			}
+		}
+	} else {
+		s.Messages = append([]ChatMessage{}, c.state.Messages...)
+	}
+	result.State = &s
 	return result, nil
 }
 func (m *chatManager) save(c *chatSession) error {
@@ -325,12 +388,14 @@ func (c *chatSession) message(item ChatMessage, appendText bool) {
 			if item.Name != "" {
 				old.Name = item.Name
 			}
+			old.rev = c.state.Version + 1
 			c.boundMessages()
 			c.change()
 			return
 		}
 	}
 	item.Text = shorten(item.Text, 100000)
+	item.rev = c.state.Version + 1
 	c.state.Messages = append(c.state.Messages, item)
 	c.boundMessages()
 	c.change()
@@ -463,6 +528,7 @@ func (m *chatManager) send(id, text string) error {
 		for i := range c.state.Messages {
 			if c.state.Messages[i].Status == "running" {
 				c.state.Messages[i].Status = "finished"
+				c.state.Messages[i].rev = c.state.Version + 1
 			}
 		}
 		c.change()

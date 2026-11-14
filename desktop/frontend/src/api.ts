@@ -149,7 +149,18 @@ export type ChatState = {
   closed?: boolean;
   version: number;
 };
-export type ChatUpdate = { version: number; state: ChatState | null };
+/**
+ * `state` is null when nothing changed. When `partial` is set,
+ * `state.messages` holds only the messages changed since the caller's version;
+ * `first` and `count` describe the complete list. See chatUpdates.ts.
+ */
+export type ChatUpdate = {
+  version: number;
+  state: ChatState | null;
+  partial?: boolean;
+  first?: string;
+  count?: number;
+};
 export type RunTask = {
   prompt: string;
   branch: string;
