@@ -4,6 +4,7 @@ import DiffViewer from "./DiffViewer";
 import AgentMark from "./AgentMark";
 import Icon from "./Icon";
 import MessageList, { SafeMarkdown } from "./chat/MessageList";
+import DetailsPanel, { useChanges } from "./chat/DetailsPanel";
 import { applyChatUpdate } from "./chatUpdates";
 import { useChatDraft } from "./useChatDraft";
 import {
@@ -26,6 +27,23 @@ const statusLabel = (status: string) =>
     stopped: "Stopped",
     error: "Needs attention",
   })[status] || status;
+// True below the width where the details panel leaves the layout.
+function useNarrow() {
+  const query = "(max-width: 1199px)";
+  const [narrow, setNarrow] = useState(
+    () => window.matchMedia?.(query).matches ?? false,
+  );
+  useEffect(() => {
+    const media = window.matchMedia?.(query);
+    if (!media) return;
+    const update = () => setNarrow(media.matches);
+    update();
+    media.addEventListener("change", update);
+    return () => media.removeEventListener("change", update);
+  }, []);
+  return narrow;
+}
+
 type Props = {
   chat: ChatState;
   active: boolean;
@@ -123,6 +141,28 @@ export default function ChatWorkspace({
       messages.current.scrollTop = messages.current.scrollHeight;
   }, [state.version, active]);
   const busy = chatBusy(state.status);
+  // Details sit beside the conversation on wide windows and in a drawer below
+  // 1200px. Reviews have their own fixed snapshot instead.
+  const narrow = useNarrow();
+  const [detailsOpen, setDetailsOpen] = useState(false);
+  const detailsToggle = useRef<HTMLButtonElement>(null);
+  const showDetails = !state.review && (!narrow || detailsOpen);
+  const changes = useChanges(state, active && !state.review);
+  function closeDetails() {
+    setDetailsOpen(false);
+    detailsToggle.current?.focus();
+  }
+  useEffect(() => {
+    if (!active || !narrow) return;
+    const key = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === "\\") {
+        e.preventDefault();
+        setDetailsOpen((open) => !open);
+      }
+    };
+    document.addEventListener("keydown", key);
+    return () => document.removeEventListener("keydown", key);
+  }, [active, narrow]);
   const other = state.tool === "codex" ? "claude" : "codex";
   async function perform(action: () => Promise<void>) {
     if (operation.current || settingsOperation.current) return;
@@ -155,372 +195,398 @@ export default function ChatWorkspace({
       hidden={!active}
       aria-label={`${toolLabel(state.tool)} conversation`}
     >
-      <header className="chat-header">
-        <div className="chat-heading">
-          <p className="chat-breadcrumb" title={state.project}>
-            {state.project.split("/").filter(Boolean).at(-1) || state.project}
-          </p>
-          <h2>{state.title || "New conversation"}</h2>
-          <div className="chat-chips">
-            <span className={`chip agent ${state.tool}`}>
-              <AgentMark tool={state.tool} dot />
-              {toolLabel(state.tool)}
-            </span>
-            <span className={`chip status ${state.status}`}>
-              {(state.status === "waiting" || state.status === "error") && (
-                <Icon name="alert" size={12} />
-              )}
-              {statusLabel(state.status)}
-            </span>
-            {state.activeModel && !state.review && (
-              <span className="chat-meta">{state.activeModel}</span>
-            )}
-          </div>
-        </div>
-        <div className="chat-actions">
-          {!state.review && (
-            <button
-              className="button secondary"
-              disabled={busy || working || !reviewerAvailable}
-              title={
-                reviewerAvailable
-                  ? "Preview the current working-tree diff before sending it"
-                  : "Install the other agent to request a second review"
-              }
-              onClick={() =>
-                void perform(async () =>
-                  setDraft(await api.PrepareReview(state.id)),
-                )
-              }
-            >
-              Review with {toolLabel(other)}
-            </button>
-          )}
-        </div>
-      </header>
-      {(error || state.error) && (
-        <div className="notice error" role="alert">
-          <span>{error || state.error}</span>
-          {error && (
-            <button
-              className="text-button"
-              onClick={() => {
-                setError("");
-                setRetry((n) => n + 1);
-              }}
-            >
-              Reconnect
-            </button>
-          )}
-        </div>
-      )}
-      {state.review && (
-        <div className="review-banner">
-          <div>
-            <strong>Independent review by {toolLabel(state.tool)}</strong>
-            <span>
-              Snapshot {state.review.snapshot.hash.slice(0, 12)} ·{" "}
-              {state.review.snapshot.files.length}{" "}
-              {state.review.snapshot.files.length === 1 ? "file" : "files"} ·
-              Analysis only
-              {state.activeModel && <> · {state.activeModel}</>}
-            </span>
-          </div>
-          <button
-            className="text-button"
-            onClick={() => onSelect(state.review!.sourceId)}
-          >
-            Original conversation ↗
-          </button>
-          <button
-            className="text-button"
-            onClick={() => setShowDiff((value) => !value)}
-          >
-            {showDiff ? "Hide diff" : "View reviewed diff"}
-          </button>
-        </div>
-      )}
-      {state.review && showDiff && (
-        <DiffViewer
-          snapshot={state.review.snapshot}
-          selectedFile={file}
-          selectedLine={line}
-          onFile={(path) => {
-            setFile(path);
-            setLine(0);
-          }}
-        />
-      )}
-      <div
-        className="chat-messages"
-        ref={messages}
-        onScroll={() => {
-          const el = messages.current;
-          if (el)
-            following.current =
-              el.scrollHeight - el.scrollTop - el.clientHeight < 80;
-          setAwayFromLatest(!following.current);
-        }}
-        aria-live="polite"
-        aria-relevant="additions"
-      >
-        {state.shortened && (
-          <p className="preview-note">
-            Earlier messages were shortened for display. The agent retains its
-            saved conversation.
-          </p>
-        )}
-        {!state.messages.length && !state.review && (
-          <div className="chat-welcome">
-            <div className="eyebrow">A CONVERSATION, READY TO BEGIN</div>
-            <h2>What are we working on?</h2>
-            <p>
-              Describe a change, ask a question, or paste an error.
-              <br />
-              {toolLabel(state.tool)} will work in this project.
+      <div className="chat-main">
+        <header className="chat-header">
+          <div className="chat-heading">
+            <p className="chat-breadcrumb" title={state.project}>
+              {state.project.split("/").filter(Boolean).at(-1) || state.project}
             </p>
-            <div className="chat-suggestions">
-              Live replies <span>·</span> Tool activity <span>·</span> Approvals
-              here
+            <h2>{state.title || "New conversation"}</h2>
+            <div className="chat-chips">
+              <span className={`chip agent ${state.tool}`}>
+                <AgentMark tool={state.tool} dot />
+                {toolLabel(state.tool)}
+              </span>
+              <span className={`chip status ${state.status}`}>
+                {(state.status === "waiting" || state.status === "error") && (
+                  <Icon name="alert" size={12} />
+                )}
+                {statusLabel(state.status)}
+              </span>
+              {state.activeModel && !state.review && (
+                <span className="chat-meta">{state.activeModel}</span>
+              )}
             </div>
           </div>
-        )}
-        <MessageList
-          tool={state.tool}
-          messages={
-            state.review?.complete
-              ? state.messages.filter(
-                  (m) => !(m.role === "assistant" && m.kind === "text"),
-                )
-              : state.messages
-          }
-        />
-        {state.review?.complete && (
-          <div className="review-findings">
-            <div className="eyebrow">REVIEW RESULTS</div>
-            <h3>
-              {state.review.findings.length
-                ? `${state.review.findings.length} ${state.review.findings.length === 1 ? "finding" : "findings"} to consider`
-                : "No actionable findings reported"}
-            </h3>
-            <p>{state.review.summary}</p>
-            {state.review.findings.map((finding) => (
-              <article
-                className={`review-finding ${finding.sent ? "sent" : ""}`}
-                key={finding.id}
-              >
-                <label>
-                  <input
-                    type="checkbox"
-                    aria-label={`Select ${finding.title}`}
-                    checked={selected.includes(finding.id)}
-                    disabled={finding.sent || working}
-                    onChange={(e) =>
-                      setSelected((ids) =>
-                        e.target.checked
-                          ? [...ids, finding.id]
-                          : ids.filter((id) => id !== finding.id),
-                      )
-                    }
-                  />
-                  <span className={`priority ${finding.priority}`}>
-                    {finding.priority}
-                  </span>
-                  <strong>{finding.title}</strong>
-                  {finding.sent && <small>Sent for fixes</small>}
-                </label>
-                <button
-                  className="finding-location"
-                  onClick={() => {
-                    setFile(finding.file);
-                    setLine(finding.line);
-                    setShowDiff(true);
-                  }}
-                >
-                  {finding.file}
-                  {finding.line ? `:${finding.line}` : ""}
-                </button>
-                <div className="markdown">
-                  <SafeMarkdown text={finding.body} />
-                </div>
-              </article>
-            ))}
-            {!!state.review.findings.length && (
+          <div className="chat-actions">
+            {!state.review && narrow && (
               <button
-                className="button primary"
-                disabled={!selected.length || working}
-                onClick={() =>
-                  void perform(async () => {
-                    const source = await api.SendReviewFindings(
-                      state.id,
-                      selected,
-                    );
-                    setSelected([]);
-                    onSelect(source);
-                  })
-                }
+                ref={detailsToggle}
+                className="button secondary"
+                aria-pressed={detailsOpen}
+                title="Show changed files (⌘\\)"
+                onClick={() => setDetailsOpen((open) => !open)}
               >
-                Send {selected.length || "selected"} findings to{" "}
-                {toolLabel(other)}
+                Changes
+                {!!changes.summary?.files.length && (
+                  <b className="count">{changes.summary.files.length}</b>
+                )}
               </button>
             )}
-            <p className="preview-note">
-              Findings are suggestions. Selected findings go back as a request
-              to investigate and fix; they do not apply a patch automatically.
-            </p>
+            {!state.review && (
+              <button
+                className="button secondary"
+                disabled={busy || working || !reviewerAvailable}
+                title={
+                  reviewerAvailable
+                    ? "Preview the current working-tree diff before sending it"
+                    : "Install the other agent to request a second review"
+                }
+                onClick={() =>
+                  void perform(async () =>
+                    setDraft(await api.PrepareReview(state.id)),
+                  )
+                }
+              >
+                Review with {toolLabel(other)}
+              </button>
+            )}
+          </div>
+        </header>
+        {(error || state.error) && (
+          <div className="notice error" role="alert">
+            <span>{error || state.error}</span>
+            {error && (
+              <button
+                className="text-button"
+                onClick={() => {
+                  setError("");
+                  setRetry((n) => n + 1);
+                }}
+              >
+                Reconnect
+              </button>
+            )}
           </div>
         )}
-        {busy && (
-          <div className="chat-working" role="status">
-            <span className="loader" />
-            {state.status === "waiting"
-              ? "Waiting for your response below"
-              : state.status === "stopping"
-                ? "Stopping the response…"
-                : `${toolLabel(state.tool)} is working…`}
+        {state.review && (
+          <div className="review-banner">
+            <div>
+              <strong>Independent review by {toolLabel(state.tool)}</strong>
+              <span>
+                Snapshot {state.review.snapshot.hash.slice(0, 12)} ·{" "}
+                {state.review.snapshot.files.length}{" "}
+                {state.review.snapshot.files.length === 1 ? "file" : "files"} ·
+                Analysis only
+                {state.activeModel && <> · {state.activeModel}</>}
+              </span>
+            </div>
+            <button
+              className="text-button"
+              onClick={() => onSelect(state.review!.sourceId)}
+            >
+              Original conversation ↗
+            </button>
+            <button
+              className="text-button"
+              onClick={() => setShowDiff((value) => !value)}
+            >
+              {showDiff ? "Hide diff" : "View reviewed diff"}
+            </button>
           </div>
         )}
-      </div>
-      {awayFromLatest && (
-        <button
-          className="jump-latest"
-          onClick={() => {
-            following.current = true;
-            setAwayFromLatest(false);
-            if (messages.current)
-              messages.current.scrollTop = messages.current.scrollHeight;
-          }}
-        >
-          Jump to latest ↓
-        </button>
-      )}
-      {!!state.approvals.length && (
-        <div className="approval-list">
-          {state.approvals.map((approval) => (
-            <ApprovalCard
-              key={approval.id}
-              approval={approval}
-              onAnswer={(allow, answers) =>
-                api.AnswerChat(state.id, approval.id, allow, answers)
-              }
-            />
-          ))}
-        </div>
-      )}
-      <form
-        className={`chat-composer ${state.review ? "review-footer" : ""}`}
-        onSubmit={(e) => {
-          e.preventDefault();
-          void send();
-        }}
-      >
-        {!state.review && (
-          <textarea
-            ref={input}
-            aria-label="Message agent"
-            placeholder={`Message ${toolLabel(state.tool)} about this project…`}
-            value={prompt}
-            disabled={working}
-            onChange={(e) => updatePrompt(e.target.value)}
-            onKeyDown={(e) => {
-              if (
-                e.key === "Enter" &&
-                !e.shiftKey &&
-                !e.nativeEvent.isComposing &&
-                e.nativeEvent.keyCode !== 229
-              ) {
-                e.preventDefault();
-                void send();
-              }
+        {state.review && showDiff && (
+          <DiffViewer
+            snapshot={state.review.snapshot}
+            selectedFile={file}
+            selectedLine={line}
+            onFile={(path) => {
+              setFile(path);
+              setLine(0);
             }}
           />
         )}
-        {!state.review && (prompt || draftError) && (
-          <div className="draft-status">
-            <span
-              role={draftError ? "alert" : "status"}
-              className={draftError ? "draft-error" : ""}
-            >
-              {draftError ||
-                (restored
-                  ? "Draft restored from this Mac"
-                  : "Draft saved on this Mac")}
-            </span>
-            {!!prompt && (
-              <button
-                type="button"
-                disabled={working}
-                onClick={() => updatePrompt("")}
-              >
-                Discard draft
-              </button>
-            )}
-          </div>
-        )}
-        {!state.review && (
-          <ModelPicker
-            id={state.id}
-            settings={state.settings}
-            active={active}
-            disabled={busy || actionWorking}
-            onPending={settingsPending}
-            onSaved={() => setRetry((n) => n + 1)}
+        <div
+          className="chat-messages"
+          ref={messages}
+          onScroll={() => {
+            const el = messages.current;
+            if (el)
+              following.current =
+                el.scrollHeight - el.scrollTop - el.clientHeight < 80;
+            setAwayFromLatest(!following.current);
+          }}
+          aria-live="polite"
+          aria-relevant="additions"
+        >
+          {state.shortened && (
+            <p className="preview-note">
+              Earlier messages were shortened for display. The agent retains its
+              saved conversation.
+            </p>
+          )}
+          {!state.messages.length && !state.review && (
+            <div className="chat-welcome">
+              <div className="eyebrow">A CONVERSATION, READY TO BEGIN</div>
+              <h2>What are we working on?</h2>
+              <p>
+                Describe a change, ask a question, or paste an error.
+                <br />
+                {toolLabel(state.tool)} will work in this project.
+              </p>
+              <div className="chat-suggestions">
+                Live replies <span>·</span> Tool activity <span>·</span>{" "}
+                Approvals here
+              </div>
+            </div>
+          )}
+          <MessageList
+            tool={state.tool}
+            messages={
+              state.review?.complete
+                ? state.messages.filter(
+                    (m) => !(m.role === "assistant" && m.kind === "text"),
+                  )
+                : state.messages
+            }
           />
-        )}
-        <div className="composer-footer">
-          <span>
-            {state.review
-              ? "Reviewing a fixed snapshot of your uncommitted changes."
-              : "Enter to send · Shift+Enter for a new line"}
-          </span>
-          {busy ? (
-            <button
-              type="button"
-              className="button secondary stop"
-              title="Ends the response. Edits already made are kept."
-              disabled={working || state.status === "stopping"}
-              onClick={() =>
-                void perform(async () => {
-                  await api.StopChat(state.id);
-                  setRetry((n) => n + 1);
-                })
-              }
-            >
-              <Icon name="stop" size={13} /> Stop response
-            </button>
-          ) : (
-            !state.review && (
-              <button
-                type="submit"
-                className="button primary send"
-                aria-label="Send"
-                title="Send (Enter)"
-                disabled={!prompt.trim() || working}
-              >
-                <Icon name="arrow-up" size={17} />
-              </button>
-            )
+          {state.review?.complete && (
+            <div className="review-findings">
+              <div className="eyebrow">REVIEW RESULTS</div>
+              <h3>
+                {state.review.findings.length
+                  ? `${state.review.findings.length} ${state.review.findings.length === 1 ? "finding" : "findings"} to consider`
+                  : "No actionable findings reported"}
+              </h3>
+              <p>{state.review.summary}</p>
+              {state.review.findings.map((finding) => (
+                <article
+                  className={`review-finding ${finding.sent ? "sent" : ""}`}
+                  key={finding.id}
+                >
+                  <label>
+                    <input
+                      type="checkbox"
+                      aria-label={`Select ${finding.title}`}
+                      checked={selected.includes(finding.id)}
+                      disabled={finding.sent || working}
+                      onChange={(e) =>
+                        setSelected((ids) =>
+                          e.target.checked
+                            ? [...ids, finding.id]
+                            : ids.filter((id) => id !== finding.id),
+                        )
+                      }
+                    />
+                    <span className={`priority ${finding.priority}`}>
+                      {finding.priority}
+                    </span>
+                    <strong>{finding.title}</strong>
+                    {finding.sent && <small>Sent for fixes</small>}
+                  </label>
+                  <button
+                    className="finding-location"
+                    onClick={() => {
+                      setFile(finding.file);
+                      setLine(finding.line);
+                      setShowDiff(true);
+                    }}
+                  >
+                    {finding.file}
+                    {finding.line ? `:${finding.line}` : ""}
+                  </button>
+                  <div className="markdown">
+                    <SafeMarkdown text={finding.body} />
+                  </div>
+                </article>
+              ))}
+              {!!state.review.findings.length && (
+                <button
+                  className="button primary"
+                  disabled={!selected.length || working}
+                  onClick={() =>
+                    void perform(async () => {
+                      const source = await api.SendReviewFindings(
+                        state.id,
+                        selected,
+                      );
+                      setSelected([]);
+                      onSelect(source);
+                    })
+                  }
+                >
+                  Send {selected.length || "selected"} findings to{" "}
+                  {toolLabel(other)}
+                </button>
+              )}
+              <p className="preview-note">
+                Findings are suggestions. Selected findings go back as a request
+                to investigate and fix; they do not apply a patch automatically.
+              </p>
+            </div>
+          )}
+          {busy && (
+            <div className="chat-working" role="status">
+              <span className="loader" />
+              {state.status === "waiting"
+                ? "Waiting for your response below"
+                : state.status === "stopping"
+                  ? "Stopping the response…"
+                  : `${toolLabel(state.tool)} is working…`}
+            </div>
           )}
         </div>
-      </form>
-      {draft && (
-        <ReviewPreview
-          draft={draft}
-          settings={state.reviewerSettings}
-          onSettingsPending={settingsPending}
-          onSettingsSaved={() => setRetry((n) => n + 1)}
-          error={error}
-          busy={working}
-          onCancel={() => {
-            if (!working) setDraft(undefined);
+        {awayFromLatest && (
+          <button
+            className="jump-latest"
+            onClick={() => {
+              following.current = true;
+              setAwayFromLatest(false);
+              if (messages.current)
+                messages.current.scrollTop = messages.current.scrollHeight;
+            }}
+          >
+            Jump to latest ↓
+          </button>
+        )}
+        {!!state.approvals.length && (
+          <div className="approval-list">
+            {state.approvals.map((approval) => (
+              <ApprovalCard
+                key={approval.id}
+                approval={approval}
+                onAnswer={(allow, answers) =>
+                  api.AnswerChat(state.id, approval.id, allow, answers)
+                }
+              />
+            ))}
+          </div>
+        )}
+        <form
+          className={`chat-composer ${state.review ? "review-footer" : ""}`}
+          onSubmit={(e) => {
+            e.preventDefault();
+            void send();
           }}
-          onStart={() =>
-            void perform(async () => {
-              const review = await api.StartReview(draft.id);
-              setDraft(undefined);
-              onOpen(review);
-            })
-          }
+        >
+          {!state.review && (
+            <textarea
+              ref={input}
+              aria-label="Message agent"
+              placeholder={`Message ${toolLabel(state.tool)} about this project…`}
+              value={prompt}
+              disabled={working}
+              onChange={(e) => updatePrompt(e.target.value)}
+              onKeyDown={(e) => {
+                if (
+                  e.key === "Enter" &&
+                  !e.shiftKey &&
+                  !e.nativeEvent.isComposing &&
+                  e.nativeEvent.keyCode !== 229
+                ) {
+                  e.preventDefault();
+                  void send();
+                }
+              }}
+            />
+          )}
+          {!state.review && (prompt || draftError) && (
+            <div className="draft-status">
+              <span
+                role={draftError ? "alert" : "status"}
+                className={draftError ? "draft-error" : ""}
+              >
+                {draftError ||
+                  (restored
+                    ? "Draft restored from this Mac"
+                    : "Draft saved on this Mac")}
+              </span>
+              {!!prompt && (
+                <button
+                  type="button"
+                  disabled={working}
+                  onClick={() => updatePrompt("")}
+                >
+                  Discard draft
+                </button>
+              )}
+            </div>
+          )}
+          {!state.review && (
+            <ModelPicker
+              id={state.id}
+              settings={state.settings}
+              active={active}
+              disabled={busy || actionWorking}
+              onPending={settingsPending}
+              onSaved={() => setRetry((n) => n + 1)}
+            />
+          )}
+          <div className="composer-footer">
+            <span>
+              {state.review
+                ? "Reviewing a fixed snapshot of your uncommitted changes."
+                : "Enter to send · Shift+Enter for a new line"}
+            </span>
+            {busy ? (
+              <button
+                type="button"
+                className="button secondary stop"
+                title="Ends the response. Edits already made are kept."
+                disabled={working || state.status === "stopping"}
+                onClick={() =>
+                  void perform(async () => {
+                    await api.StopChat(state.id);
+                    setRetry((n) => n + 1);
+                  })
+                }
+              >
+                <Icon name="stop" size={13} /> Stop response
+              </button>
+            ) : (
+              !state.review && (
+                <button
+                  type="submit"
+                  className="button primary send"
+                  aria-label="Send"
+                  title="Send (Enter)"
+                  disabled={!prompt.trim() || working}
+                >
+                  <Icon name="arrow-up" size={17} />
+                </button>
+              )
+            )}
+          </div>
+        </form>
+        {draft && (
+          <ReviewPreview
+            draft={draft}
+            settings={state.reviewerSettings}
+            onSettingsPending={settingsPending}
+            onSettingsSaved={() => setRetry((n) => n + 1)}
+            error={error}
+            busy={working}
+            onCancel={() => {
+              if (!working) setDraft(undefined);
+            }}
+            onStart={() =>
+              void perform(async () => {
+                const review = await api.StartReview(draft.id);
+                setDraft(undefined);
+                onOpen(review);
+              })
+            }
+          />
+        )}
+      </div>
+      {showDetails && (
+        <DetailsPanel
+          chat={state}
+          summary={changes.summary}
+          error={changes.error}
+          drawer={narrow}
+          onRefresh={changes.refresh}
+          onClose={closeDetails}
         />
       )}
     </section>

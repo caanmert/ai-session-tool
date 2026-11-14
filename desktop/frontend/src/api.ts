@@ -105,6 +105,22 @@ export type ReviewSnapshot = {
   files: ReviewFile[];
   warnings: string[];
 };
+export type ChangedFile = {
+  path: string;
+  /** M modified, A added, D deleted, ? untracked */
+  status: string;
+  added: number;
+  removed: number;
+  binary?: boolean;
+};
+export type ChangeSummary = {
+  available: boolean;
+  reason?: string;
+  files: ChangedFile[];
+  added: number;
+  removed: number;
+  truncated?: boolean;
+};
 export type ReviewFinding = {
   id: string;
   priority: string;
@@ -237,6 +253,8 @@ export interface Backend {
     answers: Record<string, string>,
   ): Promise<void>;
   PrepareReview(id: string): Promise<ReviewDraft>;
+  ChatChanges(id: string): Promise<ChangeSummary>;
+  ChatDiff(id: string): Promise<ReviewSnapshot>;
   StartReview(id: string): Promise<ChatState>;
   SendReviewFindings(id: string, findings: string[]): Promise<string>;
   Refresh(): Promise<Snapshot>;
@@ -289,6 +307,8 @@ export const api: Backend = {
   AnswerChat: async (id, request, allow, answers) =>
     backend().AnswerChat(id, request, allow, answers),
   PrepareReview: async (id) => backend().PrepareReview(id),
+  ChatChanges: async (id) => backend().ChatChanges(id),
+  ChatDiff: async (id) => backend().ChatDiff(id),
   StartReview: async (id) => backend().StartReview(id),
   SendReviewFindings: async (id, findings) =>
     backend().SendReviewFindings(id, findings),

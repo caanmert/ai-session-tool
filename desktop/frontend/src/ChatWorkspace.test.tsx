@@ -67,6 +67,16 @@ beforeEach(() => {
     CloseChat: vi.fn().mockResolvedValue(undefined),
     AnswerChat: vi.fn().mockResolvedValue(undefined),
     PrepareReview: vi.fn().mockResolvedValue(draft),
+    ChatChanges: vi.fn().mockResolvedValue({
+      available: true,
+      files: [
+        { path: "app.txt", status: "M", added: 1, removed: 1 },
+        { path: "notes.md", status: "?", added: 4, removed: 0 },
+      ],
+      added: 5,
+      removed: 1,
+    }),
+    ChatDiff: vi.fn().mockResolvedValue(draft.snapshot),
     StartReview: vi
       .fn()
       .mockResolvedValue({ ...initial, id: "review", tool: "claude" }),
@@ -80,6 +90,61 @@ function show() {
   );
 }
 describe("graphical conversations", () => {
+  it("lists changed files beside the conversation and opens the diff on request", async () => {
+    show();
+    const panel = await screen.findByRole("complementary", {
+      name: "Conversation details",
+    });
+    expect(await within(panel).findByText("2 files")).toBeVisible();
+    expect(within(panel).getByText("+5")).toBeVisible();
+    expect(backend.ChatDiff).not.toHaveBeenCalled();
+    await userEvent.click(
+      within(panel).getByRole("button", {
+        name: /Modified.*app\.txt|app\.txt/,
+      }),
+    );
+    const dialog = await screen.findByRole("dialog", {
+      name: "Uncommitted changes",
+    });
+    expect(backend.ChatDiff).toHaveBeenCalledWith("chat");
+    expect(await within(dialog).findByText(/after/)).toBeVisible();
+    expect(within(dialog).getByText(/read-only/)).toBeVisible();
+  });
+  it("opens details as a drawer in a narrow window and returns focus on Escape", async () => {
+    Object.defineProperty(window, "matchMedia", {
+      configurable: true,
+      value: (query: string) => ({
+        matches: query.includes("max-width: 1199px"),
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+      }),
+    });
+    try {
+      show();
+      const toggle = await screen.findByRole("button", { name: /^Changes/ });
+      await waitFor(() => expect(toggle).toHaveTextContent("2"));
+      expect(toggle).toHaveAttribute("aria-pressed", "false");
+      expect(
+        screen.queryByRole("complementary", { name: "Conversation details" }),
+      ).not.toBeInTheDocument();
+      fireEvent.keyDown(document, { key: "\\", metaKey: true });
+      const drawer = await screen.findByRole("complementary", {
+        name: "Conversation details",
+      });
+      expect(toggle).toHaveAttribute("aria-pressed", "true");
+      const close = within(drawer).getByRole("button", {
+        name: "Close details",
+      });
+      expect(close).toHaveFocus();
+      fireEvent.keyDown(close, { key: "Escape" });
+      expect(
+        screen.queryByRole("complementary", { name: "Conversation details" }),
+      ).not.toBeInTheDocument();
+      expect(toggle).toHaveFocus();
+    } finally {
+      Reflect.deleteProperty(window, "matchMedia");
+    }
+  });
   it("applies partial updates and reads everything again after a missed one", async () => {
     const text = (id: string, value: string) => ({
       id,
