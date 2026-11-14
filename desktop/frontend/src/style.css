@@ -27,9 +27,16 @@ button:disabled {
 button:focus-visible,
 input:focus-visible,
 select:focus-visible,
+textarea:focus-visible,
 summary:focus-visible {
   outline: 2px solid var(--focus);
   outline-offset: 3px;
+}
+input[type="text"]:focus-visible,
+input:not([type]):focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline-offset: 1px;
 }
 button {
   transition: box-shadow 0.15s;
@@ -97,15 +104,19 @@ button {
 .saved-filters input,
 .saved-filters select {
   min-width: 0;
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  background: var(--surface);
-  color: var(--text);
-  padding: 9px 10px;
-  font-size: 12px;
 }
 .saved-filters input {
   flex: 1 1 100%;
+  height: 34px;
+  padding: 0 10px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-control);
+  background: var(--surface);
+  color: var(--text);
+  font-size: var(--text-md);
+}
+.saved-filters input::placeholder {
+  color: var(--muted);
 }
 .saved-filters select {
   flex: 1;
@@ -408,12 +419,6 @@ h1 {
 }
 .history-sort select {
   max-width: 132px;
-  border: 0;
-  border-radius: 4px;
-  padding: 5px 2px;
-  color: var(--text);
-  font-size: 12px;
-  background: transparent;
 }
 .history-list-status {
   padding: 9px 20px;
@@ -965,14 +970,8 @@ h1 {
   gap: 8px;
 }
 .project-select select {
-  border: 1px solid var(--border);
-  padding: 10px;
-  color: var(--text);
-  background: var(--surface);
-  border-radius: 5px;
   min-width: 0;
   flex: 1;
-  font-size: 12px;
 }
 .agent-options {
   display: flex;

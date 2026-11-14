@@ -1,4 +1,4 @@
-import { memo } from "react";
+import { memo, useEffect, useState } from "react";
 import Markdown from "react-markdown";
 import AgentMark from "../AgentMark";
 import Icon, { type IconName } from "../Icon";
@@ -75,6 +75,37 @@ const ToolStep = memo(function ToolStep({ message }: { message: ChatMessage }) {
   );
 });
 
+function CopyButton({ text }: { text: string }) {
+  const [state, setState] = useState<"" | "copied" | "failed">("");
+  useEffect(() => {
+    if (!state) return;
+    const timer = setTimeout(() => setState(""), 1600);
+    return () => clearTimeout(timer);
+  }, [state]);
+  return (
+    <button
+      className="message-copy"
+      aria-label="Copy message"
+      title="Copy message"
+      onClick={() => {
+        navigator.clipboard
+          .writeText(text)
+          .then(() => setState("copied"))
+          .catch(() => setState("failed"));
+      }}
+    >
+      <Icon name={state === "copied" ? "check" : "copy"} size={13} />
+      <span role="status">
+        {state === "copied"
+          ? "Copied"
+          : state === "failed"
+            ? "Copy failed"
+            : ""}
+      </span>
+    </button>
+  );
+}
+
 // Rows are memoized: while a reply streams, only its own row renders again.
 const TextMessage = memo(function TextMessage({
   message,
@@ -104,6 +135,7 @@ const TextMessage = memo(function TextMessage({
           {message.role === "assistant" && message.model && (
             <span className="message-model">{message.model}</span>
           )}
+          {!system && message.text && <CopyButton text={message.text} />}
         </div>
         <div className="markdown">
           <SafeMarkdown text={message.text} />

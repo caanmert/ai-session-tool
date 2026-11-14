@@ -109,7 +109,9 @@ export default function SavedWorkspace({ project, onClose, onOpen }: Props) {
         <div>
           <div className="eyebrow">SAVED ON THIS MAC</div>
           <h2 id="saved-workspace-title">Return to your work</h2>
-          <p>Conversations and independent reviews, including closed tabs.</p>
+          <p>
+            Conversations and independent reviews, including ones you closed.
+          </p>
         </div>
         <button
           className="icon-button"

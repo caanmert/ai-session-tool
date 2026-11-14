@@ -179,3 +179,58 @@
   gap: 8px;
   margin-top: 16px;
 }
+
+/* Dropdowns: one look everywhere, with our own arrow instead of the system's. */
+select {
+  appearance: none;
+  -webkit-appearance: none;
+  height: 32px;
+  max-width: 100%;
+  padding: 0 28px 0 10px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-control);
+  background-color: var(--surface);
+  background-image: var(--chevron);
+  background-repeat: no-repeat;
+  background-position: right 9px center;
+  background-size: 12px;
+  color: var(--text);
+  font-size: var(--text-md);
+  line-height: 1;
+  text-overflow: ellipsis;
+  cursor: pointer;
+}
+select:hover:not(:disabled) {
+  background-color: var(--surface-hover);
+}
+select:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+/* Quiet variant for dropdowns that sit inside a toolbar or heading. */
+select.quiet,
+.history-sort select {
+  height: 28px;
+  border-color: transparent;
+  background-color: transparent;
+  font-size: var(--text-sm);
+}
+
+/* Text fields share the dropdowns' height, border and focus. */
+.field {
+  height: 32px;
+  padding: 0 10px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-control);
+  background: var(--surface);
+  color: var(--text);
+  font-size: var(--text-md);
+}
+
+.chip .elapsed {
+  font-variant-numeric: tabular-nums;
+  opacity: 0.8;
+}
+.chip .elapsed::before {
+  content: "· ";
+}

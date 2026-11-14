@@ -1,5 +1,6 @@
 import { render, screen, within } from "@testing-library/react";
-import { expect, test } from "vitest";
+import userEvent from "@testing-library/user-event";
+import { expect, test, vi } from "vitest";
 import type { ChatMessage } from "../api";
 import MessageList from "./MessageList";
 
@@ -41,4 +42,22 @@ test("consecutive tool calls share one block and state their status in words", (
   expect(within(groups[1]).getByText("Running")).toBeVisible();
   expect(screen.getByText("Rotate the keys")).toBeVisible();
   expect(screen.getByText("Claude Code")).toBeVisible();
+});
+
+test("copies a message and confirms it", async () => {
+  const writeText = vi.fn().mockResolvedValue(undefined);
+  Object.defineProperty(navigator, "clipboard", {
+    configurable: true,
+    value: { writeText },
+  });
+  render(
+    <MessageList
+      tool="codex"
+      messages={[text("a", "assistant", "Use **three** retries.")]}
+    />,
+  );
+  await userEvent.click(screen.getByRole("button", { name: "Copy message" }));
+  // The original Markdown is copied, not the rendered text.
+  expect(writeText).toHaveBeenCalledWith("Use **three** retries.");
+  expect(await screen.findByText("Copied")).toBeVisible();
 });

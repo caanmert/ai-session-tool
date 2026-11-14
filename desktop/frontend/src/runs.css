@@ -24,12 +24,14 @@
   max-width: 280px;
 }
 .runs-workspace select,
-.run-dialog select,
-.run-dialog textarea {
-  padding: 8px;
+.run-dialog select {
   min-width: 0;
-  border: 1px solid var(--border);
-  border-radius: 6px;
+}
+.run-dialog textarea {
+  padding: 8px 10px;
+  min-width: 0;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-control);
   background: var(--surface);
   color: var(--text);
   font: inherit;

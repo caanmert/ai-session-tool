@@ -46,14 +46,6 @@
 .project-switcher select {
   min-width: 0;
   max-width: 220px;
-  height: 32px;
-  padding: 0 8px;
-  border: 1px solid var(--border-strong);
-  border-radius: var(--radius-control);
-  background: var(--surface);
-  color: var(--text);
-  font-size: var(--text-md);
-  text-overflow: ellipsis;
 }
 .search {
   grid-column: 3;
@@ -348,14 +340,7 @@ kbd {
   font-size: var(--text-sm);
   color: var(--muted);
 }
-.appearance select {
-  height: 28px;
-  padding: 0 6px;
-  border: 1px solid var(--border-strong);
-  border-radius: var(--radius-control);
-  background: var(--surface);
-  color: var(--text);
-}
+
 .appearance p {
   grid-column: 1 / -1;
   margin: 0;
