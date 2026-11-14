@@ -48,6 +48,17 @@ Start with monitoring and review. Refine launch and stop interactions before
 adding them; show their effects and preserve task work. Integration remains a
 deliberate user action, with no automatic commit or merge.
 
+## Now: an everyday agent workspace
+
+[#30](https://github.com/caanmert/ai-session-tool/issues/30) gathers the redesign
+from the [agent-desktop design](design/agent-desktop/README.md) and the work that
+makes the app pleasant to use all day: a top bar and sidebar with open
+conversations, grouped tool steps, a clearer approval card and composer, changed
+files beside the conversation, an agents board, a command palette, Settings,
+rename/pin/tag from the app, and conversation updates that no longer poll. Frontend
+lint, format and browser checks run in CI. Work lands as a stack of focused PRs
+that reference #30.
+
 ## Then: release confidence
 
 [#16](https://github.com/caanmert/ai-session-tool/issues/16) covers clean
