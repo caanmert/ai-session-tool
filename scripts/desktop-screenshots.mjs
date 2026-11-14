@@ -238,6 +238,22 @@ try {
           ResumeChat: async () => source,
           NewChat: async () => source,
           PickProject: async () => "",
+          ChatChanges: async () => ({
+            available: true,
+            files: [
+              { path: "src/checkout.ts", status: "M", added: 7, removed: 1 },
+              { path: "src/retry.ts", status: "?", added: 24, removed: 0 },
+              {
+                path: "test/checkout.test.ts",
+                status: "M",
+                added: 18,
+                removed: 3,
+              },
+            ],
+            added: 49,
+            removed: 4,
+          }),
+          ChatDiff: async () => snapshot,
           PrepareReview: async () => ({
             id: "draft",
             sourceId: "chat",
@@ -308,7 +324,9 @@ try {
   await page
     .getByRole("combobox", { name: "Sort conversations" })
     .selectOption("title");
-  await page.screenshot({ path: join(tmpdir(), `ais-history-small${suffix}.png`) });
+  await page.screenshot({
+    path: join(tmpdir(), `ais-history-small${suffix}.png`),
+  });
   const historyOverflow = await page.evaluate(() => ({
     body: document.body.scrollWidth > innerWidth,
     previewWidth: document.querySelector(".conversation").clientWidth,
@@ -325,7 +343,9 @@ try {
     .getByRole("combobox", { name: "Sort conversations" })
     .selectOption("recent");
   await resize(1360, 900);
-  await page.getByRole("button", { name: /Make checkout retries safe Codex/ }).click();
+  await page
+    .getByRole("button", { name: /Make checkout retries safe Codex/ })
+    .click();
   await page
     .getByRole("region", { name: "Codex conversation" })
     .getByText("The focused tests pass.", { exact: false })
@@ -398,7 +418,9 @@ try {
   if ((await page.locator(".diff-line.focused").count()) !== 1)
     throw Error("Missing finding highlight");
   await resize(960, 640);
-  await page.screenshot({ path: join(tmpdir(), `ais-review-small${suffix}.png`) });
+  await page.screenshot({
+    path: join(tmpdir(), `ais-review-small${suffix}.png`),
+  });
   await page
     .getByRole("button", { name: "Close Review with Claude Code", exact: true })
     .click();
