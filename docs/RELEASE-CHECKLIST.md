@@ -88,9 +88,9 @@ versions and usage scope. The current user requested fixture-only validation.
 
 | Check | Result |
 | --- | --- |
-| Root/desktop vet and race tests, scoped frontend tests/builds | Passed; detailed results are attached to PRs #22 and #23 |
+| Root/desktop vet and race tests, frontend tests/builds | Passed; combined PRs #22/#23/#24 pass 54 frontend tests and desktop vet/race checks |
 | Both-theme browser chat/history/review/library checks | Passed, including text contrast, errors/approvals, theme persistence and both window sizes |
-| Dashboard browser checks | Passed: selection/refresh, missing worktree, stop confirmation, multiline launch and minimum layout |
+| Dashboard browser checks | Passed in both themes: selection/refresh, attachment clipboard, missing worktree, stop confirmation, multiline launch, text contrast and minimum layout |
 | Python packaging/desktop-verifier tests | 9 passed |
 | GoReleaser 2.20.2 configuration and snapshot | Passed; four archives built without publishing |
 | macOS ARM64 packaged CLI smoke | Passed: 8 fixture sessions, completion generation for three shells, Bash/Zsh syntax, retained pin and data after reinstall; Fish interpreter unavailable |
@@ -99,7 +99,7 @@ versions and usage scope. The current user requested fixture-only validation.
 | Native fixture preparation | Passed; fake-agent app built/prepared and signature verified |
 | Native-window interactions | **Unverified:** computer-use connection timed out opening the fixture app; no interaction was claimed successful |
 | Paid/live provider turns | **Not run, as requested** |
-| Linux CLI runtime smoke | CI executes the packaged Linux AMD64 smoke; consult the release-readiness PR's actual result |
+| Linux AMD64 packaged CLI smoke | Passed in [CI run 43572374305](https://github.com/caanmert/ai-session-tool/actions/runs/43572374305): 8 fixture sessions, Bash syntax, retained pin/data; Zsh/Fish interpreters unavailable |
 | Intel macOS / Linux ARM64 runtime installation | Not run; archives/checksums are checked and cross-built only |
 | First Homebrew publication, Developer ID signing/notarization | Pending external publication/credentials; not performed |
 
