@@ -80,6 +80,42 @@ function show() {
   );
 }
 describe("graphical conversations", () => {
+  it("respects reading position and offers a jump back to the latest reply", async () => {
+    const view = show();
+    const messages = view.container.querySelector(
+      ".chat-messages",
+    ) as HTMLDivElement;
+    Object.defineProperties(messages, {
+      scrollHeight: { configurable: true, value: 1400 },
+      clientHeight: { configurable: true, value: 300 },
+    });
+    messages.scrollTop = 100;
+    fireEvent.scroll(messages);
+    expect(
+      screen.getByRole("button", { name: "Jump to latest ↓" }),
+    ).toBeVisible();
+    state = {
+      ...state,
+      version: 2,
+      messages: [
+        {
+          id: "later",
+          role: "assistant",
+          kind: "text",
+          text: "A later response",
+        },
+      ],
+    };
+    await screen.findByText("A later response");
+    expect(messages.scrollTop).toBe(100);
+    await userEvent.click(
+      screen.getByRole("button", { name: "Jump to latest ↓" }),
+    );
+    expect(messages.scrollTop).toBe(1400);
+    expect(
+      screen.queryByRole("button", { name: "Jump to latest ↓" }),
+    ).not.toBeInTheDocument();
+  });
   it("recovers multiline drafts across remounts and keeps conversations separate", async () => {
     const view = show();
     const text = "  Investigate checkout\nKeep the existing API.  ";

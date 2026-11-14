@@ -165,6 +165,7 @@ export type ChatSummary = {
   fileCount: number;
 };
 export interface Backend {
+  SetAppearance(theme: "light" | "dark"): Promise<void>;
   ChatModels(
     id: string,
     reviewer: boolean,
@@ -220,6 +221,7 @@ function backend(): Backend {
   return app;
 }
 export const api: Backend = {
+  SetAppearance: async (theme) => backend().SetAppearance(theme),
   ChatModels: async (id, reviewer, refresh) =>
     backend().ChatModels(id, reviewer, refresh),
   SetChatSettings: async (id, settings, reviewer) =>

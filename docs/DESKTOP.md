@@ -65,10 +65,18 @@ is not yet published. The Homebrew CLI package does not install the desktop app.
 
 ## Screenshots
 
+Choose **System**, **Light**, or **Dark** under **Appearance** in the sidebar.
+System follows macOS appearance changes; an explicit choice stays active until
+you change it. The app remembers the preference in its WebView storage and applies
+it before the workspace loads. If the preference cannot be saved, it still
+applies for the current visit and the sidebar explains that limitation.
+
 These show the real React interface with fictional conversations and review data.
 They demonstrate the layout, not output from a live model run.
 
 ![Graphical conversation with expandable tool activity](screenshots/desktop-chat.png)
+
+![The workspace in dark appearance](screenshots/desktop-chat-dark.png)
 
 ![Preview the exact diff before sending it to the other agent](screenshots/desktop-review-preview.png)
 
@@ -93,6 +101,16 @@ They demonstrate the layout, not output from a live model run.
 Switch tabs or return to **History** while an agent works. **⌘K** opens history
 search, **⌘N** opens New session, and **Esc** closes the new-session dialog.
 History refreshes when a response finishes; the refresh button rescans manually.
+
+Tabs show conversation titles, agent/project context, and working, waiting or
+error states. **←/→**, **Home**, and **End** move between tabs when a tab has
+keyboard focus. Close a stopped or idle tab with its close button; saved work
+and drafts remain available. Busy tabs ask you to stop the response first.
+
+When you scroll back through a conversation, new messages keep your reading
+position. **Jump to latest** returns to the newest reply and resumes following.
+Tool activity stays collapsed until opened. The composer and its model settings
+remain available while reading longer replies.
 
 Use **Pinned** or **Live** above history to narrow the list; their counts follow
 the current project, agent, and search. Choose **Pinned · Recent**, **Oldest first**,
@@ -184,6 +202,12 @@ with no advertised effort levels expose only the default effort. Cost estimates
 and account usage displays are not part of these controls.
 
 ## Review with the other agent
+
+The diff preview shows the selected file and added/removed line counts.
+Use **↑/↓**, **Home**, and **End** in the file list to switch files, or click a
+finding's file/line link to focus its location. **Wrap lines** makes long patches
+easier to read. At larger window sizes, the **Files** slider adjusts the file
+panel width. The code area is keyboard focusable for scrolling.
 
 For example: implement with Codex, review with Claude Code, then return selected
 findings to Codex for investigation and fixes. The reverse direction also works.
@@ -334,6 +358,12 @@ This replaces the desktop screenshots with fresh renders, checks a
 960×640 viewport, and writes a small-window capture into the system temporary
 directory. It injects fictional provider responses into a fresh browser context;
 it does not read real conversations or contact an AI provider.
+
+Repeat with `AIS_APPEARANCE=dark` to capture the dark screenshots and run the same
+checks in that appearance. The script checks real rendered text contrast,
+appearance persistence across reload, system appearance changes, approval/error
+states, and the minimum window size. `AIS_SCREENSHOT_DIR` selects a different
+output folder for validation without replacing documentation images.
 
 ## Current scope
 

@@ -31,6 +31,12 @@ same issue.
 
 ## Next: parallel work in the desktop app
 
+The [UI and appearance pass (#21)](https://github.com/caanmert/ai-session-tool/issues/21)
+adds readable shared colors/typography, System/Light/Dark appearance, useful
+conversation tabs, a clearer composer, and keyboard-friendly review diffs.
+Validate both themes across dialogs, errors, approvals and the minimum window
+size before extending the same design to run monitoring.
+
 [#15](https://github.com/caanmert/ai-session-tool/issues/15) brings saved runs,
 task state, alerts, changed files, and diff review into the graphical workspace.
 Build it on the existing runner rather than duplicating Git/tmux behavior.
