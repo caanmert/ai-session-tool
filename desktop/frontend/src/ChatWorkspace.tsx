@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import Markdown from "react-markdown";
 import ModelPicker from "./ModelPicker";
 import DiffViewer from "./DiffViewer";
+import AgentMark from "./AgentMark";
 import { useChatDraft } from "./useChatDraft";
 import {
   api,
@@ -152,9 +153,7 @@ export default function ChatWorkspace({
     >
       <header className="chat-header">
         <div className="chat-heading">
-          <span className={`chat-agent ${state.tool}`}>
-            {state.tool === "claude" ? "✳" : "◈"}
-          </span>
+          <AgentMark tool={state.tool} />
           <div>
             <h2>{state.title}</h2>
             <p title={state.project}>

@@ -1,70 +1,170 @@
+/*
+ * Theme tokens for the ais desktop app. Source: docs/design/agent-desktop.
+ *
+ * - Components use these variables only; no colors are written elsewhere.
+ * - Every text token passes 4.5:1 on every surface in its theme (canvas,
+ *   sidebar, surface, surface-hover). Dots, strokes and switch tracks pass
+ *   3:1. Re-check with scripts/ui-contrast.mjs if you change a value.
+ * - Status and agent colors have a separate `-text` token. Use the base token
+ *   for dots, icons and borders and the `-text` token for words.
+ */
+
 :root {
   color-scheme: light;
-  --canvas: #f6f7f3;
-  --sidebar: #e9ede7;
-  --surface: #ffffff;
-  --surface-soft: #f0f3ee;
-  --surface-hover: #e6ece3;
-  --text: #24332d;
-  --muted: #4e5f53;
-  --border: #ccd6ca;
-  --selected: #deeadf;
-  --selected-border: #78957a;
-  --brand: #2d5942;
-  --brand-hover: #234633;
+
+  /* Warm off-white surfaces */
+  --canvas: #fafaf9; /* main content background */
+  --sidebar: #f3f3f1; /* sidebar, top bar, right panel, code blocks */
+  --surface: #ffffff; /* cards, inputs, composer, selected session row */
+  --surface-soft: #ffffff;
+  --surface-hover: #ebebe8; /* hover, active nav item, secondary buttons */
+  --text: #1a1c1f;
+  --muted: #5f6670; /* meta text */
+  --border: #e2e2de;
+  --border-subtle: #ededea; /* row dividers inside a card */
+  --border-strong: #d6d6d1; /* secondary button and input borders */
+  --border-dashed: #c4c4be; /* "add" placeholders */
+  --selected: #ebebe8;
+  --selected-border: #3d4249;
+  --switch-off: #858b93; /* switch track when off */
+
+  /* Primary actions are near-black on off-white */
+  --brand: #1a1c1f;
+  --brand-hover: #000000;
   --on-brand: #ffffff;
+
   --accent: #9c4d2c;
   --accent-hover: #803d22;
   --on-accent: #ffffff;
   --accent-text: #8b4528;
   --accent-soft: #f8e9dc;
-  --success: #337547;
-  --success-text: #245e35;
-  --success-soft: #e6f2e7;
-  --danger: #ad443b;
-  --danger-text: #92382e;
-  --danger-soft: #fceae6;
-  --warning: #98631b;
-  --warning-text: #735014;
-  --warning-soft: #faf0d9;
+
+  --success: #2e9e5b;
+  --success-text: #1a6f3e;
+  --success-soft: #2e9e5b1a;
+  --danger: #d0454d;
+  --danger-text: #b4323a;
+  --danger-soft: #d0454d14;
+  --danger-button: #b4323a; /* destructive buttons */
+  --on-danger: #ffffff;
+  --warning: #c9850c; /* "needs you": strokes, dots */
+  --warning-text: #855600; /* 4.5:1 on a warning chip over --selected */
+  --warning-soft: #d9930f24;
+
   --focus: #956029;
   --focus-soft: #f9e5b7;
-  --shadow-color: #15231b1a;
-  --overlay: #12221966;
-  --terminal-bg: #151c19;
-  --terminal-text: #dbe8da;
+  --shadow-color: #15171a2e; /* dialogs and the details drawer */
+  --overlay: #1a1c1f38; /* scrim behind dialogs and the drawer */
+
+  /* Agent identity: Claude Code is a square dot, Codex a round one */
+  --agent-claude: #d06a3f;
+  --agent-claude-soft: #d06a3f24;
+  --agent-claude-text: #9c4624; /* 4.5:1 on a Claude chip over --selected */
+  --agent-codex: #3b7fe0;
+  --agent-codex-soft: #3b7fe029;
+  --agent-codex-text: #2257b0;
+
+  --diff-add-bg: #2e9e5b1a;
+  --diff-add-text: #1b6b3c;
+  --diff-del-bg: #d0454d14;
+  --diff-del-text: #9e2a31;
+
+  /* The live terminal stays dark in both themes. Inline command output in
+     the conversation uses --sidebar instead. */
+  --terminal-bg: #151719;
+  --terminal-text: #d7dade;
 }
+
+:root {
+  /* Live terminal chrome: dark in both themes, so defined once */
+  --terminal-chrome: #1b1e22; /* header and tab above the terminal */
+  --terminal-border: #2e333a;
+  --terminal-control: #262a30; /* buttons in the terminal header */
+  --terminal-strong: #e8eaed; /* button labels, cursor */
+  --terminal-muted: #a0a7b1; /* path, footer hint */
+  --terminal-success: #9be3b6;
+  --terminal-danger: #f4a3a8;
+  --terminal-danger-border: #f0717899;
+  --terminal-warning: #f2b544;
+  --terminal-warning-soft: #f2b5441f;
+  --terminal-selection: #3a3f46;
+
+  /* Shape and type scale */
+  --radius-control: 8px; /* buttons, inputs, selects, list rows */
+  --radius-card: 12px; /* task cards, tool-step groups, setting groups */
+  --radius-panel: 14px; /* composer, agent cards */
+  --radius-pill: 999px; /* status chips, counters */
+  /* No fonts are loaded remotely; these fall back to the system stack. */
+  --font-sans: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-mono: "JetBrains Mono", "SF Mono", ui-monospace, Menlo, monospace;
+  --text-xs: 11px; /* section labels, kbd */
+  --text-sm: 12px; /* meta, timestamps, chips */
+  --text-md: 13px; /* secondary buttons, settings sub-nav */
+  --text-base: 14px; /* body */
+  --text-lg: 15px;
+  --text-title: 22px; /* session title */
+  --text-page: 24px; /* page title */
+}
+
 :root[data-theme="dark"] {
   color-scheme: dark;
-  --canvas: #111916;
-  --sidebar: #16201c;
-  --surface: #1b2721;
-  --surface-soft: #223128;
-  --surface-hover: #2b3c30;
-  --text: #edf3e9;
-  --muted: #b0c0b0;
-  --border: #405343;
-  --selected: #2a4634;
-  --selected-border: #8bb395;
-  --brand: #9ac7a7;
-  --brand-hover: #b4d7be;
-  --on-brand: #12241a;
+
+  /* Neutral graphite surfaces */
+  --canvas: #0e0f11;
+  --sidebar: #0b0c0e;
+  --surface: #121417; /* cards, tool-step groups */
+  --surface-soft: #16181b; /* inputs, search, selected session row */
+  --surface-hover: #1b1e22;
+  --text: #e8eaed;
+  --muted: #a0a7b1;
+  --border: #262a30;
+  --border-subtle: #1f2227;
+  --border-strong: #2e333a;
+  --border-dashed: #3a3f46;
+  --selected: #1b1e22;
+  --selected-border: #c9cdd3;
+  --switch-off: #3a3f46;
+
+  /* Primary actions are near-white on graphite */
+  --brand: #e8eaed;
+  --brand-hover: #ffffff;
+  --on-brand: #0e0f11;
+
   --accent: #e7aa83;
   --accent-hover: #f2c5a6;
   --on-accent: #2c1b12;
   --accent-text: #f0ba97;
   --accent-soft: #422e23;
-  --success: #91cea2;
-  --success-text: #b0dfb9;
-  --success-soft: #213e2b;
-  --danger: #ed9d8e;
-  --danger-text: #ffbaab;
-  --danger-soft: #452b29;
-  --warning: #e1be77;
-  --warning-text: #f1d397;
-  --warning-soft: #3c3423;
+
+  --success: #5bd18b;
+  --success-text: #9be3b6;
+  --success-soft: #5bd18b1a;
+  --danger: #f07178;
+  --danger-text: #f4a3a8;
+  --danger-soft: #f071781a;
+  --danger-button: #f07178;
+  --on-danger: #0e0f11;
+  --warning: #f2b544;
+  --warning-text: #f2b544;
+  --warning-soft: #f2b5441f;
+
   --focus: #edc478;
   --focus-soft: #4b4029;
-  --shadow-color: #00000050;
-  --overlay: #050b08aa;
+  --shadow-color: #00000080;
+  --overlay: #0000008c;
+
+  --agent-claude: #e8875f;
+  --agent-claude-soft: #e8875f24;
+  --agent-claude-text: #f0a383;
+  --agent-codex: #74aeff;
+  --agent-codex-soft: #74aeff24;
+  --agent-codex-text: #9cc5ff;
+
+  --diff-add-bg: #5bd18b1a;
+  --diff-add-text: #9be3b6;
+  --diff-del-bg: #f071781a;
+  --diff-del-text: #f4a3a8;
+
+  --terminal-bg: #0a0b0d;
+  --terminal-text: #a0a7b1;
 }
