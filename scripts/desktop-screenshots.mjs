@@ -4,10 +4,15 @@ import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { mkdir } from "node:fs/promises";
 import { contrastFailures } from "./ui-contrast.mjs";
-const { chromium } = await import(
+const { chromium, webkit } = await import(
   process.env.AIS_PLAYWRIGHT_MODULE || "playwright"
 );
-const browser = await chromium.launch({ channel: "chrome", headless: true });
+const engine = process.env.AIS_BROWSER || "chrome";
+if (!["chrome", "webkit"].includes(engine))
+  throw Error("AIS_BROWSER must be chrome or webkit");
+const browser = await (engine === "webkit"
+  ? webkit.launch({ headless: true })
+  : chromium.launch({ channel: "chrome", headless: true }));
 try {
   const page = await browser.newPage({
     viewport: { width: 1360, height: 900 },
@@ -434,7 +439,7 @@ try {
       ".chat-workspace:not([hidden]) .chat-messages",
     ).clientHeight,
   }));
-  console.log(JSON.stringify({ errors, overflow, historyOverflow }));
+  console.log(JSON.stringify({ engine, errors, overflow, historyOverflow }));
 
   if (errors.length || overflow.body || overflow.composer) process.exitCode = 1;
 } finally {
