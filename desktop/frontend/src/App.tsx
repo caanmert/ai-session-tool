@@ -8,6 +8,7 @@ import Settings from "./settings/Settings";
 import TopBar from "./shell/TopBar";
 import Sidebar from "./shell/Sidebar";
 import AgentsMissing from "./shell/AgentsMissing";
+import { SessionTags, SessionTitle } from "./history/SessionAnnotations";
 import CommandPalette, { type Command } from "./shell/CommandPalette";
 import { attentionChange } from "./shell/attention";
 import Icon from "./Icon";
@@ -21,6 +22,7 @@ import {
   type Snapshot,
   type ToolName,
   type ChatState,
+  type AnnotationChange,
 } from "./api";
 
 function age(date: string) {
@@ -410,6 +412,17 @@ export default function App() {
     if (showNew) modal.current?.querySelector<HTMLElement>("button")?.focus();
   }, [showNew]);
 
+  // Rename, pin or tag the selected conversation. These notes belong to ais;
+  // the agent's transcript is not touched and no agent is started.
+  async function annotate(change: AnnotationChange) {
+    if (!selected) return;
+    setError("");
+    try {
+      setSnapshot(await api.AnnotateSession(selected.key, change));
+    } catch (e) {
+      setError(errorText(e));
+    }
+  }
   async function pickProject() {
     if (operation.current) return;
     operation.current = true;
@@ -857,7 +870,7 @@ export default function App() {
                       </span>
                     )}
                   </div>
-                  <h2>{selected.title || "Untitled conversation"}</h2>
+                  <SessionTitle session={selected} onChange={annotate} />
                   <div className="conversation-actions">
                     <span className="conversation-path" title={selected.cwd}>
                       <Icon name="folder" size={14} />
@@ -883,13 +896,7 @@ export default function App() {
                     <span>{selected.assistantTurns} replies</span>
                     <span>{tokens(selected)} tokens</span>
                     {selected.model && <span>{selected.model}</span>}
-                    {selected.tags?.length ? (
-                      <div className="tags">
-                        {selected.tags.map((tag) => (
-                          <span key={tag}>#{tag}</span>
-                        ))}
-                      </div>
-                    ) : null}
+                    <SessionTags session={selected} onChange={annotate} />
                   </div>
                 </div>
                 <div className="messages" key={selected.key}>

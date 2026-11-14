@@ -96,6 +96,7 @@ beforeEach(() => {
   backend = {
     SetAppearance: vi.fn().mockResolvedValue(undefined),
     SetAttention: vi.fn().mockResolvedValue(undefined),
+    AnnotateSession: vi.fn(),
     ChatModels: vi
       .fn()
       .mockResolvedValue({ models: [], defaultModel: "", defaultEffort: "" }),
@@ -469,6 +470,72 @@ describe("desktop workflows", () => {
       screen.queryByRole("region", { name: "Settings" }),
     ).not.toBeInTheDocument();
     expect(document.documentElement.dataset.theme).toBe("dark");
+  });
+  it("renames, pins and tags a saved conversation without starting an agent", async () => {
+    const annotated = (change: Partial<(typeof snapshot.sessions)[0]>) => ({
+      ...snapshot,
+      sessions: snapshot.sessions.map((s, i) =>
+        i === 0 ? { ...s, ...change } : s,
+      ),
+    });
+    backend.AnnotateSession = vi
+      .fn()
+      .mockResolvedValueOnce(annotated({ title: "Webhook retries" }))
+      .mockResolvedValueOnce(
+        annotated({ title: "Webhook retries", pinned: true }),
+      )
+      .mockResolvedValueOnce(
+        annotated({
+          title: "Webhook retries",
+          pinned: true,
+          tags: ["backend"],
+        }),
+      )
+      .mockRejectedValueOnce(new Error("invalid tag"));
+    render(<App />);
+    await screen.findByRole("heading", { name: "Retry webhook delivery" });
+    await userEvent.click(
+      screen.getByRole("button", { name: "Rename conversation" }),
+    );
+    const title = screen.getByRole("textbox", { name: "Conversation title" });
+    expect(title).toHaveValue("Retry webhook delivery");
+    await userEvent.clear(title);
+    await userEvent.type(title, "  Webhook retries {Enter}");
+    expect(backend.AnnotateSession).toHaveBeenLastCalledWith("codex/one", {
+      title: "Webhook retries",
+    });
+    await screen.findByRole("heading", { name: "Webhook retries" });
+
+    const pin = screen.getByRole("button", { name: "Pin conversation" });
+    expect(pin).toHaveAttribute("aria-pressed", "false");
+    await userEvent.click(pin);
+    expect(backend.AnnotateSession).toHaveBeenLastCalledWith("codex/one", {
+      pinned: true,
+    });
+    await waitFor(() =>
+      expect(
+        screen.getByRole("button", { name: "Pin conversation" }),
+      ).toHaveAttribute("aria-pressed", "true"),
+    );
+
+    await userEvent.type(
+      screen.getByRole("textbox", { name: "Add a tag" }),
+      "backend{Enter}",
+    );
+    expect(backend.AnnotateSession).toHaveBeenLastCalledWith("codex/one", {
+      addTags: ["backend"],
+    });
+    expect(
+      await screen.findByRole("button", { name: "Remove tag backend" }),
+    ).toBeVisible();
+
+    // A rejected change is reported and nothing else changes.
+    await userEvent.type(
+      screen.getByRole("textbox", { name: "Add a tag" }),
+      "not a tag!{Enter}",
+    );
+    expect(await screen.findByRole("alert")).toHaveTextContent("invalid tag");
+    expect(backend.ResumeChat).not.toHaveBeenCalled();
   });
   it("opens saved desktop work without starting or resuming a provider", async () => {
     backend.ListSavedChats = vi.fn().mockResolvedValue([

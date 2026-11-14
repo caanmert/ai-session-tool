@@ -129,6 +129,17 @@ func (a *App) Refresh() (application.Snapshot, error) {
 	return a.service.Refresh(ctx)
 }
 
+// AnnotateSession renames, pins or tags a saved session in ais and returns the
+// refreshed snapshot. The agent's own transcript is not modified.
+func (a *App) AnnotateSession(key string, change application.AnnotationChange) (application.Snapshot, error) {
+	if err := a.ready(); err != nil {
+		return application.Snapshot{}, err
+	}
+	ctx, cancel := context.WithTimeout(a.ctx, 2*time.Minute)
+	defer cancel()
+	return a.service.Annotate(ctx, key, change)
+}
+
 func (a *App) Search(query string) ([]string, error) {
 	if err := a.ready(); err != nil {
 		return nil, err

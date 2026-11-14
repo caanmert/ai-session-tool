@@ -1,0 +1,85 @@
+/* Rename, pin and tag controls in the History preview */
+.title-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+}
+.title-row h2 {
+  min-width: 0;
+  margin-right: 4px;
+}
+.pin-toggle[aria-pressed="true"] {
+  background: var(--surface-hover);
+  color: var(--text);
+}
+.title-edit {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: 6px 0;
+}
+.title-edit input {
+  flex: 1;
+  min-width: 200px;
+  height: 34px;
+  padding: 0 10px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-control);
+  background: var(--surface);
+  color: var(--text);
+  font-size: var(--text-lg);
+  font-weight: 600;
+}
+.title-edit small {
+  flex-basis: 100%;
+  font-size: var(--text-sm);
+  color: var(--muted);
+}
+.session-facts .tags {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+.session-facts .tags > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  height: 22px;
+  padding: 0 4px 0 8px;
+  border: 0;
+  border-radius: var(--radius-pill);
+  background: var(--surface-hover);
+  color: var(--text);
+  font-size: var(--text-sm);
+}
+.session-facts .tags > span button {
+  display: grid;
+  place-items: center;
+  width: 16px;
+  height: 16px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--muted);
+}
+.session-facts .tags > span button:hover:not(:disabled) {
+  background: var(--border-strong);
+  color: var(--text);
+}
+.session-facts .tags input {
+  width: 92px;
+  height: 22px;
+  padding: 0 8px;
+  border: 1px dashed var(--border-dashed);
+  border-radius: var(--radius-pill);
+  background: transparent;
+  color: var(--text);
+  font-size: var(--text-sm);
+}
+.session-facts .tags input::placeholder {
+  color: var(--muted);
+}
