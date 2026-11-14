@@ -1,9 +1,14 @@
 // Local fictional runs only: no tmux, agents, or provider accounts are contacted.
 import { mkdir } from "node:fs/promises";
-const { chromium } = await import(
+const { chromium, webkit } = await import(
   process.env.AIS_PLAYWRIGHT_MODULE || "playwright"
 );
-const browser = await chromium.launch({ channel: "chrome", headless: true });
+const engine = process.env.AIS_BROWSER || "chrome";
+if (!["chrome", "webkit"].includes(engine))
+  throw Error("AIS_BROWSER must be chrome or webkit");
+const browser = await (engine === "webkit"
+  ? webkit.launch({ headless: true })
+  : chromium.launch({ channel: "chrome", headless: true }));
 const output = process.env.AIS_SCREENSHOT_DIR || "/tmp/ais-run-check";
 await mkdir(output, { recursive: true });
 const mode = process.env.AIS_APPEARANCE || "light";
@@ -151,7 +156,9 @@ try {
   await page
     .getByText("+  const key = crypto.randomUUID();", { exact: true })
     .waitFor();
-  await page.context().grantPermissions(["clipboard-read", "clipboard-write"]);
+  await page.context().grantPermissions(
+    engine === "webkit" ? ["clipboard-read"] : ["clipboard-read", "clipboard-write"],
+  );
   await page.getByRole("button", { name: "Copy attach command" }).click();
   await page
     .getByRole("status")
@@ -243,7 +250,7 @@ try {
     throw Error("Launch prompts or duplicate guard failed");
   if (errors.length) throw Error(JSON.stringify(errors));
   console.log(
-    JSON.stringify({ mode, layout, launchCalls: calls.length, contrastChecks, errors }),
+    JSON.stringify({ engine, mode, layout, launchCalls: calls.length, contrastChecks, errors }),
   );
 } finally {
   await browser.close();
