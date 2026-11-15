@@ -371,6 +371,61 @@
   border-radius: 50%;
 }
 
+/* File list shown while typing "@" in the message box */
+.chat-composer {
+  position: relative;
+}
+.file-mentions {
+  position: absolute;
+  left: 8px;
+  right: 8px;
+  bottom: calc(100% + 6px);
+  z-index: 4;
+  max-height: 260px;
+  overflow-y: auto;
+  padding: 6px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-card);
+  background: var(--surface);
+  box-shadow: 0 12px 28px var(--shadow-color);
+}
+.file-mentions ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.file-mentions li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 30px;
+  padding: 0 8px;
+  border-radius: var(--radius-control);
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  cursor: pointer;
+}
+.file-mentions li[aria-selected="true"] {
+  background: var(--surface-hover);
+}
+.file-mentions li span {
+  flex-shrink: 0;
+  color: var(--text);
+}
+.file-mentions li small {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--text-xs);
+}
+.file-mentions p {
+  padding: 8px;
+  font-size: var(--text-sm);
+  color: var(--muted);
+}
+
 /* Model and reasoning choice */
 .model-settings-fields {
   display: flex;

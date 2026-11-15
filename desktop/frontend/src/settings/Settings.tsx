@@ -14,6 +14,8 @@ const shortcuts: [string, string][] = [
   ["⌘\\", "Show or hide changed files (narrow windows)"],
   ["Enter", "Send the message"],
   ["Shift Enter", "New line in the message"],
+  ["@", "Find a file in the project and add its path to the message"],
+  ["↑", "Recall your earlier messages (in an empty message box)"],
   ["↑ ↓", "Move through lists and open conversations"],
   ["Esc", "Close a dialog, or deny a request while its card has focus"],
 ];

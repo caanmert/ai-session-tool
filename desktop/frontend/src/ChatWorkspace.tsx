@@ -7,6 +7,7 @@ import MessageList from "./chat/MessageList";
 import { SafeMarkdown } from "./ui/SafeMarkdown";
 import DetailsPanel, { useChanges } from "./chat/DetailsPanel";
 import ConfirmDialog from "./ui/ConfirmDialog";
+import { useFileMentions } from "./chat/FileMentions";
 import { applyChatUpdate } from "./chatUpdates";
 import { useChatDraft } from "./useChatDraft";
 import {
@@ -172,6 +173,30 @@ export default function ChatWorkspace({
     if (following.current && messages.current)
       messages.current.scrollTop = messages.current.scrollHeight;
   }, [state.version, active]);
+  const mentions = useFileMentions({
+    chatId: state.id,
+    prompt,
+    updatePrompt,
+    input,
+  });
+  // Up and Down in an empty message box step through your earlier messages
+  // in this conversation, newest first.
+  const [recalled, setRecalled] = useState(-1);
+  function recall(e: React.KeyboardEvent<HTMLTextAreaElement>) {
+    if (e.key !== "ArrowUp" && e.key !== "ArrowDown") return false;
+    const sent = state.messages
+      .filter((m) => m.role === "user" && m.kind === "text" && m.text)
+      .map((m) => m.text)
+      .reverse();
+    const stepping = recalled >= 0 && prompt === sent[recalled];
+    if (!stepping && prompt) return false;
+    const next = (stepping ? recalled : -1) + (e.key === "ArrowUp" ? 1 : -1);
+    if (next >= sent.length || (next < -1 && !stepping)) return false;
+    e.preventDefault();
+    setRecalled(Math.max(next, -1));
+    updatePrompt(next >= 0 ? sent[next] : "");
+    return true;
+  }
   // The message box grows with its text, up to the CSS max-height.
   useEffect(() => {
     const el = input.current;
@@ -529,15 +554,26 @@ export default function ChatWorkspace({
             void send();
           }}
         >
+          {!state.review && mentions.popup}
           {!state.review && (
             <textarea
               ref={input}
               aria-label="Message agent"
-              placeholder={`Message ${toolLabel(state.tool)} about this project…`}
+              aria-controls={mentions.listId}
+              aria-activedescendant={mentions.activeOption}
+              placeholder={`Message ${toolLabel(state.tool)} — @ to mention a file`}
               value={prompt}
               disabled={working}
-              onChange={(e) => updatePrompt(e.target.value)}
+              onChange={(e) => {
+                updatePrompt(e.target.value);
+                setRecalled(-1);
+                mentions.trackCaret();
+              }}
+              onKeyUp={mentions.trackCaret}
+              onClick={mentions.trackCaret}
               onKeyDown={(e) => {
+                if (mentions.onKeyDown(e)) return;
+                if (recall(e)) return;
                 if (
                   e.key === "Enter" &&
                   !e.shiftKey &&
