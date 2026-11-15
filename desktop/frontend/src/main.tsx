@@ -4,6 +4,7 @@ import App from "./App";
 import "./themes.css";
 import "./style.css";
 import "./ui/controls.css";
+import "./ui/markdown.css";
 import "./shell/shell.css";
 import "./chat/chat.css";
 import "./chat/details.css";
