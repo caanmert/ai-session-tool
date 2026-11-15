@@ -56,6 +56,7 @@
   --warning-text: #855600; /* 4.5:1 on a warning chip over --selected */
   --warning-soft: #d9930f24;
   --warning-tint: #d9930f0f; /* approval card background */
+  --on-warning: #1a1c1f; /* text on a solid --warning fill */
   --warning-border: #c9850c8c; /* approval card border */
 
   --focus: #956029;
@@ -165,6 +166,7 @@
   --warning-text: #f2b544;
   --warning-soft: #f2b5441f;
   --warning-tint: #f2b5440f;
+  --on-warning: #0e0f11;
   --warning-border: #f2b54473;
 
   --focus: #edc478;
