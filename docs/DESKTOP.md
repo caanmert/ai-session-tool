@@ -109,7 +109,11 @@ They demonstrate the layout, not output from a live model run.
   History; it never starts an agent.
 - **Agents board**: every open conversation in three columns, **Needs you** first.
   A simple approval can be allowed once or denied on its card; requests with
-  questions are answered in the conversation.
+  questions are answered in the conversation. Tasks of the four newest parallel
+  runs appear in the same columns: an outlined chip gives the process state
+  (Running, Exited) and a separate filled chip marks an agent event or a task
+  that has gone quiet. Choosing a run task opens it on the Parallel runs page.
+  The board only reads run state; it never starts or stops a run.
 - **Session** (below Changes): the model, turns, tokens and, where the model has
   a known price, what the usage would cost at API list prices. That figure is an
   equivalent: a subscription is not billed this way. **Show in Finder** opens the

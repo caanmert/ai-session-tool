@@ -238,3 +238,16 @@
     grid-auto-columns: 250px;
   }
 }
+
+/* Parallel-run tasks on the board */
+.task-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+.board-note {
+  margin-bottom: 12px;
+  font-size: var(--text-sm);
+  color: var(--warning-text);
+}
