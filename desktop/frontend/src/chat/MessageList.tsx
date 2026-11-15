@@ -1,23 +1,9 @@
 import { memo, useEffect, useState } from "react";
 import { SafeMarkdown } from "../ui/SafeMarkdown";
 import AgentMark from "../AgentMark";
-import Icon, { type IconName } from "../Icon";
+import Icon from "../Icon";
+import { describeToolStep } from "./toolStep";
 import { toolLabel, type ChatMessage } from "../api";
-
-// Claude Code reports tool names (Read, Edit, Bash); Codex reports the command
-// line itself. Pick an icon from the name and treat anything else as a command.
-function stepKind(name: string): { icon: IconName; command: boolean } {
-  const key = name.trim().toLowerCase();
-  if (/^(read|notebookread)$/.test(key))
-    return { icon: "file", command: false };
-  if (/^(edit|multiedit|write|notebookedit|file changes)$/.test(key))
-    return { icon: "pencil", command: false };
-  if (/^(grep|glob|websearch|webfetch|toolsearch)$/.test(key))
-    return { icon: "search", command: false };
-  if (/^[a-z][a-z0-9_]*$/i.test(name.trim()) && key !== "bash")
-    return { icon: "code", command: false };
-  return { icon: "terminal", command: key !== "bash" };
-}
 
 const stepStatus = (status?: string) =>
   ({
@@ -31,17 +17,31 @@ const stepStatus = (status?: string) =>
   status ||
   "Saved";
 
-const ToolStep = memo(function ToolStep({ message }: { message: ChatMessage }) {
-  const name = message.name || "Tool activity";
-  const kind = stepKind(name);
+const ToolStep = memo(function ToolStep({
+  message,
+  project,
+}: {
+  message: ChatMessage;
+  project: string;
+}) {
+  const step = describeToolStep(message, project);
   const failed = message.status === "failed" || message.status === "declined";
   const running =
     message.status === "running" || message.status === "inProgress";
+  const added = step.diff?.filter((line) => line.kind === "add").length || 0;
+  const removed = step.diff?.filter((line) => line.kind === "del").length || 0;
   return (
     <details className="tool-step">
       <summary>
-        <Icon name={kind.icon} size={15} />
-        <strong className={kind.command ? "command" : ""}>{name}</strong>
+        <Icon name={step.icon} size={15} />
+        <span className="tool-verb">{step.verb}</span>
+        <strong title={step.target}>{step.target}</strong>
+        {step.diff && (added > 0 || removed > 0) && (
+          <span className="tool-counts">
+            {added > 0 && <b className="added">+{added}</b>}
+            {removed > 0 && <b className="removed">−{removed}</b>}
+          </span>
+        )}
         <small
           className={failed ? "failed" : running ? "running" : ""}
           data-status={message.status || ""}
@@ -50,7 +50,22 @@ const ToolStep = memo(function ToolStep({ message }: { message: ChatMessage }) {
           {stepStatus(message.status)}
         </small>
       </summary>
-      <pre>{message.text || "Waiting for output…"}</pre>
+      {step.diff && step.diff.length > 0 && (
+        <div className="tool-diff" role="group" aria-label="Changed lines">
+          {step.diff.map((line, index) => (
+            <div key={index} className={line.kind}>
+              <span aria-hidden="true">{line.kind === "add" ? "+" : "−"}</span>
+              <code>{line.text || " "}</code>
+            </div>
+          ))}
+          {step.diffOmitted > 0 && (
+            <p>{step.diffOmitted} more lines are not shown.</p>
+          )}
+        </div>
+      )}
+      {(step.output || !step.diff?.length) && (
+        <pre>{step.output || "Waiting for output…"}</pre>
+      )}
     </details>
   );
 });
@@ -129,9 +144,12 @@ const TextMessage = memo(function TextMessage({
 export default function MessageList({
   messages,
   tool,
+  project = "",
 }: {
   messages: ChatMessage[];
   tool: string;
+  /** Used to show file paths relative to the project. */
+  project?: string;
 }) {
   const items: (ChatMessage | ChatMessage[])[] = [];
   for (const message of messages) {
@@ -149,7 +167,7 @@ export default function MessageList({
         aria-label="Tool activity"
       >
         {item.map((message) => (
-          <ToolStep key={message.id} message={message} />
+          <ToolStep key={message.id} message={message} project={project} />
         ))}
       </div>
     ) : (

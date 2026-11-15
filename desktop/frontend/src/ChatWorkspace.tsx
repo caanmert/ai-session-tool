@@ -447,6 +447,7 @@ export default function ChatWorkspace({
           )}
           <MessageList
             tool={state.tool}
+            project={state.project}
             messages={
               state.review?.complete
                 ? state.messages.filter(
