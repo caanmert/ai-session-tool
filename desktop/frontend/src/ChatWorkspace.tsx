@@ -15,6 +15,7 @@ import {
   toolLabel,
   type ChatState,
   type ChatApproval,
+  type Session,
   type ReviewDraft,
 } from "./api";
 
@@ -67,6 +68,8 @@ function useNarrow() {
 
 type Props = {
   chat: ChatState;
+  /** The saved session behind this conversation, once the agent has one. */
+  session?: Session;
   active: boolean;
   reviewerAvailable: boolean;
   onOpen: (chat: ChatState) => void;
@@ -75,6 +78,7 @@ type Props = {
 };
 export default function ChatWorkspace({
   chat,
+  session,
   active,
   reviewerAvailable,
   onOpen,
@@ -673,6 +677,7 @@ export default function ChatWorkspace({
       {showDetails && (
         <DetailsPanel
           chat={state}
+          session={session}
           summary={changes.summary}
           error={changes.error}
           drawer={narrow}

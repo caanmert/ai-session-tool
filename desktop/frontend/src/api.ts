@@ -20,6 +20,11 @@ export type Session = {
     cacheRead: number;
     cacheWrite: number;
   };
+  /** USD at API list prices; absent when the usage cannot be priced. A
+   * subscription is not billed this way. */
+  cost?: number;
+  /** Some usage has no known price and is left out of `cost`. */
+  costPartial?: boolean;
 };
 export type Project = {
   path: string;

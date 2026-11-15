@@ -23,6 +23,13 @@ type Session struct {
 	model.Session
 	Key     string `json:"key"`
 	Project string `json:"project"`
+	// Cost is what the session's usage would cost at API list prices, in USD.
+	// It is nil when none of the usage can be priced. A subscription is not
+	// billed this way, so treat it as an equivalent, not a charge.
+	Cost *float64 `json:"cost,omitempty"`
+	// CostPartial is set when some of the usage has no known price and is
+	// left out of Cost.
+	CostPartial bool `json:"costPartial,omitempty"`
 }
 
 type Project struct {
@@ -145,6 +152,7 @@ func (s *Service) refresh(ctx context.Context) (Snapshot, error) {
 	for _, path := range recent {
 		add(path, true)
 	}
+	prices := loadPrices()
 	roots := map[string]string{}
 	for _, session := range scan.Sessions {
 		if err := ctx.Err(); err != nil {
@@ -165,8 +173,9 @@ func (s *Service) refresh(ctx context.Context) (Snapshot, error) {
 			add(root, false)
 			projects[root].Sessions++
 		}
+		cost, partial := sessionCost(prices, session)
 		session.Breakdown = nil
-		result.Sessions = append(result.Sessions, Session{Session: session, Key: session.Key(), Project: root})
+		result.Sessions = append(result.Sessions, Session{Session: session, Key: session.Key(), Project: root, Cost: cost, CostPartial: partial})
 	}
 	for _, p := range projects {
 		result.Projects = append(result.Projects, *p)
