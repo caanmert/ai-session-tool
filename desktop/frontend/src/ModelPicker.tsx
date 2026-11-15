@@ -87,6 +87,9 @@ export default function ModelPicker({
   return (
     <div
       className="model-settings"
+      title={
+        disabled ? "The model can be changed after this response" : undefined
+      }
       aria-label={reviewer ? "Reviewer settings" : "Conversation settings"}
     >
       <div className="model-settings-fields">
@@ -163,13 +166,9 @@ export default function ModelPicker({
         >
           <Icon name="refresh" size={14} />
         </button>
-        {(saving || disabled || reviewer) && (
+        {(saving || reviewer) && (
           <span className="model-settings-note" role="status">
-            {saving
-              ? "Saving…"
-              : disabled
-                ? "Model changes apply after this response"
-                : "Saved separately for reviews"}
+            {saving ? "Saving…" : "Saved separately for reviews"}
           </span>
         )}
       </div>

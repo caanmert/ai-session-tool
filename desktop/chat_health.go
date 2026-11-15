@@ -13,8 +13,8 @@ import (
 // Versions of each agent's command-line tool that the authenticated checks in
 // docs/DESKTOP.md last passed with. Update these when the checks are repeated.
 var testedAgentVersions = map[string]string{
-	"claude": "2.1.296",
-	"codex":  "0.162.1",
+	"claude": "2.1.325",
+	"codex":  "0.167.1",
 }
 
 // AgentHealth reports whether an installed agent still accepts what ais sends
@@ -35,11 +35,11 @@ var versionPattern = regexp.MustCompile(`\d+\.\d+\.\d+`)
 // claudeBaseArgs are the fixed options every Claude Code conversation starts
 // with. Conversations and the compatibility check share them so they cannot
 // drift apart.
-var claudeBaseArgs = []string{"-p", "--input-format", "stream-json", "--output-format", "stream-json", "--verbose", "--include-partial-messages", "--permission-prompt-tool", "stdio", "--permission-mode", "default"}
+var claudeBaseArgs = []string{"-p", "--input-format", "stream-json", "--output-format", "stream-json", "--verbose", "--include-partial-messages", "--permission-prompt-tool", "stdio"}
 
 // Asking for the version alongside the base options makes the tool validate
 // them and exit without starting a session.
-var claudeProbeArgs = append(append([]string{}, claudeBaseArgs...), "--version")
+var claudeProbeArgs = append(append([]string{}, claudeBaseArgs...), "--permission-mode", "default", "--version")
 
 func (m *chatManager) run(ctx context.Context, tool string, args ...string) (string, error) {
 	cmd := m.command(tool, args...)

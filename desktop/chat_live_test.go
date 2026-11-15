@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"sort"
 	"strings"
 	"testing"
 	"time"
@@ -62,10 +63,16 @@ func finishLiveChat(t *testing.T, m *chatManager, id string, approval func(ChatA
 			if answered[request.ID] {
 				continue
 			}
-			if approval == nil || !approval(request) {
+			if approval == nil {
 				t.Fatalf("unexpected approval (not granted): %+v", request)
 			}
-			if err := m.approve(id, request.ID, true, nil); err != nil {
+			// A request outside the allowed set is declined, never granted. The
+			// agent can then continue another way; the caller checks the outcome.
+			allow := approval(request)
+			if !allow {
+				t.Logf("declined a request outside the allowed set: %s %s", request.Title, shorten(request.Detail, 300))
+			}
+			if err := m.approve(id, request.ID, allow, nil); err != nil {
 				t.Fatal(err)
 			}
 			answered[request.ID] = true
@@ -173,6 +180,21 @@ func TestLiveAgentApproval(t *testing.T) {
 		t.Run(provider, func(t *testing.T) {
 			m := newChats(t.TempDir())
 			t.Cleanup(m.close)
+			// Record what the agent offers beyond a one-time answer.
+			observeApproval = func(from string, request jsonObject) {
+				keys := []string{}
+				for key := range request {
+					keys = append(keys, key)
+				}
+				sort.Strings(keys)
+				t.Logf("%s approval request fields: %v", from, keys)
+				for _, key := range []string{"permission_suggestions", "availableDecisions"} {
+					if raw, ok := request[key]; ok {
+						t.Logf("%s %s: %s", from, key, shorten(string(raw), 1500))
+					}
+				}
+			}
+			t.Cleanup(func() { observeApproval = nil })
 			if provider == "claude" {
 				m.command = func(name string, args ...string) *exec.Cmd {
 					return exec.Command(name, append(args, "--settings", `{"permissions":{"ask":["Bash"]}}`)...)
@@ -189,6 +211,7 @@ func TestLiveAgentApproval(t *testing.T) {
 					t.Fatalf("expected one approval, got %+v", pending)
 				}
 				request := pending.Approvals[0]
+				t.Logf("%s offered options: %+v", provider, request.Options)
 				var detail struct {
 					Command string `json:"command"`
 				}

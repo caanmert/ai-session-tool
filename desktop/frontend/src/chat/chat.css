@@ -392,6 +392,54 @@
   gap: 8px;
 }
 
+.approval-note {
+  margin-bottom: 8px;
+  font-size: var(--text-md);
+  color: var(--muted);
+}
+.approval-plan {
+  max-height: 260px;
+  margin-bottom: 12px;
+  padding: 12px 14px;
+  overflow: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-control);
+  background: var(--surface);
+  font-size: var(--text-base);
+  line-height: 1.55;
+}
+.approval-plan:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 1px;
+}
+.approval-option-note {
+  margin-top: 10px;
+  font-size: var(--text-sm);
+  line-height: 1.5;
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+.approval-option-note strong {
+  font-weight: 600;
+  color: var(--text);
+}
+
+/* Permission mode in the composer toolbar */
+.mode-picker {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.chat-composer .mode-picker select {
+  height: 28px;
+  border-radius: var(--radius-pill);
+  font-size: var(--text-sm);
+}
+.mode-error {
+  font-size: var(--text-sm);
+  color: var(--danger-text);
+}
+
 /* Composer: one panel with the message on top and a single toolbar below. */
 .chat-composer {
   flex-shrink: 0;
@@ -581,6 +629,18 @@
   padding: 0 24px 18px;
 }
 
+/* In a narrow window the toolbar keeps to one row: the key hint goes first. */
+@media (max-width: 1150px) {
+  .chat-composer:not(.review-footer) .composer-hint {
+    display: none;
+  }
+  .composer-footer > .button:last-child {
+    margin-left: auto;
+  }
+  .chat-composer .model-settings select {
+    max-width: 150px;
+  }
+}
 @media (max-height: 720px) {
   .chat-header {
     padding: 10px 28px;
