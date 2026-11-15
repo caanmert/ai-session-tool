@@ -310,6 +310,44 @@ describe("desktop workflows", () => {
       await screen.findByRole("region", { name: "Chat conversation" }),
     ).toBeVisible();
   });
+  it("preselects the agent last started in a project", async () => {
+    render(<App />);
+    await screen.findByRole("heading", { name: "Retry webhook delivery" });
+    fireEvent.keyDown(document, { key: "n", metaKey: true });
+    let dialog = screen.getByRole("dialog");
+    await userEvent.selectOptions(
+      within(dialog).getByLabelText("Project"),
+      "/demo/docs",
+    );
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: /Claude Code Ready/ }),
+    );
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: "Start in app" }),
+    );
+    await waitFor(() =>
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument(),
+    );
+    expect(backend.NewChat).toHaveBeenCalledWith("/demo/docs", "claude");
+    // Next time, choosing that project selects Claude Code again; another
+    // project keeps the usual default.
+    fireEvent.keyDown(document, { key: "n", metaKey: true });
+    dialog = screen.getByRole("dialog");
+    await userEvent.selectOptions(
+      within(dialog).getByLabelText("Project"),
+      "/demo/api",
+    );
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: /Codex Ready/ }),
+    );
+    await userEvent.selectOptions(
+      within(dialog).getByLabelText("Project"),
+      "/demo/docs",
+    );
+    expect(
+      within(dialog).getByRole("button", { name: /Claude Code Ready/ }),
+    ).toHaveAttribute("aria-pressed", "true");
+  });
   it("keeps the task as a draft when the first message cannot be sent", async () => {
     backend.SendChat = vi
       .fn()

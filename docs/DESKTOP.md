@@ -88,6 +88,10 @@ They demonstrate the layout, not output from a live model run.
 
 ![Settings](screenshots/desktop-settings.png)
 
+![New task with its first message](screenshots/desktop-new-task.png)
+
+![Find in conversation](screenshots/desktop-find.png)
+
 ## Finding your way around
 
 - **Top bar**: the project switcher (with a button to add a project folder) and
@@ -103,6 +107,11 @@ They demonstrate the layout, not output from a live model run.
 - **Agents board**: every open conversation in three columns, **Needs you** first.
   A simple approval can be allowed once or denied on its card; requests with
   questions are answered in the conversation.
+- **Session** (below Changes): the model, turns, tokens and, where the model has
+  a known price, what the usage would cost at API list prices. That figure is an
+  equivalent: a subscription is not billed this way. **Show in Finder** opens the
+  project folder and **Copy as Markdown** copies the conversation without tool
+  output.
 - **Changes** (right of a conversation, or the **Changes** button and **⌘\\** in
   a narrow window): the project's uncommitted files against the last commit, with
   added and removed line counts. Click a file or **Review all changes** to read the
@@ -116,14 +125,25 @@ They demonstrate the layout, not output from a live model run.
    filters to narrow results.
 2. Select a saved conversation to preview it. **Continue in app** opens that
    provider's saved session in its recorded directory.
-3. For a fresh conversation, choose **New task**, select a project and agent,
-   then **Start in app**. Use **Browse** to choose another folder. The app remembers
-   the twelve most recently added project folders.
+3. For a fresh conversation, choose **New task** (**⌘N**). Describe the task,
+   select a project and agent, then **Start task** (**⌘⏎**): the conversation is
+   created and your message is sent in one step. Leave the task empty and choose
+   **Start in app** to open the conversation without sending anything. Use
+   **Browse** to choose another folder. The app remembers the twelve most recently
+   added project folders, and preselects the agent you last started in a project.
+   If the first message cannot be sent, the conversation still opens with your
+   text in its message box.
 4. Type in the message box. **Enter** sends; **Shift+Enter** inserts a new line.
    A new provider process starts when you send the first message. Responses stream
-   into the conversation. Consecutive tool calls are grouped into one block with a
-   row per step; expand a row to see its output. The paperclip adds the paths of
-   files you choose to your message.
+   into the conversation, with tables, task lists and highlighted code blocks
+   (each with a copy button). Type **@** to find a file in the project and insert
+   its path; the paperclip opens the system file picker instead. **↑** in an
+   empty message box recalls your earlier messages.
+
+   Consecutive tool calls are grouped into one block with a row per step. A row
+   says what was done and to what, for example "Read `src/checkout.ts`" or "Run
+   `npm test`"; expand it for the output. Edits show how many lines changed and
+   expand to the removed and added lines.
 5. Answer questions or choose **Allow once** / **Deny** on approval cards. While
    focus is inside a card, **Enter** allows a simple request and **Esc** denies it.
    Approvals retain the installed agent's normal permission behavior; ais does
@@ -132,7 +152,9 @@ They demonstrate the layout, not output from a live model run.
 Switch conversations in the sidebar or return to **History** while an agent works.
 **⌘K** opens the command palette, **⌘N** opens New task, and **Esc** closes
 dialogs. History refreshes when a response finishes; the refresh button rescans
-manually. **Settings** lists all shortcuts.
+manually. **⌘1**–**⌘9** switch to an open conversation by its place in the
+sidebar, **⌘F** finds text in the open conversation, and **⌘,** opens Settings,
+which lists all shortcuts.
 
 Sidebar rows show conversation titles, the agent, and working, waiting or error
 states in words. **↑/↓**, **Home**, and **End** move between open conversations
