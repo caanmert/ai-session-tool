@@ -74,6 +74,14 @@ try {
           text: "I added bounded retries and an idempotency key for each checkout attempt. The request now uses the same key across retries, so a timeout will not create a second charge.",
         },
         {
+          id: "e",
+          role: "assistant",
+          kind: "tool",
+          name: "Edit",
+          status: "completed",
+          text: '{\n  "file_path": "/projects/checkout/src/checkout.ts",\n  "old_string": "return client.charge(order);",\n  "new_string": "const key = crypto.randomUUID();\\nreturn retry(() => client.charge(order, { key }), 3);"\n}\n\nThe file was updated.',
+        },
+        {
           id: "t",
           role: "assistant",
           kind: "tool",
@@ -399,6 +407,9 @@ try {
     () =>
       document.querySelector('select[aria-label="Model"]')?.disabled === false,
   );
+  // Open the edit step so its removed and added lines are checked too.
+  await page.getByText("src/checkout.ts", { exact: true }).first().click();
+  await page.getByRole("group", { name: "Changed lines" }).waitFor();
   await checkContrast();
   await page.screenshot({ path: `${screenshots}/desktop-chat${suffix}.png` });
   // Find in conversation: counts matches and marks them in the page.

@@ -218,9 +218,64 @@
   font-weight: 500;
   color: var(--text);
 }
-.tool-step summary strong.command {
+.tool-step summary strong {
   font-family: var(--font-mono);
   font-size: var(--text-sm);
+}
+.tool-verb {
+  flex-shrink: 0;
+  font-size: var(--text-md);
+}
+.tool-counts {
+  display: inline-flex;
+  flex-shrink: 0;
+  gap: 8px;
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+}
+.tool-counts .added {
+  color: var(--success-text);
+  font-weight: 500;
+}
+.tool-counts .removed {
+  color: var(--danger-text);
+  font-weight: 500;
+}
+/* Lines an edit removed and added */
+.tool-diff {
+  max-height: 320px;
+  overflow: auto;
+  border-top: 1px solid var(--border-subtle);
+  background: var(--surface);
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  line-height: 1.7;
+}
+.tool-diff > div {
+  display: flex;
+  min-width: max-content;
+  padding: 0 14px;
+}
+.tool-diff > div > span {
+  flex-shrink: 0;
+  width: 18px;
+  user-select: none;
+}
+.tool-diff code {
+  white-space: pre;
+}
+.tool-diff .add {
+  background: var(--diff-add-bg);
+  color: var(--diff-add-text);
+}
+.tool-diff .del {
+  background: var(--diff-del-bg);
+  color: var(--diff-del-text);
+}
+.tool-diff p {
+  padding: 6px 14px;
+  font-family: var(--font-sans);
+  color: var(--muted);
 }
 .tool-step summary small {
   display: inline-flex;
