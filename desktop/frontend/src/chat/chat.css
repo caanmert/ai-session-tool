@@ -178,6 +178,28 @@
   color: var(--muted);
 }
 
+.show-earlier {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  margin-bottom: 20px;
+  padding: 8px;
+  border: 1px dashed var(--border-dashed);
+  border-radius: var(--radius-control);
+  background: transparent;
+  color: var(--text);
+  font-size: var(--text-md);
+}
+.show-earlier:hover {
+  background: var(--surface-hover);
+}
+.show-earlier small {
+  font-size: var(--text-sm);
+  color: var(--muted);
+}
+
 /* Tool steps: consecutive calls share one bordered block. */
 .tool-group {
   margin: 0 0 20px 32px;
