@@ -4,6 +4,7 @@ import RunDashboard from "./RunDashboard";
 import ChatWorkspace, { chatBusy } from "./ChatWorkspace";
 import SavedWorkspace from "./SavedWorkspace";
 import { useAppearance } from "./Appearance";
+import { storeDraft } from "./useChatDraft";
 import Settings from "./settings/Settings";
 import Board from "./board/Board";
 import { sessionCost, sessionTokens } from "./ui/format";
@@ -97,6 +98,7 @@ export default function App() {
   const closingOperation = useRef(false);
   const [newProject, setNewProject] = useState("");
   const [newTool, setNewTool] = useState<ToolName>("codex");
+  const [newMessage, setNewMessage] = useState("");
   const searchInput = useRef<HTMLInputElement>(null);
   const [showPalette, setShowPalette] = useState(false);
   const sessionRows = useRef<HTMLDivElement>(null);
@@ -437,7 +439,7 @@ export default function App() {
       }
       if (event.key === "Tab" && showNew) {
         const items = modal.current?.querySelectorAll<HTMLElement>(
-          'button:not(:disabled), select, input:not(:disabled), [tabindex="0"]',
+          'button:not(:disabled), select, textarea:not(:disabled), input:not(:disabled), [tabindex="0"]',
         );
         if (!items?.length) return;
         const first = items[0],
@@ -465,7 +467,11 @@ export default function App() {
     chats,
   ]);
   useEffect(() => {
-    if (showNew) modal.current?.querySelector<HTMLElement>("button")?.focus();
+    if (showNew)
+      (
+        modal.current?.querySelector<HTMLElement>("textarea") ??
+        modal.current?.querySelector<HTMLElement>("button")
+      )?.focus();
   }, [showNew]);
 
   // Rename, pin or tag the selected conversation. These notes belong to ais;
@@ -509,6 +515,20 @@ export default function App() {
       const live = fresh
         ? await api.NewChat(newProject, newTool)
         : await api.ResumeChat(selected!.key);
+      // A task typed in the dialog is sent before the conversation opens. If
+      // sending fails, the text is kept as that conversation's draft.
+      const first = fresh ? newMessage.trim() : "";
+      let unsent = "";
+      if (first) {
+        try {
+          await api.SendChat(live.id, first);
+        } catch (e) {
+          unsent = storeDraft(live.id, first)
+            ? `The conversation is open, but your message was not sent: ${errorText(e)} Your text is in the message box.`
+            : `The conversation is open, but your message was not sent and could not be saved: ${errorText(e)}`;
+        }
+      }
+      setNewMessage("");
       setChats((items) =>
         items.some((item) => item.id === live.id) ? items : [...items, live],
       );
@@ -516,6 +536,7 @@ export default function App() {
       setShowRuns(false);
       setShowNew(false);
       setToast("");
+      if (unsent) setError(unsent);
     } catch (e) {
       setError(errorText(e));
     } finally {
@@ -1152,7 +1173,7 @@ export default function App() {
           >
             <button
               className="icon-button modal-close"
-              aria-label="Close new session"
+              aria-label="Close new task"
               disabled={busy}
               onClick={() => {
                 setShowNew(false);
@@ -1161,12 +1182,34 @@ export default function App() {
             >
               <Icon name="close" />
             </button>
-            <div className="modal-icon">
-              <Icon name="terminal" size={24} />
-            </div>
-            <div className="eyebrow">MAKE YOUR NEXT MOVE</div>
-            <h2 id="new-session-title">Start a new session</h2>
-            <p>A fresh conversation, in the project you choose.</p>
+            <h2 id="new-session-title">New task</h2>
+            <p>
+              Describe what you want done. It starts as a new conversation in
+              the project and with the agent you choose.
+            </p>
+            <label className="field-label" htmlFor="new-message">
+              Task
+            </label>
+            <textarea
+              id="new-message"
+              className="new-task-message"
+              placeholder="For example: add retries to the checkout request and cover them with tests"
+              value={newMessage}
+              disabled={busy}
+              onChange={(e) => setNewMessage(e.target.value)}
+              onKeyDown={(e) => {
+                // Enter adds a line here; Cmd+Enter starts the task.
+                if (
+                  e.key === "Enter" &&
+                  (e.metaKey || e.ctrlKey) &&
+                  canStart &&
+                  !busy
+                ) {
+                  e.preventDefault();
+                  void launch(true);
+                }
+              }}
+            />
             <label className="field-label" htmlFor="new-project">
               Project
             </label>
@@ -1229,19 +1272,22 @@ export default function App() {
                 {error}
               </div>
             )}
-            <div className="terminal-note">
-              <Icon name="terminal" size={16} />
-              <p>
-                Start a graphical conversation with live replies, tool activity
-                and approval controls. The agent starts when you send a message.
-              </p>
-            </div>
+            <p className="new-task-note">
+              {newMessage.trim()
+                ? "The agent starts working as soon as you start the task."
+                : "Leave the task empty to open the conversation and write your message there. Nothing is sent until you do."}
+            </p>
             <button
               className="button accent start-session"
               disabled={!canStart || busy}
               onClick={() => void launch(true)}
             >
-              {busy ? "Starting agent…" : "Start in app"}
+              {busy
+                ? "Starting…"
+                : newMessage.trim()
+                  ? "Start task"
+                  : "Start in app"}
+              {!busy && newMessage.trim() && <kbd>⌘⏎</kbd>}
               <Icon name="arrow" size={17} />
             </button>
           </div>

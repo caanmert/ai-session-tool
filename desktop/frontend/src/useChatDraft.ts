@@ -2,6 +2,19 @@ import { useState } from "react";
 
 const draftKey = (id: string) => `ais:chat-draft:v1:${id}`;
 
+/**
+ * Save text as a conversation's draft before its view exists, so the message
+ * box opens with it. Returns false when storage is unavailable.
+ */
+export function storeDraft(id: string, text: string) {
+  try {
+    window.localStorage.setItem(draftKey(id), text);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 // ChatWorkspace is keyed by conversation ID, so each mounted workspace owns
 // exactly one draft. Write on input instead of an effect: closing a tab or
 // quitting immediately after typing must not lose the last edit.

@@ -529,3 +529,29 @@ button.search:hover {
 .history-filter input::placeholder {
   color: var(--muted);
 }
+
+/* New task dialog */
+.new-task-message {
+  display: block;
+  width: 100%;
+  min-height: 84px;
+  max-height: 200px;
+  margin-bottom: 4px;
+  padding: 9px 11px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-control);
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  line-height: 1.5;
+  resize: vertical;
+}
+.new-task-message::placeholder {
+  color: var(--muted);
+}
+.new-task-note {
+  margin: 14px 0;
+  font-size: var(--text-sm);
+  line-height: 1.5;
+  color: var(--muted);
+}

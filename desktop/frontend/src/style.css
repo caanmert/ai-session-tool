@@ -951,9 +951,9 @@ h1 {
   flex-shrink: 0;
 }
 .selected .radio-dot {
-  background: var(--success);
-  box-shadow: inset 0 0 0 2px var(--shadow-color);
-  border-color: var(--selected-border);
+  background: var(--brand);
+  box-shadow: inset 0 0 0 3px var(--surface);
+  border-color: var(--brand);
 }
 .terminal-note {
   display: flex;
