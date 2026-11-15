@@ -1,4 +1,5 @@
 import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { expect, test, vi } from "vitest";
 import type { ChatState, Session } from "../api";
 import DetailsPanel from "./DetailsPanel";
@@ -8,7 +9,9 @@ const chat = {
   tool: "claude",
   project: "/work/checkout",
   activeModel: "claude-sonnet-5-5",
-} as ChatState;
+  title: "Rotate keys",
+  messages: [],
+} as unknown as ChatState;
 const session = {
   userTurns: 4,
   assistantTurns: 9,
@@ -42,4 +45,19 @@ test("leaves cost out when the usage cannot be priced, and usage out before the 
   view.rerender(panel());
   expect(screen.queryByText("Tokens")).not.toBeInTheDocument();
   expect(screen.getByText("claude-sonnet-5-5")).toBeVisible();
+});
+
+test("copies the conversation as Markdown", async () => {
+  const writeText = vi.fn().mockResolvedValue(undefined);
+  Object.defineProperty(navigator, "clipboard", {
+    configurable: true,
+    value: { writeText },
+  });
+  render(panel());
+  await userEvent.click(
+    screen.getByRole("button", { name: "Copy as Markdown" }),
+  );
+  expect(writeText).toHaveBeenCalledTimes(1);
+  expect(writeText.mock.calls[0][0]).toContain("Claude Code · /work/checkout");
+  expect(await screen.findByText("Copied")).toBeVisible();
 });

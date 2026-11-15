@@ -1,19 +1,10 @@
 import AgentMark from "../AgentMark";
 import Icon from "../Icon";
 import { toolLabel, type ChatState } from "../api";
+import { conversationStatus, sidebarOrder } from "../chat/conversation";
 
 export const busyChat = (status: string) =>
   ["running", "waiting", "stopping"].includes(status);
-export const chatStatus = (status: string) =>
-  ({
-    idle: "Ready",
-    running: "Working",
-    waiting: "Needs your input",
-    stopping: "Stopping",
-    stopped: "Stopped",
-    error: "Needs attention",
-  })[status] || status;
-
 // The dot already identifies the agent, so rows use the short name.
 const shortName = (tool: string) =>
   tool === "claude" ? "Claude" : toolLabel(tool);
@@ -34,11 +25,7 @@ export default function OpenSessions({
   onClose: (id: string) => void;
   closing: string;
 }) {
-  const groups = new Map<string, ChatState[]>();
-  for (const chat of chats)
-    groups.set(chat.project, [...(groups.get(chat.project) || []), chat]);
-  // Arrow keys follow the order on screen, which is grouped by project.
-  const ordered = [...groups.values()].flat();
+  const { groups, ordered } = sidebarOrder(chats);
   return (
     <nav
       className="open-sessions"
@@ -94,7 +81,7 @@ export default function OpenSessions({
                     <span className="visually-hidden"> </span>
                     <span className={`session-state ${chat.status}`}>
                       {attention && <Icon name="alert" size={12} />}
-                      {chatStatus(chat.status)}
+                      {conversationStatus(chat)}
                     </span>
                   </small>
                 </button>
