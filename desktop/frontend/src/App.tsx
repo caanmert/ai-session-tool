@@ -5,6 +5,7 @@ import ChatWorkspace, { chatBusy } from "./ChatWorkspace";
 import SavedWorkspace from "./SavedWorkspace";
 import { useAppearance } from "./Appearance";
 import { storeDraft } from "./useChatDraft";
+import { lastAgent, rememberAgent } from "./shell/lastAgent";
 import Settings from "./settings/Settings";
 import Board from "./board/Board";
 import { sessionCost, sessionTokens } from "./ui/format";
@@ -280,22 +281,32 @@ export default function App() {
     setPage("history");
   }, []);
 
+  // The agent to preselect for a project: the one last started there, if it is
+  // still installed.
+  const rememberedAgent = useCallback(
+    (path: string) => {
+      const tool = lastAgent(path);
+      return snapshot?.tools.find((t) => t.available && t.name === tool)?.name;
+    },
+    [snapshot],
+  );
   const openNew = useCallback(() => {
-    setNewProject(
+    const target =
       project ||
-        selected?.project ||
-        snapshot?.projects.find((p) => p.available)?.path ||
-        "",
-    );
+      selected?.project ||
+      snapshot?.projects.find((p) => p.available)?.path ||
+      "";
+    setNewProject(target);
     setNewTool(
-      snapshot?.tools.find((t) => t.available && t.name === selected?.tool)
-        ?.name ||
+      rememberedAgent(target) ||
+        snapshot?.tools.find((t) => t.available && t.name === selected?.tool)
+          ?.name ||
         snapshot?.tools.find((t) => t.available)?.name ||
         "codex",
     );
     setError("");
     setShowNew(true);
-  }, [project, selected, snapshot]);
+  }, [project, selected, snapshot, rememberedAgent]);
   // Everything the command palette can jump to. Choosing a saved conversation
   // only shows it in History; it never starts or resumes an agent.
   const commands = useMemo<Command[]>(() => {
@@ -517,6 +528,7 @@ export default function App() {
         : await api.ResumeChat(selected!.key);
       // A task typed in the dialog is sent before the conversation opens. If
       // sending fails, the text is kept as that conversation's draft.
+      if (fresh) rememberAgent(newProject, newTool);
       const first = fresh ? newMessage.trim() : "";
       let unsent = "";
       if (first) {
@@ -1217,7 +1229,11 @@ export default function App() {
               <select
                 id="new-project"
                 value={newProject}
-                onChange={(e) => setNewProject(e.target.value)}
+                onChange={(e) => {
+                  setNewProject(e.target.value);
+                  const remembered = rememberedAgent(e.target.value);
+                  if (remembered) setNewTool(remembered);
+                }}
               >
                 <option value="">Choose a project…</option>
                 {snapshot?.projects.map((p) => (
