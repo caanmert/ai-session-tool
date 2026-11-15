@@ -68,6 +68,7 @@ beforeEach(() => {
     AnswerChat: vi.fn().mockResolvedValue(undefined),
     PrepareReview: vi.fn().mockResolvedValue(draft),
     PickFiles: vi.fn().mockResolvedValue([]),
+    SendChatWithImages: vi.fn().mockResolvedValue(undefined),
     ChatModes: vi.fn().mockResolvedValue([]),
     SetChatMode: vi.fn().mockResolvedValue(undefined),
     AnswerChatOption: vi.fn().mockResolvedValue(undefined),

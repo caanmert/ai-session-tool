@@ -13,7 +13,7 @@ import (
 	"github.com/google/uuid"
 )
 
-func (m *chatManager) runClaude(ctx context.Context, c *chatSession, state ChatState, text string) (string, error) {
+func (m *chatManager) runClaude(ctx context.Context, c *chatSession, state ChatState, text string, images []savedImage) (string, error) {
 	args := append([]string{}, claudeBaseArgs...)
 	mode := state.Mode
 	if state.Review != nil {
@@ -120,7 +120,16 @@ func (m *chatManager) runClaude(ctx context.Context, c *chatSession, state ChatS
 				if !started {
 					started = true
 					c.sessionID(sessionID)
-					if err = p.send(map[string]any{"type": "user", "session_id": sessionID, "parent_tool_use_id": nil, "message": map[string]any{"role": "user", "content": text}}); err != nil {
+					// Plain text stays a string; images are sent inline as content blocks.
+					var content any = text
+					if len(images) > 0 {
+						blocks := []any{map[string]any{"type": "text", "text": text}}
+						for _, image := range images {
+							blocks = append(blocks, map[string]any{"type": "image", "source": map[string]any{"type": "base64", "media_type": image.MediaType, "data": image.Data}})
+						}
+						content = blocks
+					}
+					if err = p.send(map[string]any{"type": "user", "session_id": sessionID, "parent_tool_use_id": nil, "message": map[string]any{"role": "user", "content": content}}); err != nil {
 						return "", err
 					}
 					timer.Stop()

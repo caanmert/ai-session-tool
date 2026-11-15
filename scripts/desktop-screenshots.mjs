@@ -426,6 +426,24 @@ try {
   await page.getByRole("group", { name: "Changed lines" }).waitFor();
   await checkContrast();
   await page.screenshot({ path: `${screenshots}/desktop-chat${suffix}.png` });
+  // Attach an image through the file input: it shows as a removable chip.
+  await page.getByLabel("Choose images to attach").setInputFiles({
+    name: "checkout-error.png",
+    mimeType: "image/png",
+    buffer: Buffer.from(
+      "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==",
+      "base64",
+    ),
+  });
+  await page.getByRole("list", { name: "Attached images" }).waitFor();
+  await checkContrast();
+  await page.screenshot({
+    path: `${screenshots}/desktop-attach${suffix}.png`,
+  });
+  await page.getByRole("button", { name: "Remove checkout-error.png" }).click();
+  await page
+    .getByRole("list", { name: "Attached images" })
+    .waitFor({ state: "detached" });
   // Find in conversation: counts matches and marks them in the page.
   await page.keyboard.press("ControlOrMeta+f");
   const find = page.getByRole("textbox", { name: "Find in conversation" });

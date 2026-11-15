@@ -11,6 +11,11 @@ import { useFileMentions } from "./chat/FileMentions";
 import { conversationStatus, requestSummary } from "./chat/conversation";
 import FindBar from "./chat/FindBar";
 import ModePicker from "./chat/ModePicker";
+import {
+  AttachedImages,
+  imageFiles,
+  useImageAttachments,
+} from "./chat/ImageAttachments";
 import { applyChatUpdate } from "./chatUpdates";
 import { useChatDraft } from "./useChatDraft";
 import {
@@ -167,6 +172,8 @@ export default function ChatWorkspace({
     if (following.current && messages.current)
       messages.current.scrollTop = messages.current.scrollHeight;
   }, [state.version, active]);
+  const attachments = useImageAttachments();
+  const imagePicker = useRef<HTMLInputElement>(null);
   const mentions = useFileMentions({
     chatId: state.id,
     prompt,
@@ -276,8 +283,11 @@ export default function ChatWorkspace({
   async function send() {
     if (!prompt.trim() || busy || settingsOperation.current) return;
     const text = prompt;
+    const images = attachments.payload();
     await perform(async () => {
-      await api.SendChat(state.id, text);
+      if (images.length) await api.SendChatWithImages(state.id, text, images);
+      else await api.SendChat(state.id, text);
+      attachments.clear();
       updatePrompt("");
       setRetry((n) => n + 1);
       following.current = true;
@@ -578,6 +588,17 @@ export default function ChatWorkspace({
             e.preventDefault();
             void send();
           }}
+          onDragOver={(e) => {
+            // Allow dropping image files onto the message box.
+            if (!state.review && e.dataTransfer.types.includes("Files"))
+              e.preventDefault();
+          }}
+          onDrop={(e) => {
+            const dropped = imageFiles(e.dataTransfer);
+            if (state.review || !dropped.length) return;
+            e.preventDefault();
+            void attachments.add(dropped);
+          }}
         >
           {!state.review && mentions.popup}
           {!state.review && (
@@ -593,6 +614,13 @@ export default function ChatWorkspace({
                 updatePrompt(e.target.value);
                 setRecalled(-1);
                 mentions.trackCaret();
+              }}
+              onPaste={(e) => {
+                // A pasted screenshot is attached; pasted text goes in as text.
+                const pasted = imageFiles(e.clipboardData);
+                if (!pasted.length) return;
+                e.preventDefault();
+                void attachments.add(pasted);
               }}
               onKeyUp={mentions.trackCaret}
               onClick={mentions.trackCaret}
@@ -633,7 +661,41 @@ export default function ChatWorkspace({
               )}
             </div>
           )}
+          {!state.review && (
+            <AttachedImages
+              images={attachments.images}
+              error={attachments.error}
+              disabled={working}
+              onRemove={attachments.remove}
+            />
+          )}
           <div className="composer-footer">
+            {!state.review && (
+              <>
+                <button
+                  type="button"
+                  className="icon-button"
+                  aria-label="Attach images"
+                  title="Attach images. You can also paste a screenshot or drop image files here."
+                  disabled={working}
+                  onClick={() => imagePicker.current?.click()}
+                >
+                  <Icon name="image" size={16} />
+                </button>
+                <input
+                  ref={imagePicker}
+                  type="file"
+                  accept="image/png,image/jpeg,image/gif,image/webp"
+                  multiple
+                  hidden
+                  aria-label="Choose images to attach"
+                  onChange={(e) => {
+                    void attachments.add([...(e.target.files || [])]);
+                    e.target.value = "";
+                  }}
+                />
+              </>
+            )}
             {!state.review && (
               <button
                 type="button"

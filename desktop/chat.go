@@ -26,6 +26,8 @@ type ChatMessage struct {
 	Name   string `json:"name,omitempty"`
 	Status string `json:"status,omitempty"`
 	Model  string `json:"model,omitempty"`
+	// Images names the images attached to a user message.
+	Images []string `json:"images,omitempty"`
 	// rev is the conversation version that last changed this message. It lets
 	// a reader that is already up to version N receive only newer messages.
 	rev int64
@@ -438,7 +440,10 @@ func (c *chatSession) sessionID(id string) {
 	c.change()
 	c.mu.Unlock()
 }
-func (m *chatManager) send(id, text string) error {
+func (m *chatManager) send(id, text string) error { return m.sendWith(id, text, nil) }
+
+// sendWith starts a turn with a message and, optionally, attached images.
+func (m *chatManager) sendWith(id, text string, images []ChatImage) error {
 	if strings.TrimSpace(text) == "" || len(text) > reviewLimit+8192 {
 		return errors.New("enter a message of up to 200,000 bytes")
 	}
@@ -481,6 +486,19 @@ func (m *chatManager) send(id, text string) error {
 		m.mu.Unlock()
 		return errors.New("capture a fresh diff to run another review")
 	}
+	if c.state.Review != nil && len(images) > 0 {
+		c.mu.Unlock()
+		m.mu.Unlock()
+		return errImagesInReview
+	}
+	// Check and store attachments before the turn starts, so a bad image
+	// rejects the message instead of failing a running response.
+	attached, err := m.saveImages(c.state.ID, images)
+	if err != nil {
+		c.mu.Unlock()
+		m.mu.Unlock()
+		return err
+	}
 	ctx, cancel := context.WithCancel(context.Background())
 	c.cancel = cancel
 	c.done = make(chan struct{})
@@ -503,7 +521,14 @@ func (m *chatManager) send(id, text string) error {
 	if state.Review != nil {
 		display = "Review this working-tree snapshot with " + state.Tool + ".\nSnapshot: " + state.Review.Snapshot.Hash[:12]
 	}
-	c.message(ChatMessage{ID: uuid.NewString(), Role: "user", Kind: "text", Text: display}, false)
+	names := []string{}
+	for _, image := range attached {
+		names = append(names, image.Name)
+	}
+	if len(names) == 0 {
+		names = nil
+	}
+	c.message(ChatMessage{ID: uuid.NewString(), Role: "user", Kind: "text", Text: display, Images: names}, false)
 	m.saveOrWarn(c)
 	go func() {
 		defer close(done)
@@ -516,9 +541,9 @@ func (m *chatManager) send(id, text string) error {
 		}
 		if err == nil {
 			if state.Tool == "codex" {
-				result, err = m.runCodex(ctx, c, state, text)
+				result, err = m.runCodex(ctx, c, state, text, attached)
 			} else {
-				result, err = m.runClaude(ctx, c, state, text)
+				result, err = m.runClaude(ctx, c, state, text, attached)
 			}
 		}
 		interrupted := ctx.Err() != nil

@@ -140,6 +140,13 @@ They demonstrate the layout, not output from a live model run.
    its path; the paperclip opens the system file picker instead. **↑** in an
    empty message box recalls your earlier messages.
 
+   To show the agent a screenshot, paste it into the message box, drop image
+   files onto it, or use the image button. Up to six PNG, JPEG, GIF or WebP
+   images of at most 5 MB each can go with one message. They are checked by
+   their contents, stored with the conversation under `attachments/` in the ais
+   data directory with owner-only permissions, and given to the agent with your
+   message. Attached images are not part of the saved draft.
+
    Consecutive tool calls are grouped into one block with a row per step. A row
    says what was done and to what, for example "Read `src/checkout.ts`" or "Run
    `npm test`"; expand it for the output. Edits show how many lines changed and
@@ -449,7 +456,8 @@ model selection, saved settings and conversation recovery after restart,
 stop/continue, command approval denial and acceptance, both directions of the
 review-to-fix loop, Claude Code writing an "always allow" rule into a temporary
 project's settings and then not asking again, and plan mode writing nothing with
-either agent. Codex's "always allow this command" was not exercised live, because
+either agent, and both agents naming the color of an attached image. Codex's
+"always allow this command" was not exercised live, because
 it would add a rule to the real Codex settings on the machine running the check. Each fix was checked independently in a temporary repository.
 The checks also caught and fixed an early-stop bug: a new Claude conversation no
 longer retains an unusable session ID when stopped before its first model activity.

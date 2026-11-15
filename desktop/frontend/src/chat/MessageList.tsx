@@ -135,6 +135,19 @@ const TextMessage = memo(function TextMessage({
         <div className="markdown">
           <SafeMarkdown text={message.text} />
         </div>
+        {!!message.images?.length && (
+          <ul
+            className="message-images"
+            aria-label="Images sent with this message"
+          >
+            {message.images.map((name, index) => (
+              <li key={index}>
+                <Icon name="image" size={12} />
+                {name}
+              </li>
+            ))}
+          </ul>
+        )}
       </div>
     </article>
   );

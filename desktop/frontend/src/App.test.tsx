@@ -122,6 +122,7 @@ beforeEach(() => {
     LiveSessions: vi.fn(),
     ReadChat: vi.fn(),
     SendChat: vi.fn(),
+    SendChatWithImages: vi.fn(),
     StopChat: vi.fn(),
     CloseChat: vi.fn(),
     AnswerChat: vi.fn(),

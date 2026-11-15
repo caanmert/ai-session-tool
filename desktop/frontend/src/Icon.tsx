@@ -101,6 +101,13 @@ const paths = {
     </>
   ),
   filter: <path d="M4 5h16l-6 7v6l-4 2v-8L4 5Z" />,
+  image: (
+    <>
+      <rect x="3" y="4" width="18" height="16" rx="2.5" />
+      <circle cx="8.5" cy="9.5" r="1.6" />
+      <path d="m4 17 5-5 4 4 3-3 4 4" />
+    </>
+  ),
   paperclip: (
     <path d="m20 11.5-8 8a5 5 0 0 1-7-7L13.5 4a3.3 3.3 0 0 1 4.7 4.7l-8.4 8.4a1.7 1.7 0 0 1-2.4-2.4L15 7" />
   ),
