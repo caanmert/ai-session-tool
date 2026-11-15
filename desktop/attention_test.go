@@ -40,3 +40,28 @@ func TestQuitConfirmation(t *testing.T) {
 		}
 	}
 }
+
+func TestNotify(t *testing.T) {
+	type note struct{ title, body string }
+	var notes []note
+	app := &App{notify: func(title, body string) { notes = append(notes, note{title, body}) }}
+	if err := app.Notify("Rotate keys", "Claude Code needs approval"); err == nil {
+		t.Fatal("expected an error before startup")
+	}
+	app.ctx = context.Background()
+	if err := app.Notify("  Rotate\nkeys\x00 ", strings.Repeat("long ", 80)); err != nil {
+		t.Fatal(err)
+	}
+	if err := app.Notify("   ", "body"); err == nil {
+		t.Fatal("a notification without a title should be refused")
+	}
+	if len(notes) != 1 || notes[0].title != "Rotate keys" || len([]rune(notes[0].body)) != 160 || !strings.HasSuffix(notes[0].body, "…") {
+		t.Fatalf("notes: %+v", notes)
+	}
+}
+
+// The test binary is not an app bundle. Posting must do nothing rather than
+// reach for a notification center that does not exist for it.
+func TestPostNotificationOutsideABundle(t *testing.T) {
+	postNotification("ais", "This is never shown.")
+}

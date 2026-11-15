@@ -15,7 +15,11 @@ import Sidebar from "./shell/Sidebar";
 import AgentsMissing from "./shell/AgentsMissing";
 import { SessionTags, SessionTitle } from "./history/SessionAnnotations";
 import CommandPalette, { type Command } from "./shell/CommandPalette";
-import { attentionChange } from "./shell/attention";
+import {
+  attentionChange,
+  attentionNotices,
+  notificationsEnabled,
+} from "./shell/attention";
 import Icon from "./Icon";
 import AgentMark from "./AgentMark";
 import {
@@ -158,6 +162,7 @@ export default function App() {
   // Tell the Dock how many conversations are waiting for the user, and bounce
   // its icon when one starts waiting or a response ends in the background.
   const attention = useRef({ waiting: 0, busy: 0 });
+  const seenStatuses = useRef(new Map<string, string>());
   useEffect(() => {
     const { now, update } = attentionChange(attention.current, chats);
     attention.current = now;
@@ -166,6 +171,15 @@ export default function App() {
       api
         .SetAttention(update.count, update.alert && !document.hasFocus())
         .catch(() => {});
+    // Banners only when nobody is looking at the app, and only if wanted.
+    const { now: statuses, notices } = attentionNotices(
+      seenStatuses.current,
+      chats,
+    );
+    seenStatuses.current = statuses;
+    if (!document.hasFocus() && notificationsEnabled())
+      for (const notice of notices.slice(0, 3))
+        api.Notify(notice.title, notice.body).catch(() => {});
   }, [chats]);
   function chatClosed(id: string) {
     setChats((items) => items.filter((item) => item.id !== id));
