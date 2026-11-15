@@ -280,6 +280,8 @@ export interface Backend {
   ): Promise<void>;
   /** Paths of files the user chose to mention, relative to the project when inside it. */
   PickFiles(id: string): Promise<string[]>;
+  /** Files in the conversation's project matching a query, best first. */
+  ProjectFiles(id: string, query: string): Promise<string[]>;
   PrepareReview(id: string): Promise<ReviewDraft>;
   ChatChanges(id: string): Promise<ChangeSummary>;
   ChatDiff(id: string): Promise<ReviewSnapshot>;
@@ -339,6 +341,7 @@ export const api: Backend = {
   AnswerChat: async (id, request, allow, answers) =>
     backend().AnswerChat(id, request, allow, answers),
   PickFiles: async (id) => backend().PickFiles(id),
+  ProjectFiles: async (id, query) => backend().ProjectFiles(id, query),
   PrepareReview: async (id) => backend().PrepareReview(id),
   ChatChanges: async (id) => backend().ChatChanges(id),
   ChatDiff: async (id) => backend().ChatDiff(id),
