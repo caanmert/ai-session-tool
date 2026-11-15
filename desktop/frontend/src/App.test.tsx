@@ -275,6 +275,64 @@ describe("desktop workflows", () => {
       expect(screen.queryByRole("dialog")).not.toBeInTheDocument(),
     );
   });
+  it("starts a task with its first message in one step", async () => {
+    backend.SendChat = vi.fn().mockResolvedValue(undefined);
+    render(<App />);
+    await screen.findByRole("heading", { name: "Retry webhook delivery" });
+    fireEvent.keyDown(document, { key: "n", metaKey: true });
+    const dialog = screen.getByRole("dialog");
+    const task = within(dialog).getByLabelText("Task");
+    expect(task).toHaveFocus();
+    // Without a task the button only opens the conversation.
+    expect(
+      within(dialog).getByRole("button", { name: "Start in app" }),
+    ).toBeVisible();
+    await userEvent.type(task, "Add retries{Enter}and tests");
+    // Enter adds a line; it does not start anything.
+    expect(backend.NewChat).not.toHaveBeenCalled();
+    expect(
+      within(dialog).getByText(/starts working as soon as you start/),
+    ).toBeVisible();
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: /Start task/ }),
+    );
+    await waitFor(() =>
+      expect(backend.SendChat).toHaveBeenCalledWith(
+        "live-one",
+        "Add retries\nand tests",
+      ),
+    );
+    expect(backend.NewChat).toHaveBeenCalledTimes(1);
+    await waitFor(() =>
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument(),
+    );
+    expect(
+      await screen.findByRole("region", { name: "Chat conversation" }),
+    ).toBeVisible();
+  });
+  it("keeps the task as a draft when the first message cannot be sent", async () => {
+    backend.SendChat = vi
+      .fn()
+      .mockRejectedValue(new Error("agent not signed in"));
+    render(<App />);
+    await screen.findByRole("heading", { name: "Retry webhook delivery" });
+    fireEvent.keyDown(document, { key: "n", metaKey: true });
+    const dialog = screen.getByRole("dialog");
+    await userEvent.type(within(dialog).getByLabelText("Task"), "Add retries");
+    fireEvent.keyDown(within(dialog).getByLabelText("Task"), {
+      key: "Enter",
+      metaKey: true,
+    });
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      /conversation is open, but your message was not sent: agent not signed in/,
+    );
+    expect(window.localStorage.getItem("ais:chat-draft:v1:live-one")).toBe(
+      "Add retries",
+    );
+    expect(
+      await screen.findByRole("region", { name: "Chat conversation" }),
+    ).toBeVisible();
+  });
   it("switches between history and a live session without duplicating its sidebar row", async () => {
     render(<App />);
     await screen.findByRole("heading", { name: "Retry webhook delivery" });

@@ -352,6 +352,18 @@ try {
   });
   await page.keyboard.press("Escape");
   await palette.waitFor({ state: "detached" });
+  // New task dialog: the task box has focus and fits the window.
+  await page.getByRole("button", { name: /New task/ }).click();
+  const newTask = page.getByRole("dialog", { name: "New task" });
+  await newTask.waitFor();
+  await page.keyboard.type("Add retries to the checkout request");
+  await newTask.getByRole("button", { name: /Start task/ }).waitFor();
+  await checkContrast();
+  await page.screenshot({
+    path: `${screenshots}/desktop-new-task${suffix}.png`,
+  });
+  await page.keyboard.press("Escape");
+  await newTask.waitFor({ state: "detached" });
   await resize(960, 640);
   await page.getByRole("button", { name: "Pinned 1" }).click();
   await page
