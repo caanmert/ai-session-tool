@@ -401,6 +401,30 @@ try {
   );
   await checkContrast();
   await page.screenshot({ path: `${screenshots}/desktop-chat${suffix}.png` });
+  // Find in conversation: counts matches and marks them in the page.
+  await page.keyboard.press("ControlOrMeta+f");
+  const find = page.getByRole("textbox", { name: "Find in conversation" });
+  await find.waitFor();
+  await page.keyboard.type("retr");
+  await page
+    .getByRole("search")
+    .getByText(/^1 of \d+$/)
+    .waitFor();
+  await page.keyboard.press("Enter");
+  await page
+    .getByRole("search")
+    .getByText(/^2 of \d+$/)
+    .waitFor();
+  const marked = await page.evaluate(
+    () => !("highlights" in CSS) || CSS.highlights.has("find-current"),
+  );
+  if (!marked) throw Error("The current find match is not highlighted");
+  await checkContrast();
+  await page.screenshot({
+    path: `${screenshots}/desktop-find${suffix}.png`,
+  });
+  await page.keyboard.press("Escape");
+  await find.waitFor({ state: "detached" });
   await page.evaluate(() => {
     const source = window.__aisDemo.source;
     source.approvals = [

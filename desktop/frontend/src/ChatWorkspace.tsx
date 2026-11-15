@@ -9,6 +9,7 @@ import DetailsPanel, { useChanges } from "./chat/DetailsPanel";
 import ConfirmDialog from "./ui/ConfirmDialog";
 import { useFileMentions } from "./chat/FileMentions";
 import { conversationStatus } from "./chat/conversation";
+import FindBar from "./chat/FindBar";
 import { applyChatUpdate } from "./chatUpdates";
 import { useChatDraft } from "./useChatDraft";
 import {
@@ -209,6 +210,23 @@ export default function ChatWorkspace({
     setDetailsOpen(false);
     detailsToggle.current?.focus();
   }
+  // Cmd+F searches this conversation; the window has no page search of its own.
+  const [finding, setFinding] = useState(false);
+  useEffect(() => {
+    if (!active) return;
+    const key = (e: KeyboardEvent) => {
+      if (
+        (e.metaKey || e.ctrlKey) &&
+        e.key.toLowerCase() === "f" &&
+        !document.querySelector("dialog[open]")
+      ) {
+        e.preventDefault();
+        setFinding(true);
+      }
+    };
+    document.addEventListener("keydown", key);
+    return () => document.removeEventListener("keydown", key);
+  }, [active]);
   useEffect(() => {
     if (!active || !narrow) return;
     const key = (e: KeyboardEvent) => {
@@ -380,6 +398,16 @@ export default function ChatWorkspace({
             onFile={(path) => {
               setFile(path);
               setLine(0);
+            }}
+          />
+        )}
+        {finding && (
+          <FindBar
+            container={messages}
+            version={state.version}
+            onClose={() => {
+              setFinding(false);
+              input.current?.focus();
             }}
           />
         )}
