@@ -11,6 +11,8 @@ const install: Record<string, string> = {
 const shortcuts: [string, string][] = [
   ["⌘N", "New task"],
   ["⌘K", "Search conversations, projects and actions"],
+  ["⌘1 – ⌘9", "Switch to an open conversation by its place in the sidebar"],
+  ["⌘,", "Open Settings"],
   ["⌘\\", "Show or hide changed files (narrow windows)"],
   ["Enter", "Send the message"],
   ["Shift Enter", "New line in the message"],

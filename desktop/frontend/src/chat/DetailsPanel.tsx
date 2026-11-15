@@ -10,6 +10,7 @@ import {
   type Session,
 } from "../api";
 import { sessionCost, sessionTokens } from "../ui/format";
+import { conversationMarkdown } from "./conversation";
 
 const usageBreakdown = (session: Session) =>
   [
@@ -161,6 +162,12 @@ export default function DetailsPanel({
 }) {
   const [review, setReview] = useState<string>();
   const [revealError, setRevealError] = useState("");
+  const [copied, setCopied] = useState("");
+  useEffect(() => {
+    if (!copied) return;
+    const timer = setTimeout(() => setCopied(""), 1600);
+    return () => clearTimeout(timer);
+  }, [copied]);
   const close = useRef<HTMLButtonElement>(null);
   useEffect(() => {
     if (drawer) close.current?.focus();
@@ -319,6 +326,19 @@ export default function DetailsPanel({
           }}
         >
           <Icon name="folder" size={14} /> Show in Finder
+        </button>
+        <button
+          className="button secondary reveal"
+          title="Copies messages and the names of tool steps, without tool output"
+          onClick={() => {
+            navigator.clipboard
+              .writeText(conversationMarkdown(chat))
+              .then(() => setCopied("Copied"))
+              .catch(() => setCopied("Copy failed"));
+          }}
+        >
+          <Icon name="copy" size={14} />
+          {copied ? <span role="status">{copied}</span> : "Copy as Markdown"}
         </button>
         {revealError && (
           <p className="details-note error" role="alert">

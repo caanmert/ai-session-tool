@@ -7,6 +7,7 @@ import { useAppearance } from "./Appearance";
 import Settings from "./settings/Settings";
 import Board from "./board/Board";
 import { sessionCost, sessionTokens } from "./ui/format";
+import { sidebarOrder } from "./chat/conversation";
 import TopBar from "./shell/TopBar";
 import Sidebar from "./shell/Sidebar";
 import AgentsMissing from "./shell/AgentsMissing";
@@ -401,6 +402,26 @@ export default function App() {
         event.preventDefault();
         setShowPalette(true);
       }
+      // Cmd+1..9 switches to the open conversation in that sidebar position.
+      if (
+        (event.metaKey || event.ctrlKey) &&
+        !event.shiftKey &&
+        !event.altKey &&
+        /^[1-9]$/.test(event.key) &&
+        !showNew
+      ) {
+        const target = sidebarOrder(chats).ordered[Number(event.key) - 1];
+        if (target) {
+          event.preventDefault();
+          setPage("history");
+          setActiveChat(target.id);
+        }
+      }
+      if ((event.metaKey || event.ctrlKey) && event.key === "," && !showNew) {
+        event.preventDefault();
+        setActiveChat("");
+        setPage("settings");
+      }
       if (
         (event.metaKey || event.ctrlKey) &&
         event.key.toLowerCase() === "n" &&
@@ -433,7 +454,16 @@ export default function App() {
     }
     document.addEventListener("keydown", key);
     return () => document.removeEventListener("keydown", key);
-  }, [showNew, showLibrary, busy, openNew, snapshot, activeChat, showRuns]);
+  }, [
+    showNew,
+    showLibrary,
+    busy,
+    openNew,
+    snapshot,
+    activeChat,
+    showRuns,
+    chats,
+  ]);
   useEffect(() => {
     if (showNew) modal.current?.querySelector<HTMLElement>("button")?.focus();
   }, [showNew]);

@@ -8,6 +8,7 @@ import { SafeMarkdown } from "./ui/SafeMarkdown";
 import DetailsPanel, { useChanges } from "./chat/DetailsPanel";
 import ConfirmDialog from "./ui/ConfirmDialog";
 import { useFileMentions } from "./chat/FileMentions";
+import { conversationStatus } from "./chat/conversation";
 import { applyChatUpdate } from "./chatUpdates";
 import { useChatDraft } from "./useChatDraft";
 import {
@@ -22,15 +23,6 @@ import {
 
 export const chatBusy = (status: string) =>
   ["running", "waiting", "stopping"].includes(status);
-const statusLabel = (status: string) =>
-  ({
-    idle: "Ready",
-    running: "Working",
-    waiting: "Needs your input",
-    stopping: "Stopping",
-    stopped: "Stopped",
-    error: "Needs attention",
-  })[status] || status;
 // Time since this view first saw the agent working on the current response.
 // It restarts with the app; it is a guide, not a record.
 function Elapsed() {
@@ -295,7 +287,7 @@ export default function ChatWorkspace({
                 {(state.status === "waiting" || state.status === "error") && (
                   <Icon name="alert" size={12} />
                 )}
-                {statusLabel(state.status)}
+                {conversationStatus(state)}
                 {state.status === "running" && <Elapsed />}
               </span>
               {state.activeModel && !state.review && (

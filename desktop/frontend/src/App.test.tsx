@@ -577,6 +577,28 @@ describe("desktop workflows", () => {
     );
     expect(backend.AgentHealth).toHaveBeenCalledTimes(2);
   });
+  it("opens Settings with ⌘, and switches to an open conversation with ⌘1", async () => {
+    render(<App />);
+    await screen.findByRole("heading", { name: "Retry webhook delivery" });
+    fireEvent.keyDown(document, { key: ",", metaKey: true });
+    expect(screen.getByRole("region", { name: "Settings" })).toBeVisible();
+    // Nothing is open yet, so ⌘1 leaves the page alone.
+    fireEvent.keyDown(document, { key: "1", metaKey: true });
+    expect(screen.getByRole("region", { name: "Settings" })).toBeVisible();
+    await userEvent.click(screen.getByRole("button", { name: /^History/ }));
+    await userEvent.click(
+      screen.getByRole("button", { name: "Continue in app" }),
+    );
+    await screen.findByRole("region", { name: "Chat conversation" });
+    await userEvent.click(screen.getByRole("button", { name: "Settings" }));
+    expect(
+      screen.queryByRole("region", { name: "Chat conversation" }),
+    ).not.toBeInTheDocument();
+    fireEvent.keyDown(document, { key: "1", metaKey: true });
+    expect(
+      await screen.findByRole("region", { name: "Chat conversation" }),
+    ).toBeVisible();
+  });
   it("opens saved desktop work without starting or resuming a provider", async () => {
     backend.ListSavedChats = vi.fn().mockResolvedValue([
       {

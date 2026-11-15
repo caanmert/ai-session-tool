@@ -139,6 +139,9 @@
   align-self: flex-start;
   margin-top: 12px;
 }
+.chat-details .reveal + .reveal {
+  margin-top: 8px;
+}
 .details-empty,
 .details-note {
   font-size: var(--text-sm);
