@@ -421,6 +421,82 @@ describe("graphical conversations", () => {
       await within(panel).findByText("Discarded the changes to app.txt"),
     ).toBeVisible();
   });
+  it("continues with the other agent: drafts the summary and sends nothing", async () => {
+    const view = render(
+      <ChatWorkspace chat={initial} active reviewerAvailable {...handlers} />,
+    );
+    const handOff = screen.getByRole("button", {
+      name: "Continue with Claude Code",
+    });
+    // Nothing to hand over before a message.
+    expect(handOff).toBeDisabled();
+    view.unmount();
+    state.version = 2;
+    state.messages = [
+      { id: "u1", role: "user", kind: "text", text: "Fix checkout" },
+      { id: "a1", role: "assistant", kind: "text", text: "Fixed." },
+    ];
+    const next: ChatState = {
+      ...initial,
+      id: "next",
+      tool: "claude",
+      handedFrom: "chat",
+      title: "New conversation",
+    };
+    backend.HandOffChat = vi.fn().mockResolvedValue({
+      chat: next,
+      prompt: "I'm continuing work…\n\nWhat I asked:\n1. Fix checkout",
+    });
+    render(
+      <ChatWorkspace
+        chat={{ ...initial, ...state }}
+        active
+        reviewerAvailable
+        {...handlers}
+      />,
+    );
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Continue with Claude Code" }),
+    );
+    await waitFor(() => expect(handlers.onOpen).toHaveBeenCalledWith(next));
+    expect(backend.HandOffChat).toHaveBeenCalledWith("chat");
+    expect(window.localStorage.getItem("ais:chat-draft:v1:next")).toBe(
+      "I'm continuing work…\n\nWhat I asked:\n1. Fix checkout",
+    );
+    expect(backend.SendChat).not.toHaveBeenCalled();
+  });
+
+  it("links a conversation and its continuation both ways", async () => {
+    window.localStorage.setItem("ais:chat-draft:v1:next", "Summary to edit");
+    const next: ChatState = {
+      ...initial,
+      id: "next",
+      tool: "claude",
+      handedFrom: "chat",
+    };
+    state = structuredClone(next);
+    const view = render(
+      <ChatWorkspace chat={next} active reviewerAvailable {...handlers} />,
+    );
+    // The drafted summary is in the message box, ready to edit and send.
+    expect(screen.getByRole("textbox", { name: /Message/ })).toHaveValue(
+      "Summary to edit",
+    );
+    await userEvent.click(
+      screen.getByRole("button", { name: /Continued from Codex/ }),
+    );
+    expect(handlers.onSelect).toHaveBeenCalledWith("chat");
+    view.unmount();
+    state = { ...structuredClone(initial), handedTo: ["next"] };
+    render(
+      <ChatWorkspace chat={state} active reviewerAvailable {...handlers} />,
+    );
+    await userEvent.click(
+      screen.getByRole("button", { name: /Continued in Claude Code/ }),
+    );
+    expect(handlers.onSelect).toHaveBeenLastCalledWith("next");
+  });
+
   it("shows a message found by search, unfolding what hides it", async () => {
     const tool = (id: string) => ({
       id,

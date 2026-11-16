@@ -75,6 +75,10 @@ type ChatState struct {
 	Context *ContextUsage `json:"context,omitempty"`
 	// Comparison links the two conversations of a comparison; see chat_compare.go.
 	Comparison string `json:"comparison,omitempty"`
+	// HandedFrom and HandedTo link a conversation continued with the other
+	// agent; see chat_handoff.go.
+	HandedFrom string   `json:"handedFrom,omitempty"`
+	HandedTo   []string `json:"handedTo,omitempty"`
 	// Mode is the permission mode for the next message; see chat_modes.go.
 	Mode      string         `json:"mode"`
 	ID        string         `json:"id"`

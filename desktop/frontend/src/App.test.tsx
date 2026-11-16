@@ -151,6 +151,7 @@ beforeEach(() => {
     SearchMessages: vi.fn().mockResolvedValue([]),
     ProjectInstructions: vi.fn(),
     ProjectCommands: vi.fn().mockResolvedValue([]),
+    HandOffChat: vi.fn(),
     StartProjectCommand: vi.fn(),
     ProjectRun: vi
       .fn()

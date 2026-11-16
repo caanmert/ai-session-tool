@@ -31,7 +31,7 @@ import {
   useImageAttachments,
 } from "./chat/ImageAttachments";
 import { applyChatUpdate } from "./chatUpdates";
-import { useChatDraft } from "./useChatDraft";
+import { storeDraft, useChatDraft } from "./useChatDraft";
 import {
   api,
   errorText,
@@ -426,6 +426,24 @@ export default function ChatWorkspace({
     return () => document.removeEventListener("keydown", key);
   }, [active, state.review, toggleDetails]);
   const other = state.tool === "codex" ? "claude" : "codex";
+  // Only a conversation with something asked can be handed over.
+  const hasAsked = state.messages.some(
+    (m) => m.role === "user" && m.kind === "text",
+  );
+  const handOffBlocked = !reviewerAvailable
+    ? `Install ${toolLabel(other)} to continue with it`
+    : !hasAsked
+      ? "Send a message first; there is nothing to hand over yet"
+      : busy
+        ? "Wait for the agent to finish first"
+        : "";
+  async function handOff() {
+    const handed = await api.HandOffChat(state.id);
+    // Without draft storage, the summary goes to the clipboard.
+    if (!storeDraft(handed.chat.id, handed.prompt))
+      await navigator.clipboard?.writeText(handed.prompt).catch(() => {});
+    onOpen(handed.chat);
+  }
   // Add the paths of chosen files to the message. The agent opens them itself;
   // nothing is uploaded or copied.
   async function mentionFiles() {
@@ -514,6 +532,24 @@ export default function ChatWorkspace({
               </span>
               {state.activeModel && !state.review && (
                 <span className="chat-meta">{state.activeModel}</span>
+              )}
+              {state.handedFrom && (
+                <button
+                  className="text-button chat-link"
+                  title="Open the conversation this one continues"
+                  onClick={() => onSelect(state.handedFrom!)}
+                >
+                  Continued from {toolLabel(other)} ↗
+                </button>
+              )}
+              {!!state.handedTo?.length && (
+                <button
+                  className="text-button chat-link"
+                  title="Open the conversation that continues this one"
+                  onClick={() => onSelect(state.handedTo!.at(-1)!)}
+                >
+                  Continued in {toolLabel(other)} ↗
+                </button>
               )}
             </div>
           </div>
@@ -1201,6 +1237,11 @@ export default function ChatWorkspace({
           drawer={narrow}
           onRefresh={changes.refresh}
           onClose={closeDetails}
+          handOff={
+            state.review
+              ? undefined
+              : { to: other, blocked: handOffBlocked, run: handOff }
+          }
         />
       )}
     </section>

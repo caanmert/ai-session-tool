@@ -44,6 +44,8 @@ try {
       tool: "codex",
       project,
       comparison: "cmp-demo",
+      // Continued with Claude Code: the link and the hand-off button show.
+      handedTo: ["chat-claude-next"],
       // Near the window, so the amber indicator is checked for contrast.
       context: { used: 168000, window: 200000 },
       checkpoints: [

@@ -284,6 +284,8 @@ export type GitHubOverview = {
   /** One of the two lists could not be read. */
   partial?: string;
 };
+/** A conversation continued with the other agent, and its drafted first message. */
+export type HandOff = { chat: ChatState; prompt: string };
 /** A command the project offers, such as a package script. */
 export type ProjectCommand = {
   label: string;
@@ -458,6 +460,10 @@ export type ChatState = {
   error: string;
   messages: ChatMessage[];
   approvals: ChatApproval[];
+  /** The conversation this one continues, with the other agent. */
+  handedFrom?: string;
+  /** Conversations that continue this one with the other agent. */
+  handedTo?: string[];
   review?: ReviewState;
   updatedAt: string;
   shortened: boolean;
@@ -613,6 +619,9 @@ export interface Backend {
   /** A project's open issues and pull requests, read with the GitHub CLI. */
   GitHubOverview(project: string): Promise<GitHubOverview>;
   GitHubIssue(project: string, number: number): Promise<GitHubIssueDetail>;
+  /** Opens a conversation with the other agent in the same project and
+   * drafts its first message from this one. Sends nothing. */
+  HandOffChat(chatId: string): Promise<HandOff>;
   /** The commands the conversation's project offers. Only reads. */
   ProjectCommands(chatId: string): Promise<ProjectCommand[]>;
   /** Runs a command the user chose in the project folder. */
@@ -737,6 +746,7 @@ export const api: Backend = {
     backend().GitHubIssue(project, number),
   GitHubPull: async (project, number) => backend().GitHubPull(project, number),
   SearchMessages: async (query) => backend().SearchMessages(query),
+  HandOffChat: async (chatId) => backend().HandOffChat(chatId),
   ProjectCommands: async (chatId) => backend().ProjectCommands(chatId),
   StartProjectCommand: async (chatId, command) =>
     backend().StartProjectCommand(chatId, command),
