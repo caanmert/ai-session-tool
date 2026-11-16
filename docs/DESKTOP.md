@@ -122,8 +122,22 @@ They demonstrate the layout, not output from a live model run.
 - **Changes** (right of a conversation, or the **Changes** button and **⌘\\** in
   a narrow window): the project's uncommitted files against the last commit, with
   added and removed line counts. Click a file or **Review all changes** to read the
-  diff. This is read-only: nothing is committed, pushed or reverted from the app.
-  A folder that is not a Git repository simply says so.
+  diff. Nothing is reverted from here. A folder that is not a Git repository
+  simply says so.
+- **Commit…** (below the changed files) makes a local commit of the files you
+  check, with a message prefilled from the conversation title. Other staged work is
+  left out and stays staged; Git hooks and commit signing run as they do in a
+  terminal. If a hook rejects the commit, the repository is left exactly as it
+  was and the hook's message is shown. On the default branch the dialog offers to
+  commit on a new branch (checked by default). It is not available while the agent
+  is working. **⌘⏎** commits; **Enter** adds a line to the message. Nothing is
+  pushed.
+- **Pull request…** pushes the current branch and opens a pull request on GitHub
+  with the GitHub CLI (`gh`) you are signed in to. The dialog names the branch,
+  remote, base branch and repository before anything happens, and offers a draft.
+  If the branch already has an open pull request, it pushes new commits to it
+  instead. Pushes are never forced, and nothing is merged. Without `gh`, on the
+  default branch, or with nothing to propose, the dialog explains why.
 
 ## Start or continue a conversation
 

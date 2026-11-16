@@ -11,6 +11,8 @@ import {
 } from "../api";
 import { sessionCost, sessionTokens } from "../ui/format";
 import { conversationMarkdown } from "./conversation";
+import { CommitDialog, PullRequestDialog } from "./GitDialogs";
+import { busyChat } from "../shell/OpenSessions";
 
 const usageBreakdown = (session: Session) =>
   [
@@ -161,6 +163,9 @@ export default function DetailsPanel({
   onClose: () => void;
 }) {
   const [review, setReview] = useState<string>();
+  const [dialog, setDialog] = useState<"commit" | "pr">();
+  const [done, setDone] = useState("");
+  const busy = busyChat(chat.status);
   const [revealError, setRevealError] = useState("");
   const [copied, setCopied] = useState("");
   useEffect(() => {
@@ -278,10 +283,40 @@ export default function DetailsPanel({
               Review all changes
             </button>
             <p className="details-note">
-              Compared with the last commit. Nothing is committed or pushed from
-              here.
+              Compared with the last commit. Nothing is committed or pushed
+              until you confirm it.
             </p>
           </>
+        )}
+        {summary?.available && !chat.review && (
+          <div className="git-actions">
+            <button
+              className="button secondary"
+              disabled={!files.length || busy}
+              title={
+                busy
+                  ? "Wait for the agent to finish before committing"
+                  : files.length
+                    ? "Commit chosen files locally"
+                    : "No uncommitted changes"
+              }
+              onClick={() => setDialog("commit")}
+            >
+              Commit…
+            </button>
+            <button
+              className="button secondary"
+              title="Push this branch and open a pull request on GitHub"
+              onClick={() => setDialog("pr")}
+            >
+              Pull request…
+            </button>
+          </div>
+        )}
+        {done && (
+          <p className="details-note done" role="status">
+            {done}
+          </p>
         )}
         <h3 className="details-section">Session</h3>
         <dl className="details-facts">
@@ -346,6 +381,28 @@ export default function DetailsPanel({
           </p>
         )}
       </aside>
+      {dialog === "commit" && (
+        <CommitDialog
+          chatId={chat.id}
+          onClose={() => setDialog(undefined)}
+          onCommitted={(result) => {
+            setDialog(undefined);
+            setDone(
+              `Committed ${result.commit} on ${result.branch}: ${result.subject}`,
+            );
+            onRefresh();
+          }}
+        />
+      )}
+      {dialog === "pr" && (
+        <PullRequestDialog
+          chatId={chat.id}
+          onClose={() => {
+            setDialog(undefined);
+            onRefresh();
+          }}
+        />
+      )}
       {review !== undefined && (
         <ChangesDialog
           chat={chat}

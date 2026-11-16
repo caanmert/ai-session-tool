@@ -155,6 +155,36 @@ try {
       main: {
         App: {
           SetAppearance: async () => {},
+          CommitPlan: async () => ({
+            branch: "main",
+            defaultBranch: "main",
+            onDefault: true,
+            files: [
+              { path: "src/checkout.ts", status: "M", added: 7, removed: 1 },
+              { path: "src/retry.ts", status: "?", added: 24, removed: 0 },
+              {
+                path: "test/checkout.test.ts",
+                status: "M",
+                added: 18,
+                removed: 3,
+              },
+            ],
+            added: 49,
+            removed: 4,
+            message: "Make checkout retries safe",
+            newBranch: "ais/make-checkout-retries-safe",
+          }),
+          PullRequestPlan: async () => ({
+            repository: "acme/checkout",
+            remote: "origin",
+            branch: "ais/make-checkout-retries-safe",
+            base: "main",
+            commits: ["Make checkout retries safe"],
+            unpushed: 1,
+            uncommitted: 0,
+            title: "Make checkout retries safe",
+            body: "Retries transient failures and keeps one request key.",
+          }),
           ListRuns: async () => [
             {
               id: "ais-demo",
@@ -501,6 +531,23 @@ try {
   await page
     .getByRole("list", { name: "Attached images" })
     .waitFor({ state: "detached" });
+  // Commit and pull request dialogs say what they do before anything happens.
+  await page.getByRole("button", { name: "Commit…" }).click();
+  const commit = page.getByRole("dialog", { name: "Commit changes" });
+  await commit.getByLabel("Commit message").waitFor();
+  await checkContrast();
+  await page.screenshot({ path: `${screenshots}/desktop-commit${suffix}.png` });
+  await page.keyboard.press("Escape");
+  await commit.waitFor({ state: "detached" });
+  await page.getByRole("button", { name: "Pull request…" }).click();
+  const pullRequest = page.getByRole("dialog", { name: "Open a pull request" });
+  await pullRequest.getByLabel("Title").waitFor();
+  await checkContrast();
+  await page.screenshot({
+    path: `${screenshots}/desktop-pull-request${suffix}.png`,
+  });
+  await page.keyboard.press("Escape");
+  await pullRequest.waitFor({ state: "detached" });
   // Find in conversation: counts matches and marks them in the page.
   await page.keyboard.press("ControlOrMeta+f");
   const find = page.getByRole("textbox", { name: "Find in conversation" });

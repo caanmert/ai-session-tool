@@ -146,6 +146,60 @@ export type ChangedFile = {
   removed: number;
   binary?: boolean;
 };
+export type CommitPlan = {
+  branch: string;
+  defaultBranch?: string;
+  /** On the branch pull requests go into; a new branch is suggested. */
+  onDefault: boolean;
+  files: ChangedFile[];
+  added: number;
+  removed: number;
+  truncated?: boolean;
+  message: string;
+  newBranch: string;
+};
+export type CommitRequest = {
+  message: string;
+  files: string[];
+  newBranch?: string;
+};
+export type CommitResult = {
+  commit: string;
+  branch: string;
+  subject: string;
+  files: number;
+};
+export type PullRequestInfo = {
+  number: number;
+  url: string;
+  title?: string;
+  isDraft?: boolean;
+};
+/** When `reason` is set nothing can be done, and it says why. */
+export type PullRequestPlan = {
+  reason?: string;
+  repository?: string;
+  remote?: string;
+  branch?: string;
+  base?: string;
+  commits: string[];
+  unpushed: number;
+  uncommitted: number;
+  existing?: PullRequestInfo;
+  title?: string;
+  body?: string;
+};
+export type PullRequestRequest = {
+  title: string;
+  body: string;
+  draft: boolean;
+};
+export type PullRequestResult = {
+  number: number;
+  url: string;
+  created: boolean;
+  pushed: number;
+};
 export type ChangeSummary = {
   available: boolean;
   reason?: string;
@@ -309,6 +363,16 @@ export interface Backend {
   AnswerChatOption(id: string, request: string, option: string): Promise<void>;
   PrepareReview(id: string): Promise<ReviewDraft>;
   ChatChanges(id: string): Promise<ChangeSummary>;
+  CommitPlan(id: string): Promise<CommitPlan>;
+  /** A local commit of the chosen files. Nothing is pushed. */
+  Commit(id: string, request: CommitRequest): Promise<CommitResult>;
+  PullRequestPlan(id: string): Promise<PullRequestPlan>;
+  CreatePullRequest(
+    id: string,
+    request: PullRequestRequest,
+  ): Promise<PullRequestResult>;
+  /** Opens an https link in the default browser. */
+  OpenURL(link: string): Promise<void>;
   ChatDiff(id: string): Promise<ReviewSnapshot>;
   StartReview(id: string): Promise<ChatState>;
   SendReviewFindings(id: string, findings: string[]): Promise<string>;
@@ -376,6 +440,12 @@ export const api: Backend = {
     backend().AnswerChatOption(id, request, option),
   PrepareReview: async (id) => backend().PrepareReview(id),
   ChatChanges: async (id) => backend().ChatChanges(id),
+  CommitPlan: async (id) => backend().CommitPlan(id),
+  Commit: async (id, request) => backend().Commit(id, request),
+  PullRequestPlan: async (id) => backend().PullRequestPlan(id),
+  CreatePullRequest: async (id, request) =>
+    backend().CreatePullRequest(id, request),
+  OpenURL: async (link) => backend().OpenURL(link),
   ChatDiff: async (id) => backend().ChatDiff(id),
   StartReview: async (id) => backend().StartReview(id),
   SendReviewFindings: async (id, findings) =>
