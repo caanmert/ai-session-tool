@@ -65,6 +65,9 @@ type ChatState struct {
 	Settings         ModelSettings `json:"settings"`
 	ReviewerSettings ModelSettings `json:"reviewerSettings"`
 	ActiveModel      string        `json:"activeModel"`
+	// WebSearch is Codex's web search for this conversation: "" for Codex's
+	// own setting, or disabled, cached or live.
+	WebSearch string `json:"webSearch,omitempty"`
 	// Context is how full the model's context is after the latest response.
 	Context *ContextUsage `json:"context,omitempty"`
 	// Comparison links the two conversations of a comparison; see chat_compare.go.

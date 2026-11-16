@@ -22,6 +22,7 @@ import { useQueuedMessage } from "./chat/queuedMessage";
 import ContextMeter from "./chat/ContextMeter";
 import CompareDialog from "./chat/CompareDialog";
 import ModePicker from "./chat/ModePicker";
+import WebSearchPicker from "./chat/WebSearchPicker";
 import {
   AttachedImages,
   imageFiles,
@@ -910,6 +911,14 @@ export default function ChatWorkspace({
               <ModePicker
                 chatId={state.id}
                 mode={state.mode || ""}
+                disabled={busy || working}
+                onSaved={() => setRetry((n) => n + 1)}
+              />
+            )}
+            {!state.review && state.tool === "codex" && (
+              <WebSearchPicker
+                chatId={state.id}
+                mode={state.webSearch || ""}
                 disabled={busy || working}
                 onSaved={() => setRetry((n) => n + 1)}
               />
