@@ -147,6 +147,87 @@ describe("graphical conversations", () => {
     expect(box).toHaveValue("Also lint\n\nRun the checkout tests");
     expect(backend.SendChat).not.toHaveBeenCalled();
   });
+  it("queues a message while the agent works and sends it when the turn ends", async () => {
+    state.status = "running";
+    state.version = 2;
+    show();
+    await screen.findByRole("button", { name: /Stop response/ });
+    const box = screen.getByRole("textbox", { name: /Message/ });
+    await userEvent.type(box, "Now add docs{Enter}");
+    const queued = screen.getByRole("group", { name: "Queued message" });
+    expect(queued).toHaveTextContent("Now add docs");
+    expect(queued).toHaveTextContent("Sent when Codex finishes this response.");
+    expect(box).toHaveValue("");
+    // A second message joins the first.
+    await userEvent.type(box, "And a changelog entry{Enter}");
+    expect(queued).toHaveTextContent("Now add docs And a changelog entry");
+    // A question in between does not send it.
+    state.status = "waiting";
+    state.version = 3;
+    await screen.findByText("Needs your input");
+    expect(backend.SendChat).not.toHaveBeenCalled();
+    state.status = "idle";
+    state.version = 4;
+    await waitFor(() =>
+      expect(backend.SendChat).toHaveBeenCalledWith(
+        "chat",
+        "Now add docs\n\nAnd a changelog entry",
+      ),
+    );
+    expect(backend.SendChat).toHaveBeenCalledTimes(1);
+    await waitFor(() =>
+      expect(
+        screen.queryByRole("group", { name: "Queued message" }),
+      ).toBeNull(),
+    );
+  });
+  it("holds a queued message when the turn fails, and sends it only on request", async () => {
+    state.status = "running";
+    state.version = 2;
+    show();
+    await screen.findByRole("button", { name: /Stop response/ });
+    await userEvent.type(
+      screen.getByRole("textbox", { name: /Message/ }),
+      "Retry it{Enter}",
+    );
+    state.status = "error";
+    state.error = "The agent stopped unexpectedly.";
+    state.version = 3;
+    const held = await screen.findByRole("group", {
+      name: "Message not sent",
+    });
+    expect(held).toHaveTextContent("the response ended with an error.");
+    expect(backend.SendChat).not.toHaveBeenCalled();
+    await userEvent.click(
+      within(held).getByRole("button", { name: "Send now" }),
+    );
+    expect(backend.SendChat).toHaveBeenCalledWith("chat", "Retry it");
+    await waitFor(() =>
+      expect(
+        screen.queryByRole("group", { name: "Message not sent" }),
+      ).toBeNull(),
+    );
+  });
+  it("never sends a message queued before ais restarted", async () => {
+    window.localStorage.setItem(
+      "ais:chat-queued:v1:chat",
+      JSON.stringify({ text: "Leftover" }),
+    );
+    show();
+    const held = await screen.findByRole("group", {
+      name: "Message not sent",
+    });
+    expect(held).toHaveTextContent("Leftover");
+    expect(held).toHaveTextContent(/ais closed before the response ended/);
+    await userEvent.click(within(held).getByRole("button", { name: "Edit" }));
+    expect(screen.getByRole("textbox", { name: /Message/ })).toHaveValue(
+      "Leftover",
+    );
+    expect(
+      screen.queryByRole("group", { name: "Message not sent" }),
+    ).toBeNull();
+    expect(backend.SendChat).not.toHaveBeenCalled();
+  });
   it("hides and shows the details panel on a wide window", async () => {
     const hidden = vi.fn();
     const view = render(
