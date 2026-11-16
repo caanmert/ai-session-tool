@@ -150,6 +150,14 @@ They demonstrate the layout, not output from a live model run.
   added and removed line counts. Click a file or **Review all changes** to read the
   diff. Nothing is reverted from here. A folder that is not a Git repository
   simply says so.
+- **Project instructions…** (in Session) lists the instruction files each agent
+  reads for the project: `CLAUDE.md`, `.claude/CLAUDE.md` and `CLAUDE.local.md`
+  for Claude Code and `AGENTS.md` for Codex, at the repository root, plus your
+  own `~/.claude/CLAUDE.md` and `~/.codex/AGENTS.md`. Project files open in an
+  editor and save with **Save** (**⌘S**); a missing one is created on save. A
+  save is refused if the file changed on disk since you opened it, and leaving
+  with unsaved edits asks first. Your own files are shown and opened in Finder.
+  Only these file names can be read or written here.
 - **Undo a turn.** Before each turn in a Git project, ais keeps the project's
   files as they are (tracked and untracked, not ignored ones) as a checkpoint
   under `refs/ais/`, without committing, moving the branch, or touching the

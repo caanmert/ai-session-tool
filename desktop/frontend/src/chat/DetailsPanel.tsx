@@ -15,6 +15,7 @@ import { conversationMarkdown } from "./conversation";
 import { CommitDialog, PullRequestDialog } from "./GitDialogs";
 import { busyChat } from "../shell/OpenSessions";
 import NewIssueDialog from "../github/NewIssueDialog";
+import InstructionsDialog from "./InstructionsDialog";
 import { contextFill } from "./ContextMeter";
 
 const usageBreakdown = (session: Session) =>
@@ -176,7 +177,9 @@ export default function DetailsPanel({
   onClose: () => void;
 }) {
   const [review, setReview] = useState<string>();
-  const [dialog, setDialog] = useState<"commit" | "pr" | "issue">();
+  const [dialog, setDialog] = useState<
+    "commit" | "pr" | "issue" | "instructions"
+  >();
   // The file whose changes are about to be discarded, after a confirmation.
   const [discarding, setDiscarding] = useState("");
   const [discardBusy, setDiscardBusy] = useState(false);
@@ -440,6 +443,13 @@ export default function DetailsPanel({
         >
           <Icon name="issue" size={14} /> File an issue…
         </button>
+        <button
+          className="button secondary reveal"
+          title="The CLAUDE.md and AGENTS.md files the agents read for this project"
+          onClick={() => setDialog("instructions")}
+        >
+          <Icon name="file" size={14} /> Project instructions…
+        </button>
         {revealError && (
           <p className="details-note error" role="alert">
             {revealError}
@@ -487,6 +497,12 @@ export default function DetailsPanel({
           </p>
           {discardError && <p role="alert">{discardError}</p>}
         </ConfirmDialog>
+      )}
+      {dialog === "instructions" && (
+        <InstructionsDialog
+          project={chat.project}
+          onClose={() => setDialog(undefined)}
+        />
       )}
       {dialog === "issue" && (
         <NewIssueDialog
