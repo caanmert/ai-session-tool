@@ -17,6 +17,7 @@ import ConfirmDialog from "./ui/ConfirmDialog";
 import { useFileMentions } from "./chat/FileMentions";
 import { conversationStatus, requestSummary } from "./chat/conversation";
 import FindBar from "./chat/FindBar";
+import { useQueuedMessage } from "./chat/queuedMessage";
 import CompareDialog from "./chat/CompareDialog";
 import ModePicker from "./chat/ModePicker";
 import {
@@ -237,6 +238,26 @@ export default function ChatWorkspace({
     },
     [updatePrompt],
   );
+  // A message written while the agent works waits here and is sent when the
+  // turn ends normally. It is never sent while another action is under way.
+  const sendQueued = useCallback(
+    async (text: string) => {
+      if (operation.current || settingsOperation.current) return false;
+      try {
+        await api.SendChat(state.id, text);
+        setRetry((n) => n + 1);
+        following.current = true;
+        setAwayFromLatest(false);
+        return true;
+      } catch (e) {
+        setError(errorText(e));
+        return false;
+      }
+    },
+    [state.id],
+  );
+  const queue = useQueuedMessage(state.id, state.status, sendQueued);
+  const [queueNote, setQueueNote] = useState("");
   // Details sit beside the conversation on wide windows and in a drawer below
   // 1200px. Reviews have their own fixed snapshot instead.
   const narrow = useNarrow();
@@ -344,7 +365,21 @@ export default function ChatWorkspace({
     }
   }
   async function send() {
-    if (!prompt.trim() || busy || settingsOperation.current) return;
+    if (!prompt.trim() || settingsOperation.current) return;
+    if (busy) {
+      // While the agent works, Enter queues the message for the turn's end.
+      if (attachments.images.length) {
+        setQueueNote(
+          "Images can be sent once the response ends. Your message and images stay in the box.",
+        );
+        return;
+      }
+      queue.add(prompt.trim());
+      updatePrompt("");
+      setQueueNote("");
+      return;
+    }
+    setQueueNote("");
     const text = prompt;
     const images = attachments.payload();
     await perform(async () => {
@@ -675,6 +710,78 @@ export default function ChatWorkspace({
           }}
         >
           {!state.review && mentions.popup}
+          {!state.review && queue.queued && (
+            <div
+              className={`queued-message ${queue.queued.held ? "held" : ""}`}
+              role="group"
+              aria-label={
+                queue.queued.held ? "Message not sent" : "Queued message"
+              }
+            >
+              <p className="queued-head" role="status">
+                <Icon name={queue.queued.held ? "alert" : "clock"} size={13} />
+                <strong>{queue.queued.held ? "Not sent" : "Queued"}</strong>
+                <span>
+                  {queue.queued.held
+                    ? queue.queued.held.replace(/^Not sent: /, "")
+                    : `Sent when ${toolLabel(state.tool)} finishes this response.`}
+                </span>
+              </p>
+              <p className="queued-text">{queue.queued.text}</p>
+              <div className="queued-actions">
+                {queue.queued.held && (
+                  <button
+                    type="button"
+                    className="button primary"
+                    disabled={busy || working}
+                    title={
+                      busy
+                        ? `Wait for ${toolLabel(state.tool)} to finish`
+                        : undefined
+                    }
+                    onClick={() => {
+                      const text = queue.queued!.text;
+                      void perform(async () => {
+                        await api.SendChat(state.id, text);
+                        queue.clear();
+                        setRetry((n) => n + 1);
+                        following.current = true;
+                        setAwayFromLatest(false);
+                      });
+                    }}
+                  >
+                    Send now
+                  </button>
+                )}
+                <button
+                  type="button"
+                  className="button secondary"
+                  disabled={working}
+                  title="Move it back into the message box"
+                  onClick={() => {
+                    const text = queue.queued!.text;
+                    queue.clear();
+                    reuse(text);
+                  }}
+                >
+                  Edit
+                </button>
+                <button
+                  type="button"
+                  className="button secondary"
+                  disabled={working}
+                  onClick={queue.clear}
+                >
+                  Discard
+                </button>
+              </div>
+            </div>
+          )}
+          {!state.review && queueNote && (
+            <p className="queue-note" role="status">
+              {queueNote}
+            </p>
+          )}
           {!state.review && (
             <textarea
               ref={input}
@@ -805,10 +912,21 @@ export default function ChatWorkspace({
                 "Reviewing a fixed snapshot of your uncommitted changes."
               ) : (
                 <>
-                  <kbd>⏎</kbd> send · <kbd>⇧⏎</kbd> new line
+                  <kbd>⏎</kbd> {busy ? "queue" : "send"} · <kbd>⇧⏎</kbd> new
+                  line
                 </>
               )}
             </span>
+            {busy && !state.review && !!prompt.trim() && (
+              <button
+                type="submit"
+                className="button secondary"
+                title={`Send this message when ${toolLabel(state.tool)} finishes (Enter)`}
+                disabled={working}
+              >
+                Queue
+              </button>
+            )}
             {busy ? (
               <button
                 type="button"

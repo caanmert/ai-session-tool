@@ -833,3 +833,55 @@
     transition: none;
   }
 }
+
+/* A message queued while the agent works */
+.queued-message {
+  display: grid;
+  gap: 6px;
+  margin: 0 0 8px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  background: var(--sidebar);
+}
+.queued-message.held {
+  border-color: var(--warning-border);
+  background: var(--warning-tint);
+}
+.queued-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--text-sm);
+  color: var(--muted);
+}
+.queued-head strong {
+  color: var(--text);
+}
+.queued-message.held .queued-head svg {
+  color: var(--warning);
+}
+.queued-text {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  overflow: hidden;
+  font-size: var(--text-md);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.queued-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.queued-actions .button {
+  height: 28px;
+  padding: 0 10px;
+  font-size: var(--text-sm);
+}
+.queue-note {
+  margin: 0 0 6px;
+  font-size: var(--text-sm);
+  color: var(--warning-text);
+}

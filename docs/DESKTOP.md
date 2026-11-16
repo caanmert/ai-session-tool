@@ -215,6 +215,14 @@ or committed and pushed are lost.
    its path; the paperclip opens the system file picker instead. **↑** in an
    empty message box recalls your earlier messages.
 
+   While the agent works, **Enter** (or **Queue**) queues your message instead:
+   it shows above the box and is sent when the response ends normally. More
+   messages join it. If the response is stopped or ends with an error, it is held
+   as **Not sent** with **Send now**, **Edit** (back into the box) and
+   **Discard**. A queued message is kept on this Mac; one left from before ais
+   quit is held, never sent on its own. Images can only be sent once the
+   response ends.
+
    To show the agent a screenshot, paste it into the message box, drop image
    files onto it, or use the image button. Up to six PNG, JPEG, GIF or WebP
    images of at most 5 MB each can go with one message. They are checked by
