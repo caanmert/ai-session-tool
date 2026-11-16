@@ -23,6 +23,7 @@ import ContextMeter from "./chat/ContextMeter";
 import Popover from "./ui/Popover";
 import { revealAround } from "./ui/Foldable";
 import { useNarrow } from "./ui/useNarrow";
+import ChangesDialog from "./chat/ChangesDialog";
 import CompareDialog from "./chat/CompareDialog";
 import ModePicker from "./chat/ModePicker";
 import WebSearchPicker from "./chat/WebSearchPicker";
@@ -303,6 +304,13 @@ export default function ChatWorkspace({
       ),
     [state.checkpoints],
   );
+  const [turnDiff, setTurnDiff] = useState<Checkpoint>();
+  const [turnFile, setTurnFile] = useState("");
+  // Puts text in the message box after what is already there.
+  function draftAppend(text: string) {
+    updatePrompt(prompt.trim() ? `${prompt.trimEnd()}\n\n${text}` : text);
+    setTimeout(() => input.current?.focus());
+  }
   const [restoring, setRestoring] = useState<{
     point: Checkpoint;
     plan?: RestoreChange[];
@@ -719,6 +727,7 @@ export default function ChatWorkspace({
             onReuse={reuse}
             checkpoints={checkpointsByMessage}
             onRestore={askRestore}
+            onTurnDiff={state.review ? undefined : setTurnDiff}
             messages={earlier > 0 ? listed.slice(earlier) : listed}
           />
           {state.review?.complete && (
@@ -1240,6 +1249,20 @@ export default function ChatWorkspace({
           </p>
         </ConfirmDialog>
       )}
+      {turnDiff && (
+        <ChangesDialog
+          title="Changes since this message"
+          note={`${state.project} · from just before this turn to now · read-only`}
+          load={() => api.TurnDiff(state.id, turnDiff.id)}
+          empty="Nothing has changed since this message."
+          file={turnFile}
+          onFile={setTurnFile}
+          onClose={() => {
+            setTurnDiff(undefined);
+            setTurnFile("");
+          }}
+        />
+      )}
       {showDetails && (
         <DetailsPanel
           chat={state}
@@ -1254,6 +1277,7 @@ export default function ChatWorkspace({
               ? undefined
               : { to: other, blocked: handOffBlocked, run: handOff }
           }
+          onDraft={state.review ? undefined : draftAppend}
         />
       )}
     </section>

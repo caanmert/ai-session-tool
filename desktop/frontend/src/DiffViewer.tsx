@@ -1,5 +1,14 @@
-import { useEffect, useRef, useState } from "react";
+import { Fragment, useEffect, useRef, useState } from "react";
 import type { ReviewSnapshot } from "./api";
+import {
+  commentPlace,
+  isStale,
+  lineNumber,
+  patchLines,
+  type LineComment,
+} from "./chat/lineComments";
+
+type Selection = { side: "new" | "old"; start: number; end: number };
 
 export default function DiffViewer({
   snapshot,
@@ -7,12 +16,20 @@ export default function DiffViewer({
   selectedLine,
   onFile,
   hideFiles = false,
+  comments,
+  onComment,
+  onRemoveComment,
 }: {
   snapshot: Pick<ReviewSnapshot, "files">;
   selectedFile: string;
   selectedLine: number;
   onFile: (file: string) => void;
   hideFiles?: boolean;
+  /** Line comments to show under their lines. */
+  comments?: LineComment[];
+  /** Given, line numbers can be clicked to comment (shift-click for a range). */
+  onComment?: (comment: Omit<LineComment, "id">) => void;
+  onRemoveComment?: (id: string) => void;
 }) {
   const selected =
     snapshot.files.find((file) => file.path === selectedFile) ||
@@ -20,6 +37,46 @@ export default function DiffViewer({
   const [wrap, setWrap] = useState(false);
   const [width, setWidth] = useState(180);
   const highlight = useRef<HTMLDivElement>(null);
+  const [selection, setSelection] = useState<Selection | null>(null);
+  const [note, setNote] = useState("");
+  useEffect(() => {
+    setSelection(null);
+    setNote("");
+  }, [selected?.path]);
+  const parsed = patchLines(selected?.patch || "");
+  const shownComments = (comments || []).filter(
+    (c) => c.path === selected?.path && !isStale(c, snapshot),
+  );
+  function pick(side: "new" | "old", n: number, extend: boolean) {
+    setSelection((current) =>
+      extend && current && current.side === side
+        ? {
+            side,
+            start: Math.min(current.start, n),
+            end: Math.max(current.end, n),
+          }
+        : { side, start: n, end: n },
+    );
+  }
+  function addComment() {
+    if (!selection || !selected || !note.trim() || !onComment) return;
+    const quote = parsed
+      .filter((line) => {
+        const n = lineNumber(line, selection.side);
+        return n !== undefined && n >= selection.start && n <= selection.end;
+      })
+      .map((line) => line.text.slice(1));
+    onComment({
+      path: selected.path,
+      side: selection.side,
+      start: selection.start,
+      end: selection.end,
+      quote,
+      note: note.trim(),
+    });
+    setSelection(null);
+    setNote("");
+  }
   useEffect(() => {
     const row = highlight.current,
       container = row?.parentElement;
@@ -36,8 +93,6 @@ export default function DiffViewer({
   const removed = lines.filter(
     (line) => line.startsWith("-") && !line.startsWith("---"),
   ).length;
-  let oldLine = 0,
-    newLine = 0;
   return (
     <section className="diff-viewer" aria-label="Diff preview">
       <div className="diff-toolbar">
@@ -111,36 +166,113 @@ export default function DiffViewer({
         {/* A scrollable region must be focusable to scroll it from the keyboard. */}
         {/* eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex */}
         <div className="diff-code" aria-label="Reviewed diff" tabIndex={0}>
-          {lines.map((text, index) => {
-            const hunk = text.match(/^@@ -(\d+)(?:,\d+)? \+(\d+)(?:,\d+)? @@/);
-            let old: number | undefined,
-              next: number | undefined,
-              kind = "meta";
-            if (hunk) {
-              oldLine = Number(hunk[1]);
-              newLine = Number(hunk[2]);
-            } else if (text.startsWith("+") && !text.startsWith("+++")) {
-              kind = "added";
-              next = newLine++;
-            } else if (text.startsWith("-") && !text.startsWith("---")) {
-              kind = "removed";
-              old = oldLine++;
-            } else if (text.startsWith(" ")) {
-              kind = "context";
-              old = oldLine++;
-              next = newLine++;
-            }
+          {parsed.map((line, index) => {
+            const { kind, text, old, next } = line;
+            const side = kind === "removed" ? "old" : "new";
+            const n = lineNumber(line, side);
             const focused = !!selectedLine && selectedLine === next;
+            const chosen =
+              !!selection &&
+              n !== undefined &&
+              selection.side === side &&
+              n >= selection.start &&
+              n <= selection.end;
+            const commented = shownComments.some(
+              (c) =>
+                c.side === side &&
+                n !== undefined &&
+                n >= c.start &&
+                n <= c.end,
+            );
+            const number = (value: number | undefined, own: boolean) =>
+              onComment && own && value !== undefined ? (
+                <button
+                  className="diff-number"
+                  aria-label={`Comment on ${side === "old" ? "removed " : ""}line ${value}`}
+                  title="Comment on this line; shift-click to include more lines"
+                  onClick={(e) => pick(side, value, e.shiftKey)}
+                >
+                  {value}
+                </button>
+              ) : (
+                <span>{value ?? ""}</span>
+              );
+            const endsHere =
+              n !== undefined &&
+              selection?.side === side &&
+              selection.end === n;
             return (
-              <div
-                key={index}
-                ref={focused ? highlight : undefined}
-                className={`diff-line ${kind} ${focused ? "focused" : ""}`}
-              >
-                <span>{old ?? ""}</span>
-                <span>{next ?? ""}</span>
-                <code>{text || " "}</code>
-              </div>
+              <Fragment key={index}>
+                <div
+                  ref={focused ? highlight : undefined}
+                  className={`diff-line ${kind} ${focused ? "focused" : ""} ${chosen ? "selected" : ""} ${commented ? "commented" : ""}`}
+                >
+                  {number(old, side === "old")}
+                  {number(next, side === "new")}
+                  <code>{text || " "}</code>
+                </div>
+                {shownComments
+                  .filter((c) => c.side === side && c.end === n)
+                  .map((c) => (
+                    <div className="diff-comment" key={c.id}>
+                      <p>{c.note}</p>
+                      <small>{commentPlace(c)}</small>
+                      {onRemoveComment && (
+                        <button
+                          className="text-button"
+                          onClick={() => onRemoveComment(c.id)}
+                        >
+                          Remove
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                {endsHere && selection && (
+                  <div className="diff-comment-form">
+                    <textarea
+                      aria-label={`Comment on ${commentPlace({ path: selected!.path, side: selection.side, start: selection.start, end: selection.end, quote: [], note: "", id: "" })}`}
+                      placeholder="What should change here?"
+                      value={note}
+                      // The form opens where the user just clicked.
+                      // eslint-disable-next-line jsx-a11y/no-autofocus
+                      autoFocus
+                      onChange={(e) => setNote(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Escape") {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          setSelection(null);
+                          setNote("");
+                        } else if (
+                          e.key === "Enter" &&
+                          (e.metaKey || e.ctrlKey)
+                        ) {
+                          e.preventDefault();
+                          addComment();
+                        }
+                      }}
+                    />
+                    <div>
+                      <button
+                        className="button secondary"
+                        onClick={() => {
+                          setSelection(null);
+                          setNote("");
+                        }}
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        className="button primary"
+                        disabled={!note.trim()}
+                        onClick={addComment}
+                      >
+                        Add comment
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </Fragment>
             );
           })}
         </div>

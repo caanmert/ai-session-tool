@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from "react";
-import DiffViewer from "../DiffViewer";
 import Icon from "../Icon";
 import ConfirmDialog from "../ui/ConfirmDialog";
 import {
@@ -19,6 +18,13 @@ import { busyChat } from "../shell/OpenSessions";
 import NewIssueDialog from "../github/NewIssueDialog";
 import InstructionsDialog from "./InstructionsDialog";
 import RunPanel from "./RunPanel";
+import ChangesDialog from "./ChangesDialog";
+import {
+  commentPlace,
+  commentsMessage,
+  isStale,
+  useLineComments,
+} from "./lineComments";
 import { contextFill } from "./ContextMeter";
 
 const usageBreakdown = (session: Session) =>
@@ -83,84 +89,6 @@ export function useChanges(chat: ChatState, enabled: boolean) {
   return { summary, error, refresh: () => setManual((n) => n + 1) };
 }
 
-function ChangesDialog({
-  chat,
-  file,
-  onFile,
-  onClose,
-}: {
-  chat: ChatState;
-  file: string;
-  onFile: (path: string) => void;
-  onClose: () => void;
-}) {
-  const dialog = useRef<HTMLDialogElement>(null);
-  const [snapshot, setSnapshot] = useState<ReviewSnapshot>();
-  const [error, setError] = useState("");
-  useEffect(() => {
-    const el = dialog.current;
-    if (el?.showModal) el.showModal();
-    return () => el?.close?.();
-  }, []);
-  useEffect(() => {
-    let active = true;
-    api
-      .ChatDiff(chat.id)
-      .then((next) => active && setSnapshot(next))
-      .catch((e) => active && setError(errorText(e)));
-    return () => {
-      active = false;
-    };
-  }, [chat.id]);
-  return (
-    <dialog
-      ref={dialog}
-      className="changes-dialog"
-      aria-labelledby="changes-dialog-title"
-      onClose={onClose}
-      onCancel={onClose}
-    >
-      <header>
-        <div>
-          <h2 id="changes-dialog-title">Uncommitted changes</h2>
-          <p title={chat.project}>
-            {chat.project} · compared with the last commit · read-only
-          </p>
-        </div>
-        <button
-          className="icon-button"
-          aria-label="Close changes"
-          onClick={onClose}
-        >
-          <Icon name="close" size={16} />
-        </button>
-      </header>
-      {error && (
-        <p className="notice error" role="alert">
-          {error}
-        </p>
-      )}
-      {!snapshot && !error && <p className="details-empty">Reading changes…</p>}
-      {snapshot &&
-        (snapshot.files.length ? (
-          <DiffViewer
-            snapshot={snapshot}
-            selectedFile={file}
-            selectedLine={0}
-            onFile={onFile}
-          />
-        ) : (
-          <p className="details-empty">No uncommitted changes.</p>
-        ))}
-      {snapshot?.warnings.map((warning) => (
-        <p className="details-note" key={warning}>
-          {warning}
-        </p>
-      ))}
-    </dialog>
-  );
-}
-
 export default function DetailsPanel({
   chat,
   session,
@@ -170,6 +98,7 @@ export default function DetailsPanel({
   onRefresh,
   onClose,
   handOff,
+  onDraft,
 }: {
   chat: ChatState;
   session?: Session;
@@ -181,6 +110,8 @@ export default function DetailsPanel({
   onClose: () => void;
   /** Continue this conversation with the other agent. */
   handOff?: { to: ToolName; blocked: string; run: () => Promise<void> };
+  /** Puts text in the message box, after anything already there. */
+  onDraft?: (text: string) => void;
 }) {
   const [review, setReview] = useState<string>();
   const [dialog, setDialog] = useState<
@@ -209,6 +140,35 @@ export default function DetailsPanel({
   const context = contextFill(chat.context);
   const [revealError, setRevealError] = useState("");
   const [handingOff, setHandingOff] = useState(false);
+  // Comments on changed lines, and the diff they are checked against.
+  const lineComments = useLineComments(chat.id);
+  const [editing, setEditing] = useState<{ id: string; note: string }>();
+  const [current, setCurrent] = useState<ReviewSnapshot>();
+  const commentCount = lineComments.comments.length;
+  useEffect(() => {
+    if (!commentCount || chat.review) return;
+    let active = true;
+    api
+      .ChatDiff(chat.id)
+      .then((next) => active && setCurrent(next))
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, [chat.id, chat.review, summary, commentCount]);
+  const stale = new Set(
+    lineComments.comments.filter((c) => isStale(c, current)).map((c) => c.id),
+  );
+  function sendComments() {
+    if (!onDraft || !commentCount) return;
+    onDraft(commentsMessage(lineComments.comments, stale));
+    lineComments.clear();
+    setEditing(undefined);
+    setDone(
+      "Your comments are in the message box. Nothing is sent until you send it.",
+    );
+    if (drawer) onClose();
+  }
   const [copied, setCopied] = useState("");
   useEffect(() => {
     if (!copied) return;
@@ -340,8 +300,9 @@ export default function DetailsPanel({
               Review all changes
             </button>
             <p className="details-note">
-              Compared with the last commit. Nothing is committed or pushed
-              until you confirm it.
+              Compared with the last commit. Click a line number in a diff to
+              comment on it. Nothing is committed or pushed until you confirm
+              it.
             </p>
           </>
         )}
@@ -374,6 +335,94 @@ export default function DetailsPanel({
           <p className="details-note done" role="status">
             {done}
           </p>
+        )}
+        {commentCount > 0 && !chat.review && (
+          <section className="line-comments" aria-label="Comments on changes">
+            <h3 className="details-section">
+              Comments <b className="count">{commentCount}</b>
+            </h3>
+            <ul>
+              {lineComments.comments.map((c) => (
+                <li key={c.id}>
+                  <button
+                    className="comment-place"
+                    title="Show these lines"
+                    onClick={() => setReview(c.path)}
+                  >
+                    {commentPlace(c)}
+                  </button>
+                  {stale.has(c.id) && (
+                    <span
+                      className="comment-stale"
+                      title="These lines changed since you commented. The comment can still be sent."
+                    >
+                      out of date
+                    </span>
+                  )}
+                  {editing?.id === c.id ? (
+                    <>
+                      <textarea
+                        aria-label={`Edit the comment on ${commentPlace(c)}`}
+                        value={editing.note}
+                        onChange={(e) =>
+                          setEditing({ id: c.id, note: e.target.value })
+                        }
+                      />
+                      <span className="comment-actions">
+                        <button
+                          className="text-button"
+                          onClick={() => setEditing(undefined)}
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          className="text-button"
+                          disabled={!editing.note.trim()}
+                          onClick={() => {
+                            lineComments.update(c.id, editing.note.trim());
+                            setEditing(undefined);
+                          }}
+                        >
+                          Save
+                        </button>
+                      </span>
+                    </>
+                  ) : (
+                    <>
+                      <p>{c.note}</p>
+                      <span className="comment-actions">
+                        <button
+                          className="text-button"
+                          aria-label={`Edit the comment on ${commentPlace(c)}`}
+                          onClick={() => setEditing({ id: c.id, note: c.note })}
+                        >
+                          Edit
+                        </button>
+                        <button
+                          className="text-button"
+                          aria-label={`Remove the comment on ${commentPlace(c)}`}
+                          onClick={() => lineComments.remove(c.id)}
+                        >
+                          Remove
+                        </button>
+                      </span>
+                    </>
+                  )}
+                </li>
+              ))}
+            </ul>
+            <button
+              className="button primary"
+              disabled={!onDraft}
+              onClick={sendComments}
+            >
+              Send to agent
+            </button>
+            <p className="details-note">
+              Puts the comments in the message box to edit. Nothing is sent
+              until you send it.
+            </p>
+          </section>
         )}
         {!chat.review && <RunPanel chatId={chat.id} />}
         <h3 className="details-section">Session</h3>
@@ -544,10 +593,16 @@ export default function DetailsPanel({
       )}
       {review !== undefined && (
         <ChangesDialog
-          chat={chat}
+          title="Uncommitted changes"
+          note={`${chat.project} · compared with the last commit · read-only; click a line number to comment`}
+          load={() => api.ChatDiff(chat.id)}
+          empty="No uncommitted changes."
           file={review}
           onFile={setReview}
           onClose={() => setReview(undefined)}
+          comments={chat.review ? undefined : lineComments.comments}
+          onComment={chat.review ? undefined : lineComments.add}
+          onRemoveComment={lineComments.remove}
         />
       )}
     </>

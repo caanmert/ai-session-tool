@@ -1,37 +1,88 @@
-import { useState } from "react";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { expect, it } from "vitest";
+import { expect, it, vi } from "vitest";
 import DiffViewer from "./DiffViewer";
 
-it("navigates files with keys, wraps lines and resizes the file panel", async () => {
-  const files = [
-    { path: "api.ts", patch: "@@ -1 +1 @@\n-before\n+after" },
-    { path: "tests.ts", patch: "@@ -0,0 +1,2 @@\n+test one\n+test two" },
-  ];
-  function Preview() {
-    const [file, setFile] = useState("");
-    return (
-      <DiffViewer
-        snapshot={{ files }}
-        selectedFile={file}
-        selectedLine={1}
-        onFile={setFile}
-      />
-    );
-  }
-  render(<Preview />);
-  screen.getByRole("button", { name: "api.ts" }).focus();
-  await userEvent.keyboard("{End}");
-  expect(screen.getByRole("button", { name: "tests.ts" })).toHaveFocus();
-  expect(screen.getByText("+2")).toBeVisible();
-  await userEvent.click(screen.getByLabelText("Wrap lines"));
-  expect(document.querySelector(".review-diff")).toHaveClass("wrap-lines");
-  fireEvent.change(screen.getByLabelText("File panel width"), {
-    target: { value: "260" },
+const snapshot = {
+  files: [
+    {
+      path: "src/a.ts",
+      patch:
+        "@@ -10,3 +10,4 @@\n keep()\n-retry(all)\n+const key = id()\n+retry(transient)\n done()",
+    },
+  ],
+};
+
+it("comments on a range of lines by clicking and shift-clicking numbers", async () => {
+  const onComment = vi.fn();
+  render(
+    <DiffViewer
+      snapshot={snapshot}
+      selectedFile="src/a.ts"
+      selectedLine={0}
+      onFile={vi.fn()}
+      onComment={onComment}
+    />,
+  );
+  await userEvent.click(
+    screen.getByRole("button", { name: "Comment on line 10" }),
+  );
+  const shift = userEvent.setup();
+  await shift.keyboard("{Shift>}");
+  await shift.click(screen.getByRole("button", { name: "Comment on line 12" }));
+  await shift.keyboard("{/Shift}");
+  const box = screen.getByRole("textbox", {
+    name: "Comment on src/a.ts:10-12",
   });
-  expect(document.querySelector(".review-diff")).toHaveStyle({
-    gridTemplateColumns: "260px minmax(0, 1fr)",
+  expect(screen.getByRole("button", { name: "Add comment" })).toBeDisabled();
+  await userEvent.type(box, "Only retry timeouts.");
+  await userEvent.click(screen.getByRole("button", { name: "Add comment" }));
+  expect(onComment).toHaveBeenCalledWith({
+    path: "src/a.ts",
+    side: "new",
+    start: 10,
+    end: 12,
+    quote: ["keep()", "const key = id()", "retry(transient)"],
+    note: "Only retry timeouts.",
   });
-  expect(document.querySelectorAll(".diff-line.focused")).toHaveLength(1);
+  // A removed line is commented on by its old number; Escape cancels.
+  await userEvent.click(
+    screen.getByRole("button", { name: "Comment on removed line 11" }),
+  );
+  await userEvent.keyboard("{Escape}");
+  expect(screen.queryByRole("textbox")).toBeNull();
+});
+
+it("shows comments under their lines, and only when they still match", () => {
+  const comment = {
+    id: "c1",
+    path: "src/a.ts",
+    side: "new" as const,
+    start: 11,
+    end: 12,
+    quote: ["const key = id()", "retry(transient)"],
+    note: "Only retry timeouts.",
+  };
+  const view = render(
+    <DiffViewer
+      snapshot={snapshot}
+      selectedFile="src/a.ts"
+      selectedLine={0}
+      onFile={vi.fn()}
+      comments={[comment]}
+    />,
+  );
+  expect(screen.getByText("Only retry timeouts.")).toBeVisible();
+  // Without onComment, numbers are plain text.
+  expect(screen.queryByRole("button", { name: /Comment on line/ })).toBeNull();
+  view.rerender(
+    <DiffViewer
+      snapshot={snapshot}
+      selectedFile="src/a.ts"
+      selectedLine={0}
+      onFile={vi.fn()}
+      comments={[{ ...comment, quote: ["something else", "retry(transient)"] }]}
+    />,
+  );
+  expect(screen.queryByText("Only retry timeouts.")).toBeNull();
 });

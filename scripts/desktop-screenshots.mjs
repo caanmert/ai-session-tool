@@ -826,6 +826,7 @@ try {
             removed: 4,
           }),
           ChatDiff: async () => snapshot,
+          TurnDiff: async () => snapshot,
           PrepareReview: async () => ({
             id: "draft",
             sourceId: "chat",
@@ -1158,6 +1159,45 @@ try {
   await runPanel.scrollIntoViewIfNeeded();
   await checkContrast();
   await page.screenshot({ path: `${screenshots}/desktop-run${suffix}.png` });
+  // Comment on a changed line, then see it listed beside the conversation.
+  await page
+    .getByRole("complementary", { name: "Conversation details" })
+    .getByRole("button", { name: "Review all changes" })
+    .click();
+  const changes = page.getByRole("dialog", { name: "Uncommitted changes" });
+  await changes.locator(".diff-line.added .diff-number").first().click();
+  await changes
+    .getByRole("textbox", { name: /^Comment on src\/checkout\.ts/ })
+    .fill("Only retry timeouts and 5xx responses; a declined card is final.");
+  await changes.getByRole("button", { name: "Add comment" }).click();
+  await changes.locator(".diff-comment").waitFor();
+  await checkContrast();
+  await page.screenshot({
+    path: `${screenshots}/desktop-comment${suffix}.png`,
+  });
+  await changes.getByRole("button", { name: "Close changes" }).click();
+  await changes.waitFor({ state: "detached" });
+  const comments = page.getByRole("region", { name: "Comments on changes" });
+  await comments.scrollIntoViewIfNeeded();
+  await checkContrast();
+  await page.screenshot({
+    path: `${screenshots}/desktop-comments${suffix}.png`,
+  });
+  await comments.getByRole("button", { name: /^Remove the comment/ }).click();
+  await comments.waitFor({ state: "detached" });
+  // What changed since a message, read-only.
+  await page
+    .getByRole("button", { name: "Changes since this message" })
+    .first()
+    .click();
+  const since = page.getByRole("dialog", {
+    name: "Changes since this message",
+  });
+  await since.locator(".diff-line.added").first().waitFor();
+  if (await since.locator(".diff-number").count())
+    throw Error("The turn diff must be read-only");
+  await since.getByRole("button", { name: "Close changes" }).click();
+  await since.waitFor({ state: "detached" });
   // Project instructions: each agent's files, editable in the project.
   await page.getByRole("button", { name: /Project instructions/ }).click();
   const instructions = page.getByRole("dialog", {

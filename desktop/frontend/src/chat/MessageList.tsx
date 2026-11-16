@@ -245,6 +245,7 @@ const TextMessage = memo(function TextMessage({
   imageNote,
   checkpoint,
   onRestore,
+  onTurnDiff,
   restoreDisabled,
 }: {
   message: ChatMessage;
@@ -254,6 +255,8 @@ const TextMessage = memo(function TextMessage({
   /** The files as they were at this message, to go back to. */
   checkpoint?: Checkpoint;
   onRestore?: (point: Checkpoint) => void;
+  /** Shows what changed since this message's turn began. */
+  onTurnDiff?: (point: Checkpoint) => void;
   restoreDisabled?: boolean;
 }) {
   const user = message.role === "user";
@@ -317,6 +320,16 @@ const TextMessage = memo(function TextMessage({
                 <Icon name="undo" size={13} />
               </button>
             )}
+            {checkpoint?.kind === "turn" && onTurnDiff && (
+              <button
+                className="message-copy"
+                aria-label="Changes since this message"
+                title="See what changed in the project since this message. Changes nothing."
+                onClick={() => onTurnDiff(checkpoint)}
+              >
+                <Icon name="code" size={13} />
+              </button>
+            )}
             {user && onReuse && message.text && (
               <button
                 className="message-copy"
@@ -365,6 +378,7 @@ export default function MessageList({
   imageNote,
   checkpoints,
   onRestore,
+  onTurnDiff,
 }: {
   messages: ChatMessage[];
   tool: string;
@@ -379,6 +393,7 @@ export default function MessageList({
   /** Checkpoints by the message they belong to. */
   checkpoints?: Record<string, Checkpoint>;
   onRestore?: (point: Checkpoint) => void;
+  onTurnDiff?: (point: Checkpoint) => void;
 }) {
   const items: (ChatMessage | ChatMessage[])[] = [];
   for (const message of messages) {
@@ -409,6 +424,7 @@ export default function MessageList({
         imageNote={imageNote}
         checkpoint={checkpoints?.[item.id]}
         onRestore={onRestore}
+        onTurnDiff={onTurnDiff}
         restoreDisabled={busy}
       />
     ),
