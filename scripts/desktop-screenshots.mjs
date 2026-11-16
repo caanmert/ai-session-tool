@@ -226,6 +226,63 @@ try {
               },
             ],
           }),
+          UsageLimits: async () => {
+            const later = (hours) =>
+              new Date(Date.now() + hours * 3_600_000).toISOString();
+            return {
+              agents: [
+                {
+                  tool: "claude",
+                  plan: "Pro",
+                  limits: [
+                    {
+                      label: "5-hour session",
+                      window: "session",
+                      percent: 59,
+                      resetsAt: later(2.2),
+                      level: "normal",
+                    },
+                    {
+                      label: "Weekly · all models",
+                      window: "weekly",
+                      percent: 88,
+                      resetsAt: later(8.3),
+                      level: "warning",
+                    },
+                    {
+                      label: "Weekly · Fable",
+                      window: "weekly",
+                      percent: 88,
+                      resetsAt: later(8.3),
+                      level: "warning",
+                    },
+                  ],
+                  extraUsage: "off",
+                  breakdown: [
+                    { label: "Claude Code", percent: 95 },
+                    { label: "Cowork", percent: 4 },
+                    { label: "Chats", percent: 1 },
+                  ],
+                  readAt: new Date().toISOString(),
+                },
+                {
+                  tool: "codex",
+                  plan: "Plus",
+                  limits: [
+                    {
+                      label: "Weekly",
+                      window: "weekly",
+                      percent: 37,
+                      resetsAt: later(110),
+                      level: "normal",
+                    },
+                  ],
+                  resetCredits: { available: 3, nextExpiry: later(24 * 14) },
+                  readAt: new Date().toISOString(),
+                },
+              ],
+            };
+          },
           GitHubOverview: async () => ({
             repository: "acme/checkout",
             url: "https://github.com/acme/checkout",
@@ -587,6 +644,29 @@ try {
   await page.getByRole("list", { name: "Open pull requests" }).waitFor();
   await checkContrast();
   await page.screenshot({ path: `${screenshots}/desktop-pulls${suffix}.png` });
+  // Usage limits page, also at the smallest window.
+  await page.getByRole("button", { name: "Usage limits", exact: true }).click();
+  await page.getByRole("meter", { name: "Codex: Weekly" }).waitFor();
+  await checkContrast();
+  await page.screenshot({ path: `${screenshots}/desktop-usage${suffix}.png` });
+  await resize(960, 640);
+  await page.screenshot({
+    path: join(tmpdir(), `ais-usage-small${suffix}.png`),
+  });
+  const usageOverflow = await page.evaluate(() => {
+    const usage = document.querySelector(".usage-page");
+    const glance = [...document.querySelectorAll(".agent-limit")];
+    return {
+      body: document.body.scrollWidth > innerWidth,
+      page: usage.scrollWidth > usage.clientWidth,
+      glance:
+        glance.length !== 2 ||
+        glance.some((g) => g.scrollWidth > g.clientWidth),
+    };
+  });
+  if (Object.values(usageOverflow).some(Boolean))
+    throw Error(`Usage limits overflow: ${JSON.stringify(usageOverflow)}`);
+  await resize(1360, 900);
   await page.getByRole("button", { name: /^History/ }).click();
   // New task dialog: the task box has focus and fits the window.
   await page.getByRole("button", { name: /New task/ }).click();

@@ -1,7 +1,13 @@
 import type { ReactNode, Ref } from "react";
 import AgentMark from "../AgentMark";
 import Icon, { type IconName } from "../Icon";
-import { toolLabel, type ChatState, type Snapshot } from "../api";
+import {
+  toolLabel,
+  type AgentUsage,
+  type ChatState,
+  type Snapshot,
+} from "../api";
+import { resetClock, tightest } from "../usage/limits";
 import OpenSessions, { busyChat } from "./OpenSessions";
 
 function NavItem({
@@ -35,6 +41,65 @@ function NavItem({
   );
 }
 
+/** The agent's session and weekly use in a few words, for the sidebar. */
+function LimitGlance({
+  agent,
+  onOpen,
+}: {
+  agent: AgentUsage;
+  onOpen: () => void;
+}) {
+  const worst = tightest(agent);
+  if (!worst) return null;
+  const name = toolLabel(agent.tool);
+  const parts: { text: string; level: string }[] = [];
+  if (agent.blocked) {
+    const reached =
+      agent.limits.find((limit) => limit.level === "reached") || worst;
+    const at = reached.resetsAt ? new Date(reached.resetsAt) : undefined;
+    parts.push({
+      text: at
+        ? `Limit reached · resets ${resetClock(at, new Date())}`
+        : "Limit reached",
+      level: "reached",
+    });
+  } else {
+    for (const [window, word] of [
+      ["session", "Session"],
+      ["weekly", "Week"],
+    ]) {
+      const limits = agent.limits.filter((limit) => limit.window === window);
+      if (!limits.length) continue;
+      const top = limits.reduce((a, b) => (b.percent > a.percent ? b : a));
+      parts.push({
+        text: `${word} ${Math.round(top.percent)}%`,
+        level: top.level,
+      });
+    }
+    if (!parts.length)
+      parts.push({
+        text: `${worst.label} ${Math.round(worst.percent)}%`,
+        level: worst.level,
+      });
+  }
+  const summary = parts.map((part) => part.text).join(", ");
+  return (
+    <button
+      className="agent-limit"
+      aria-label={`${name}: ${summary}. Open usage limits`}
+      title="Usage limits"
+      onClick={onOpen}
+    >
+      {parts.map((part, i) => (
+        <span key={part.text} className={part.level}>
+          {i > 0 && <span className="sep"> · </span>}
+          {part.text}
+        </span>
+      ))}
+    </button>
+  );
+}
+
 export default function Sidebar({
   view,
   snapshot,
@@ -50,10 +115,12 @@ export default function Sidebar({
   onSettings,
   onBoard,
   onIssues,
+  usage,
+  onUsage,
   onSelectChat,
   onCloseChat,
 }: {
-  view: "history" | "runs" | "settings" | "board" | "github" | "chat";
+  view: "history" | "runs" | "settings" | "board" | "github" | "usage" | "chat";
   snapshot?: Snapshot;
   chats: ChatState[];
   activeChat: string;
@@ -67,6 +134,9 @@ export default function Sidebar({
   onSettings: () => void;
   onBoard: () => void;
   onIssues: () => void;
+  /** Each agent's plan limits, once read. */
+  usage?: AgentUsage[];
+  onUsage: () => void;
   onSelectChat: (id: string) => void;
   onCloseChat: (id: string) => void;
 }) {
@@ -106,6 +176,12 @@ export default function Sidebar({
           onClick={onIssues}
         />
         <NavItem
+          icon="gauge"
+          label="Usage limits"
+          current={view === "usage"}
+          onClick={onUsage}
+        />
+        <NavItem
           icon="branch"
           label="Parallel runs"
           current={view === "runs"}
@@ -126,27 +202,32 @@ export default function Sidebar({
           const waiting = mine.filter((c) => c.status === "waiting").length;
           const running =
             mine.filter((c) => busyChat(c.status)).length - waiting;
+          const limits = tool.available
+            ? usage?.find((agent) => agent.tool === tool.name)
+            : undefined;
           return (
-            <div
-              className="agent-row"
-              key={tool.name}
-              title={tool.available ? tool.path : undefined}
-            >
-              <AgentMark tool={tool.name} dot />
-              <span>{toolLabel(tool.name)}</span>
-              {tool.available ? (
-                <small>
-                  {running
-                    ? `${running} running`
-                    : waiting
-                      ? `${waiting} waiting`
-                      : "Ready"}
-                </small>
-              ) : (
-                <small className="missing">
-                  <Icon name="alert" size={12} /> Not found
-                </small>
-              )}
+            <div className="agent-block" key={tool.name}>
+              <div
+                className="agent-row"
+                title={tool.available ? tool.path : undefined}
+              >
+                <AgentMark tool={tool.name} dot />
+                <span>{toolLabel(tool.name)}</span>
+                {tool.available ? (
+                  <small>
+                    {running
+                      ? `${running} running`
+                      : waiting
+                        ? `${waiting} waiting`
+                        : "Ready"}
+                  </small>
+                ) : (
+                  <small className="missing">
+                    <Icon name="alert" size={12} /> Not found
+                  </small>
+                )}
+              </div>
+              {limits && <LimitGlance agent={limits} onOpen={onUsage} />}
             </div>
           );
         })}
