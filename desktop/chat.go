@@ -117,19 +117,21 @@ type chatSession struct {
 	settingsMu sync.Mutex
 }
 type chatManager struct {
-	mu              sync.Mutex
-	items           map[string]*chatSession
-	drafts          map[string]ReviewDraft
-	dataDir         string
-	closed          bool
-	command         func(string, ...string) *exec.Cmd
+	mu      sync.Mutex
+	items   map[string]*chatSession
+	drafts  map[string]ReviewDraft
+	dataDir string
+	closed  bool
+	command func(string, ...string) *exec.Cmd
+	// gh runs the GitHub CLI; replaced in tests so no real request is made.
+	gh              func(ctx context.Context, dir string, args ...string) (string, error)
 	catalogs        map[string]*modelCache
 	discoveryCtx    context.Context
 	cancelDiscovery context.CancelFunc
 }
 
 func newChats(dir string) *chatManager {
-	m := &chatManager{items: map[string]*chatSession{}, drafts: map[string]ReviewDraft{}, dataDir: dir, command: exec.Command}
+	m := &chatManager{items: map[string]*chatSession{}, drafts: map[string]ReviewDraft{}, dataDir: dir, command: exec.Command, gh: runGH}
 	m.discoveryCtx, m.cancelDiscovery = context.WithCancel(context.Background())
 	return m
 }

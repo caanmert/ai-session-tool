@@ -230,3 +230,140 @@
 .changes-dialog .details-note {
   padding: 16px 20px;
 }
+
+/* Commit and pull request */
+.git-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-top: 10px;
+}
+.details-note.done {
+  color: var(--success-text);
+  overflow-wrap: anywhere;
+}
+.git-dialog {
+  width: min(560px, calc(100vw - 48px));
+  max-height: calc(100vh - 48px);
+  overflow-y: auto;
+}
+.git-dialog .confirm-body {
+  overflow-wrap: anywhere;
+}
+.git-target {
+  margin: 2px 0 12px;
+  font-size: var(--text-sm);
+  color: var(--muted);
+}
+.git-target code {
+  font-family: var(--font-mono);
+  color: var(--text);
+}
+.git-branch-choice {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--warning-border);
+  border-radius: var(--radius-control);
+  background: var(--warning-tint);
+}
+.git-branch-choice .field {
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+}
+.git-field {
+  display: grid;
+  gap: 6px;
+  margin-bottom: 12px;
+  font-size: var(--text-sm);
+  color: var(--muted);
+}
+.git-field textarea {
+  min-height: 92px;
+  max-height: 240px;
+  padding: 8px 10px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-control);
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  font-size: var(--text-md);
+  line-height: 1.5;
+  resize: vertical;
+}
+.git-files {
+  margin: 0 0 10px;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+}
+.git-files legend {
+  display: contents;
+}
+.git-files legend > label,
+.git-files legend > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  font-size: var(--text-sm);
+}
+.git-files legend > span {
+  float: right;
+  font-family: var(--font-mono);
+}
+.git-files ul {
+  clear: both;
+  max-height: 220px;
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  border-top: 1px solid var(--border-subtle);
+  list-style: none;
+}
+.git-files li + li {
+  border-top: 1px solid var(--border-subtle);
+}
+.git-files li label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 32px;
+  padding: 0 12px;
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  cursor: pointer;
+}
+.git-files li small {
+  flex-shrink: 0;
+  color: var(--muted);
+}
+.git-files input,
+.git-dialog .setting-check input {
+  accent-color: var(--brand);
+}
+.git-note {
+  margin: 6px 0;
+  font-size: var(--text-sm);
+  line-height: 1.5;
+  color: var(--muted);
+}
+.git-dialog [role="alert"] {
+  margin: 8px 0;
+  font-size: var(--text-sm);
+  line-height: 1.5;
+  color: var(--danger-text);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.git-commits {
+  margin: 4px 0 10px;
+  font-size: var(--text-sm);
+  color: var(--muted);
+}
+.git-commits ul {
+  margin: 6px 0 0;
+  padding-left: 18px;
+  color: var(--text);
+}
