@@ -112,7 +112,12 @@ They demonstrate the layout, not output from a live model run.
   author; pull requests show their branch, draft state, review decision and checks
   in words. **Start task** on an issue opens New task with the issue's title, link
   and description as the task, in that project; nothing is sent until you start
-  it. The 50 most recent of each are listed.
+  it. The 50 most recent of each are listed. Choose a title to read it beside
+  the list: the description, labels in their colours, who opened it and when,
+  and the latest comments; for a pull request also its branch into base, review
+  state, each check and its size. **↑** and **↓** move through the list.
+  Images in descriptions are never loaded, and long descriptions and comment
+  threads are shortened with a note.
 
   **New issue…** writes an issue for the project's repository: a title, a
   Markdown description and any of the repository's labels. It is created with

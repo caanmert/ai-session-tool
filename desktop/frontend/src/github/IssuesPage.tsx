@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import Icon from "../Icon";
 import NewIssueDialog from "./NewIssueDialog";
+import GitHubDetail, { LabelChip } from "./GitHubDetail";
 import {
   api,
   errorText,
@@ -78,6 +79,9 @@ export default function IssuesPage({
   const [starting, setStarting] = useState(0);
   // The New issue dialog is open.
   const [writing, setWriting] = useState(false);
+  // The issue or pull request read in full beside the list.
+  const [selected, setSelected] = useState(0);
+  useEffect(() => setSelected(0), [chosen, tab]);
   // Follow the project chosen in the top bar.
   useEffect(() => {
     if (project) setChosen(project);
@@ -117,6 +121,22 @@ export default function IssuesPage({
   const pulls = (overview?.pulls || []).filter((pull) =>
     matches(pull.number, pull.title, pull.author, pull.branch),
   );
+  // Up and Down move through the titles in the list and show each one.
+  const moveIn = (e: React.KeyboardEvent<HTMLUListElement>) => {
+    if (e.key !== "ArrowDown" && e.key !== "ArrowUp") return;
+    const titles = [
+      ...e.currentTarget.querySelectorAll<HTMLButtonElement>(".gh-title"),
+    ];
+    const at = titles.indexOf(document.activeElement as HTMLButtonElement);
+    if (at < 0) return;
+    e.preventDefault();
+    const next =
+      titles[
+        (at + (e.key === "ArrowDown" ? 1 : -1) + titles.length) % titles.length
+      ];
+    next.focus();
+    next.click();
+  };
   const open = (link: string) =>
     api.OpenURL(link).catch((e) => setError(errorText(e)));
   async function startTask(number: number) {
@@ -231,99 +251,149 @@ export default function IssuesPage({
               <span className="filter-count">{overview.pulls.length}</span>
             </button>
           </div>
-          {tab === "issues" && (
-            <ul className="gh-list" aria-label="Open issues">
-              {issues.map((issue) => (
-                <li key={issue.number}>
-                  <span className="gh-number">#{issue.number}</span>
-                  <div className="gh-main">
-                    <strong>{issue.title}</strong>
-                    <span className="gh-meta">
-                      {issue.labels.map((label) => (
-                        <span className="chip outline" key={label}>
-                          {label}
-                        </span>
-                      ))}
-                      <span>
-                        {issue.author} · updated {age(issue.updatedAt)}
-                      </span>
-                    </span>
-                  </div>
-                  <div className="gh-actions">
-                    <button
-                      className="button secondary"
-                      disabled={!!starting}
-                      onClick={() => void startTask(issue.number)}
+          <div className={`gh-split ${selected ? "with-detail" : ""}`}>
+            <div className="gh-lists">
+              {tab === "issues" && (
+                <ul
+                  className="gh-list"
+                  aria-label="Open issues"
+                  onKeyDown={moveIn}
+                >
+                  {issues.map((issue) => (
+                    <li
+                      key={issue.number}
+                      className={selected === issue.number ? "selected" : ""}
                     >
-                      {starting === issue.number ? "Reading…" : "Start task"}
-                    </button>
-                    <button
-                      className="icon-button"
-                      aria-label={`Open issue #${issue.number} on GitHub`}
-                      title="Open on GitHub"
-                      onClick={() => void open(issue.url)}
-                    >
-                      <Icon name="external" size={15} />
-                    </button>
-                  </div>
-                </li>
-              ))}
-              {!issues.length && (
-                <li className="gh-empty">
-                  {overview.issues.length
-                    ? "No issue matches the filter."
-                    : "No open issues."}
-                </li>
-              )}
-            </ul>
-          )}
-          {tab === "pulls" && (
-            <ul className="gh-list" aria-label="Open pull requests">
-              {pulls.map((pull) => {
-                const review = reviewWords[pull.review];
-                return (
-                  <li key={pull.number}>
-                    <span className="gh-number">#{pull.number}</span>
-                    <div className="gh-main">
-                      <strong>{pull.title}</strong>
-                      <span className="gh-meta">
-                        {pull.isDraft && (
-                          <span className="chip outline">Draft</span>
-                        )}
-                        <Checks pull={pull} />
-                        {review && (
-                          <span className={`gh-state ${review.tone}`}>
-                            {review.text}
+                      <span className="gh-number">#{issue.number}</span>
+                      <div className="gh-main">
+                        <button
+                          className="gh-title"
+                          aria-pressed={selected === issue.number}
+                          onClick={() => setSelected(issue.number)}
+                        >
+                          {issue.title}
+                        </button>
+                        <span className="gh-meta">
+                          {issue.labels.map((label) => (
+                            <LabelChip
+                              key={label}
+                              name={label}
+                              color={issue.labelColors?.[label]}
+                            />
+                          ))}
+                          <span>
+                            {issue.author} · updated {age(issue.updatedAt)}
                           </span>
-                        )}
-                        <code title={pull.branch}>{pull.branch}</code>
-                        <span>
-                          {pull.author} · updated {age(pull.updatedAt)}
                         </span>
-                      </span>
-                    </div>
-                    <div className="gh-actions">
-                      <button
-                        className="icon-button"
-                        aria-label={`Open pull request #${pull.number} on GitHub`}
-                        title="Open on GitHub"
-                        onClick={() => void open(pull.url)}
-                      >
-                        <Icon name="external" size={15} />
-                      </button>
-                    </div>
-                  </li>
-                );
-              })}
-              {!pulls.length && (
-                <li className="gh-empty">
-                  {overview.pulls.length
-                    ? "No pull request matches the filter."
-                    : "No open pull requests."}
-                </li>
+                      </div>
+                      <div className="gh-actions">
+                        <button
+                          className="button secondary"
+                          disabled={!!starting}
+                          onClick={() => void startTask(issue.number)}
+                        >
+                          {starting === issue.number
+                            ? "Reading…"
+                            : "Start task"}
+                        </button>
+                        <button
+                          className="icon-button"
+                          aria-label={`Open issue #${issue.number} on GitHub`}
+                          title="Open on GitHub"
+                          onClick={() => void open(issue.url)}
+                        >
+                          <Icon name="external" size={15} />
+                        </button>
+                      </div>
+                    </li>
+                  ))}
+                  {!issues.length && (
+                    <li className="gh-empty">
+                      {overview.issues.length
+                        ? "No issue matches the filter."
+                        : "No open issues."}
+                    </li>
+                  )}
+                </ul>
               )}
-            </ul>
-          )}
+              {tab === "pulls" && (
+                <ul
+                  className="gh-list"
+                  aria-label="Open pull requests"
+                  onKeyDown={moveIn}
+                >
+                  {pulls.map((pull) => {
+                    const review = reviewWords[pull.review];
+                    return (
+                      <li
+                        key={pull.number}
+                        className={selected === pull.number ? "selected" : ""}
+                      >
+                        <span className="gh-number">#{pull.number}</span>
+                        <div className="gh-main">
+                          <button
+                            className="gh-title"
+                            aria-pressed={selected === pull.number}
+                            onClick={() => setSelected(pull.number)}
+                          >
+                            {pull.title}
+                          </button>
+                          <span className="gh-meta">
+                            {pull.isDraft && (
+                              <span className="chip outline">Draft</span>
+                            )}
+                            <Checks pull={pull} />
+                            {review && (
+                              <span className={`gh-state ${review.tone}`}>
+                                {review.text}
+                              </span>
+                            )}
+                            <code title={pull.branch}>{pull.branch}</code>
+                            <span>
+                              {pull.author} · updated {age(pull.updatedAt)}
+                            </span>
+                          </span>
+                        </div>
+                        <div className="gh-actions">
+                          <button
+                            className="icon-button"
+                            aria-label={`Open pull request #${pull.number} on GitHub`}
+                            title="Open on GitHub"
+                            onClick={() => void open(pull.url)}
+                          >
+                            <Icon name="external" size={15} />
+                          </button>
+                        </div>
+                      </li>
+                    );
+                  })}
+                  {!pulls.length && (
+                    <li className="gh-empty">
+                      {overview.pulls.length
+                        ? "No pull request matches the filter."
+                        : "No open pull requests."}
+                    </li>
+                  )}
+                </ul>
+              )}
+            </div>
+            {selected ? (
+              <GitHubDetail
+                key={`${tab}-${selected}`}
+                project={chosen}
+                kind={tab === "issues" ? "issue" : "pull"}
+                number={selected}
+                starting={starting === selected}
+                onStartTask={(number) => void startTask(number)}
+                onOpen={(url) => void open(url)}
+              />
+            ) : (
+              <p className="gh-detail-hint">
+                Choose a title to read the{" "}
+                {tab === "issues" ? "issue" : "pull request"} here.
+              </p>
+            )}
+          </div>
           <p className="git-note">
             Read from GitHub with the GitHub CLI you are signed in to. The only
             change this page makes is an issue you create with New issue.

@@ -146,6 +146,7 @@ beforeEach(() => {
     CreateGitHubIssue: vi.fn(),
     GitHubOverview: vi.fn(),
     GitHubIssue: vi.fn(),
+    GitHubPull: vi.fn(),
     ChatModes: vi.fn().mockResolvedValue([]),
     SetChatMode: vi.fn(),
     AnswerChatOption: vi.fn(),

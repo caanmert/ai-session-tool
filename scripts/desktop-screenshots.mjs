@@ -344,6 +344,53 @@ try {
                   ],
           }),
           SetChatWebSearch: async () => {},
+          GitHubIssue: async (_project, number) => ({
+            number,
+            title: "Retrying a declined card charges twice",
+            body: "When a card is declined, checkout retries it three times. Each retry can charge the customer again.\n\n## Steps\n1. Use a card that is declined\n2. Pay\n\n## Done means\n- A decline returns at once\n- Timeouts retry with the same key",
+            url: `https://github.com/acme/checkout/issues/${number}`,
+            state: "OPEN",
+            author: "ana",
+            labels: [
+              { name: "bug", color: "d73a4a" },
+              { name: "payments", color: "0e8a16" },
+            ],
+            createdAt: new Date(Date.now() - 3 * 86_400_000).toISOString(),
+            updatedAt: new Date(Date.now() - 2 * 3_600_000).toISOString(),
+            comments: [
+              {
+                author: "bo",
+                body: "Seen twice in production this week. The second charge is refunded by hand.",
+                createdAt: new Date(Date.now() - 5 * 3_600_000).toISOString(),
+              },
+            ],
+            commentCount: 1,
+          }),
+          GitHubPull: async (_project, number) => ({
+            number,
+            title: "Make checkout retries safe",
+            body: "Retries reuse one idempotency key, so a timeout can't charge twice.\n\nCloses #42",
+            url: `https://github.com/acme/checkout/pull/${number}`,
+            state: "OPEN",
+            author: "ana",
+            labels: [],
+            createdAt: new Date(Date.now() - 86_400_000).toISOString(),
+            updatedAt: new Date(Date.now() - 3_600_000).toISOString(),
+            comments: [],
+            commentCount: 0,
+            branch: "ais/make-checkout-retries-safe",
+            base: "main",
+            isDraft: false,
+            review: "REVIEW_REQUIRED",
+            checks: [
+              { name: "test (macos-latest)", state: "passing" },
+              { name: "lint", state: "passing" },
+              { name: "desktop", state: "running" },
+            ],
+            additions: 40,
+            deletions: 2,
+            changedFiles: 3,
+          }),
           GitHubIssueForm: async () => ({
             repository: "acme/checkout",
             url: "https://github.com/acme/checkout",
@@ -367,6 +414,7 @@ try {
                 url: "https://github.com/acme/checkout/issues/42",
                 author: "ana",
                 labels: ["bug", "payments"],
+                labelColors: { bug: "d73a4a", payments: "0e8a16" },
                 updatedAt: "2026-10-04T09:00:00Z",
               },
               {
@@ -375,6 +423,7 @@ try {
                 url: "https://github.com/acme/checkout/issues/39",
                 author: "bo",
                 labels: ["documentation"],
+                labelColors: { documentation: "0075ca" },
                 updatedAt: "2026-10-02T09:00:00Z",
               },
             ],
@@ -745,8 +794,31 @@ try {
   // Issues and pull requests page.
   await page.getByRole("button", { name: "Issues & PRs" }).click();
   await page.getByRole("list", { name: "Open issues" }).waitFor();
+  // Choosing a title shows the issue in full beside the list.
+  await page
+    .getByRole("list", { name: "Open issues" })
+    .getByRole("button", { name: "Retrying a declined card charges twice" })
+    .click();
+  await page
+    .getByRole("region", { name: "Issue #42" })
+    .getByText("Seen twice in production", { exact: false })
+    .waitFor();
   await checkContrast();
   await page.screenshot({ path: `${screenshots}/desktop-issues${suffix}.png` });
+  await resize(960, 640);
+  await page.screenshot({
+    path: join(tmpdir(), `ais-issues-small${suffix}.png`),
+  });
+  const issuesLayout = await page.evaluate(() => ({
+    body: document.body.scrollWidth > innerWidth,
+    page: (() => {
+      const el = document.querySelector(".gh-page");
+      return el.scrollWidth > el.clientWidth;
+    })(),
+  }));
+  if (issuesLayout.body || issuesLayout.page)
+    throw Error(`Issues page overflow: ${JSON.stringify(issuesLayout)}`);
+  await resize(1360, 900);
   // New issue: the repository it goes to, a title, a description and labels.
   await page.getByRole("button", { name: /New issue/ }).click();
   const newIssue = page.getByRole("dialog", { name: "New issue" });
@@ -767,6 +839,14 @@ try {
   await newIssue.waitFor({ state: "detached" });
   await page.getByRole("button", { name: /Pull requests/ }).click();
   await page.getByRole("list", { name: "Open pull requests" }).waitFor();
+  await page
+    .getByRole("list", { name: "Open pull requests" })
+    .getByRole("button", { name: "Make checkout retries safe" })
+    .click();
+  await page
+    .getByRole("region", { name: "Pull request #44" })
+    .getByRole("list", { name: "Checks" })
+    .waitFor();
   await checkContrast();
   await page.screenshot({ path: `${screenshots}/desktop-pulls${suffix}.png` });
   // Usage limits page, also at the smallest window.

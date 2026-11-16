@@ -32,7 +32,13 @@ func (f *fakeGitHubLists) run(_ context.Context, _ string, args ...string) (stri
 	case "issue create":
 		return "https://github.com/me/app/issues/13", nil
 	case "issue view":
-		return `{"number":12,"title":"Retry checkout","body":"Timeouts charge twice.\n\n## Done means\n- one charge","url":"https://github.com/me/app/issues/12"}`, nil
+		return `{"number":12,"title":"Retry checkout","body":"Timeouts charge twice.\n\n## Done means\n- one charge","url":"https://github.com/me/app/issues/12","state":"OPEN","author":{"login":"ana"},
+			"labels":[{"name":"bug","color":"d73a4a"}],"createdAt":"2026-11-10T09:00:00Z","updatedAt":"2026-11-15T10:00:00Z",
+			"comments":[{"author":{"login":"bo"},"body":"Seen in production.","createdAt":"2026-11-11T09:00:00Z"}]}`, nil
+	case "pr view":
+		return `{"number":7,"title":"Add retries","body":"Closes #12","url":"https://github.com/me/app/pull/7","state":"OPEN","author":{"login":"bo"},"labels":[],"createdAt":"2026-11-14T09:00:00Z","updatedAt":"2026-11-15T11:00:00Z","comments":[],
+			"headRefName":"ais/retry","baseRefName":"main","isDraft":true,"reviewDecision":"CHANGES_REQUESTED","additions":40,"deletions":2,"changedFiles":3,
+			"statusCheckRollup":[{"__typename":"CheckRun","name":"test","status":"COMPLETED","conclusion":"SUCCESS"},{"__typename":"CheckRun","name":"lint","status":"COMPLETED","conclusion":"FAILURE"},{"__typename":"StatusContext","context":"deploy","state":"PENDING"},{"__typename":"CheckRun","name":"docs","conclusion":"SKIPPED"}]}`, nil
 	}
 	return "", errors.New("unexpected gh call: " + command)
 }
