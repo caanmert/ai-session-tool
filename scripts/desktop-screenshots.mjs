@@ -1363,6 +1363,26 @@ try {
   await page.getByText("Stop retrying permanent payment failures").waitFor();
   await checkContrast();
   await page.screenshot({ path: `${screenshots}/desktop-review${suffix}.png` });
+  // Reduced motion turns every transition off; without it they are on.
+  const motion = await page.evaluate(() => {
+    const dialogRule = [...document.styleSheets]
+      .flatMap((sheet) => [...sheet.cssRules])
+      .some((rule) => rule.cssText?.includes("motion-rise"));
+    const shown = document.querySelector(".chat-workspace:not([hidden])");
+    return {
+      defined: dialogRule,
+      off: getComputedStyle(shown).animationName === "none",
+    };
+  });
+  await page.emulateMedia({ reducedMotion: "no-preference" });
+  motion.on = await page.evaluate(
+    () =>
+      getComputedStyle(document.querySelector(".chat-workspace:not([hidden])"))
+        .animationName,
+  );
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  if (!motion.defined || !motion.off || motion.on !== "motion-fade")
+    throw Error(`Motion: ${JSON.stringify(motion)}`);
   // Two conversations side by side: the source opens beside its review.
   const sourceItem = page
     .getByRole("navigation", { name: "Open conversations" })

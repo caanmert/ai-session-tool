@@ -17,6 +17,8 @@ const contrast = process.env.AIS_CONTRAST_MODULE
   : undefined;
 try {
   const page = await browser.newPage({
+    // Transitions are off so captures and contrast checks see settled frames.
+    reducedMotion: "reduce",
     viewport: { width: 1360, height: 900 },
   });
   const errors = [];

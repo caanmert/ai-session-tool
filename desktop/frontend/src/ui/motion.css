@@ -1,0 +1,113 @@
+/* Motion. Short (200ms or less), opacity and transform only, so nothing
+   changes layout and input is never delayed. The reduced-motion rule in
+   style.css turns all of it off. */
+:root {
+  --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --motion-fast: 120ms;
+  --motion: 180ms;
+}
+
+@keyframes motion-fade {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes motion-rise {
+  from {
+    opacity: 0;
+    transform: translateY(6px) scale(0.985);
+  }
+}
+@keyframes motion-drop {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+}
+@keyframes motion-slide {
+  from {
+    opacity: 0;
+    transform: translateX(18px);
+  }
+}
+@keyframes motion-enter {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+}
+
+/* Controls ease their colours instead of switching. */
+button,
+a,
+summary,
+.session-item,
+.run-chip {
+  transition:
+    background-color var(--motion-fast) ease,
+    border-color var(--motion-fast) ease,
+    color var(--motion-fast) ease,
+    box-shadow 0.15s ease,
+    opacity var(--motion-fast) ease,
+    transform 80ms ease;
+}
+.button:active:not(:disabled) {
+  transform: scale(0.98);
+}
+
+/* Dialogs rise in over a fading backdrop. */
+dialog[open] {
+  animation: motion-rise var(--motion) var(--ease-out);
+}
+dialog[open]::backdrop {
+  animation: motion-fade var(--motion) ease;
+}
+
+/* Menus and popovers drop in from their button. */
+.popover-panel,
+.chat-suggestions,
+.mode-picker,
+.web-search-picker {
+  animation: motion-drop var(--motion-fast) var(--ease-out);
+}
+
+/* The details drawer slides in over its scrim. */
+.chat-details.drawer {
+  animation: motion-slide var(--motion) var(--ease-out);
+}
+.details-scrim {
+  animation: motion-fade var(--motion) ease;
+}
+
+/* Pages and conversations fade in when shown. Opacity only: a transform
+   here would move fixed-position menus inside them. */
+.workspace > :not(.chat-panes),
+.chat-workspace {
+  animation: motion-fade var(--motion) ease;
+}
+
+/* New messages and steps ease in; text growing inside one does not. */
+.chat-message,
+.tool-step,
+.palette-snippet {
+  animation: motion-enter var(--motion) var(--ease-out);
+}
+
+/* Opened parts fade in. */
+details[open] > :not(summary) {
+  animation: motion-fade var(--motion) ease;
+}
+
+/* Notices and confirmations. */
+.notice,
+.details-note,
+.run-result {
+  animation: motion-fade var(--motion) ease;
+}
+
+/* The global reduced-motion rule does not reach backdrops. */
+@media (prefers-reduced-motion: reduce) {
+  ::backdrop {
+    animation: none !important;
+  }
+}
