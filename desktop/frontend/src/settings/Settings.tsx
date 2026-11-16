@@ -7,6 +7,7 @@ import {
 import { AppearanceSetting, type AppearanceControl } from "../Appearance";
 import Icon from "../Icon";
 import SkillsSection from "./SkillsSection";
+import SavedPromptsSection from "./SavedPromptsSection";
 import { type Project, toolLabel, type AgentHealth, type Tool } from "../api";
 
 const install: Record<string, string> = {
@@ -25,6 +26,7 @@ const shortcuts: [string, string][] = [
   ["Enter", "Send the message"],
   ["Shift Enter", "New line in the message"],
   ["@", "Find a file in the project and add its path to the message"],
+  ["/", "Find a saved prompt or one of the agent's skills"],
   ["↑", "Recall your earlier messages (in an empty message box)"],
   ["↑ ↓", "Move through lists and open conversations"],
   ["Esc", "Close a dialog, or deny a request while its card has focus"],
@@ -162,6 +164,8 @@ export default function Settings({
       </section>
 
       <SkillsSection tools={tools} projects={projects} project={project} />
+
+      <SavedPromptsSection />
 
       <section aria-labelledby="settings-shortcuts">
         <h2 id="settings-shortcuts">Keyboard shortcuts</h2>

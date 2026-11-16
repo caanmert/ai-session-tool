@@ -32,6 +32,8 @@ type App struct {
 	openFolder func(path string) error
 	// notify posts a notification banner; replaced in tests.
 	notify func(title, body string)
+	// promptsPath holds the saved prompts; see prompts.go.
+	promptsPath string
 }
 
 func NewApp() *App {
@@ -79,6 +81,7 @@ func (a *App) startup(ctx context.Context) {
 	}
 	a.service = application.NewService(application.DefaultProviders(), indexPath, dataDir)
 	a.chats = newChats(filepath.Join(dataDir, "desktop-chats"))
+	a.promptsPath = filepath.Join(dataDir, "desktop-prompts.json")
 	a.chatError = a.chats.load()
 	a.runs = runner.New(filepath.Join(dataDir, "runs"))
 }

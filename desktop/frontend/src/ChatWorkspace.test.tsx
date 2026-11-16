@@ -303,6 +303,42 @@ describe("graphical conversations", () => {
     ).toBeNull();
     expect(backend.SendChat).not.toHaveBeenCalled();
   });
+  it("puts a saved prompt in the message box with its placeholders filled", async () => {
+    backend.AgentSkills = vi
+      .fn()
+      .mockResolvedValue({ tool: "codex", skills: [] });
+    backend.SavedPrompts = vi.fn().mockResolvedValue([
+      {
+        id: "p1",
+        name: "Write tests",
+        text: "Write tests on {branch} in {project} for {changed files}.",
+      },
+    ]);
+    backend.ChatChanges = vi.fn().mockResolvedValue({
+      available: true,
+      branch: "feat/retries",
+      files: [
+        { path: "app.txt", status: "M", added: 1, removed: 1 },
+        { path: "b.ts", status: "A", added: 3, removed: 0 },
+      ],
+      added: 4,
+      removed: 1,
+    });
+    show();
+    const box = screen.getByRole("textbox", { name: /Message/ });
+    await waitFor(() => expect(backend.ChatChanges).toHaveBeenCalled());
+    await userEvent.type(box, "/tests");
+    const list = await screen.findByRole("listbox", {
+      name: "Saved prompts and skills",
+    });
+    await userEvent.click(
+      await within(list).findByRole("option", { name: /Write tests/ }),
+    );
+    expect(box).toHaveValue(
+      "Write tests on feat/retries in /project for app.txt, b.ts.",
+    );
+    expect(backend.SendChat).not.toHaveBeenCalled();
+  });
   it("adds a skill from the / list without sending anything", async () => {
     backend.AgentSkills = vi.fn().mockResolvedValue({
       tool: "codex",
@@ -319,7 +355,9 @@ describe("graphical conversations", () => {
     show();
     const box = screen.getByRole("textbox", { name: /Message/ });
     await userEvent.type(box, "/pro");
-    const list = await screen.findByRole("listbox", { name: "Skills" });
+    const list = await screen.findByRole("listbox", {
+      name: "Saved prompts and skills",
+    });
     expect(backend.AgentSkills).toHaveBeenCalledWith(
       "codex",
       "/project",
@@ -330,16 +368,24 @@ describe("graphical conversations", () => {
     await userEvent.keyboard("{Enter}");
     // Codex names a skill with $; the backend adds it to the turn.
     expect(box).toHaveValue("$probe ");
-    expect(screen.queryByRole("listbox", { name: "Skills" })).toBeNull();
+    expect(
+      screen.queryByRole("listbox", { name: "Saved prompts and skills" }),
+    ).toBeNull();
     await userEvent.type(box, "then /zzz");
-    expect(await screen.findByText("No skill matches “zzz”.")).toBeVisible();
+    expect(
+      await screen.findByText("No saved prompt or skill matches “zzz”."),
+    ).toBeVisible();
     await userEvent.keyboard("{Escape}");
-    expect(screen.queryByText("No skill matches “zzz”.")).toBeNull();
+    expect(
+      screen.queryByText("No saved prompt or skill matches “zzz”."),
+    ).toBeNull();
     expect(backend.SendChat).not.toHaveBeenCalled();
     // A path is not a skill.
     await userEvent.clear(box);
     await userEvent.type(box, "see src/app");
-    expect(screen.queryByRole("listbox", { name: "Skills" })).toBeNull();
+    expect(
+      screen.queryByRole("listbox", { name: "Saved prompts and skills" }),
+    ).toBeNull();
   });
   it("chooses Codex's web search from the next message", async () => {
     backend.SetChatWebSearch = vi.fn(async (_id: string, mode: string) => {

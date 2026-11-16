@@ -6,7 +6,8 @@ import {
   type RefObject,
 } from "react";
 import Icon from "../Icon";
-import { api, errorText, type AgentSkill } from "../api";
+import { api, errorText, type AgentSkill, type SavedPrompt } from "../api";
+import { matchPrompts } from "./savedPrompts";
 
 const LIMIT = 60;
 
@@ -42,9 +43,14 @@ export function matchSkills(skills: AgentSkill[], query: string) {
   return [...byName, ...byText].slice(0, LIMIT);
 }
 
+type Item =
+  | { kind: "prompt"; prompt: SavedPrompt }
+  | { kind: "skill"; skill: AgentSkill };
+
 /**
- * Type "/" in the message box to find one of the agent's skills and add it
- * to the message. Nothing is sent until you send; the list starts no turn.
+ * Type "/" in the message box to find a saved prompt or one of the agent's
+ * skills. A prompt replaces what was typed with its text; a skill is added as
+ * "/name". Nothing is sent until you send; the list starts no turn.
  */
 export function useSkillPicker({
   chatId,
@@ -53,6 +59,7 @@ export function useSkillPicker({
   prompt,
   updatePrompt,
   input,
+  fill = (text) => text,
 }: {
   chatId: string;
   tool: string;
@@ -60,9 +67,12 @@ export function useSkillPicker({
   prompt: string;
   updatePrompt: (text: string) => void;
   input: RefObject<HTMLTextAreaElement | null>;
+  /** Fills a saved prompt's placeholders when it is chosen. */
+  fill?: (text: string) => string;
 }) {
   const [caret, setCaret] = useState(0);
   const [skills, setSkills] = useState<AgentSkill[]>();
+  const [saved, setSaved] = useState<SavedPrompt[]>();
   const [problem, setProblem] = useState("");
   const [index, setIndex] = useState(0);
   const [dismissed, setDismissed] = useState(-1);
@@ -91,6 +101,19 @@ export function useSkillPicker({
       active = false;
     };
   }, [wanted, tool, project]);
+  // Saved prompts are read each time the list opens, so edits in Settings show.
+  useEffect(() => {
+    if (!open) return;
+    let active = true;
+    api
+      .SavedPrompts()
+      .then((list) => active && setSaved(list || []))
+      .catch(() => active && setSaved([]));
+    return () => {
+      active = false;
+    };
+    // Once per opening of the list.
+  }, [open]);
 
   useEffect(() => {
     if (pendingCaret.current === null || !input.current) return;
@@ -99,13 +122,27 @@ export function useSkillPicker({
     pendingCaret.current = null;
   }, [prompt, input]);
 
-  const shown = open && skills ? matchSkills(skills, typed.query) : [];
+  const shown: Item[] = open
+    ? [
+        ...matchPrompts(saved || [], typed.query).map((p): Item => ({
+          kind: "prompt",
+          prompt: p,
+        })),
+        ...(skills ? matchSkills(skills, typed.query) : []).map((s): Item => ({
+          kind: "skill",
+          skill: s,
+        })),
+      ]
+    : [];
   const active = Math.min(index, Math.max(0, shown.length - 1));
 
-  function choose(skill: AgentSkill) {
+  function choose(item: Item) {
     if (!typed) return;
     const head =
-      prompt.slice(0, typed.start) + skillToken(tool, skill.name) + " ";
+      prompt.slice(0, typed.start) +
+      (item.kind === "prompt"
+        ? fill(item.prompt.text)
+        : skillToken(tool, item.skill.name) + " ");
     pendingCaret.current = head.length;
     updatePrompt(head + prompt.slice(caret).replace(/^ /, ""));
     setIndex(0);
@@ -138,39 +175,58 @@ export function useSkillPicker({
   const listId = `skills-${chatId}`;
   const popup = open ? (
     <div className="file-mentions skill-picker">
-      {shown.length ? (
-        <ul id={listId} role="listbox" aria-label="Skills">
-          {shown.map((skill, i) => (
+      {shown.length > 0 && (
+        <ul id={listId} role="listbox" aria-label="Saved prompts and skills">
+          {shown.map((item, i) => (
             // Chosen with the pointer here, or with Enter in the message box,
             // which keeps keyboard focus.
             // eslint-disable-next-line jsx-a11y/click-events-have-key-events
             <li
-              key={skill.name}
+              key={
+                item.kind === "prompt"
+                  ? `p-${item.prompt.id}`
+                  : `s-${item.skill.name}`
+              }
               id={`${listId}-${i}`}
               role="option"
               aria-selected={i === active}
-              title={skill.description}
+              title={
+                item.kind === "prompt"
+                  ? item.prompt.text
+                  : item.skill.description
+              }
               onMouseMove={() => setIndex(i)}
               onMouseDown={(e) => e.preventDefault()}
-              onClick={() => choose(skill)}
+              onClick={() => choose(item)}
             >
-              <Icon name="code" size={13} />
-              <span>
-                {skillToken(tool, skill.name)}
-                {skill.hint && <em> {skill.hint}</em>}
-              </span>
-              <small>{skill.description}</small>
+              {item.kind === "prompt" ? (
+                <>
+                  <Icon name="message" size={13} />
+                  <span className="prompt-name">{item.prompt.name}</span>
+                  <small>Saved prompt · {item.prompt.text}</small>
+                </>
+              ) : (
+                <>
+                  <Icon name="code" size={13} />
+                  <span>
+                    {skillToken(tool, item.skill.name)}
+                    {item.skill.hint && <em> {item.skill.hint}</em>}
+                  </span>
+                  <small>{item.skill.description}</small>
+                </>
+              )}
             </li>
           ))}
         </ul>
-      ) : (
+      )}
+      {(skills === undefined || !shown.length) && (
         <p role="status">
           {skills === undefined
             ? "Reading skills…"
             : problem ||
               (typed.query
-                ? `No skill matches “${typed.query}”.`
-                : "This agent has no skills in this project.")}
+                ? `No saved prompt or skill matches “${typed.query}”.`
+                : "No saved prompts, and this agent has no skills in this project.")}
         </p>
       )}
     </div>
