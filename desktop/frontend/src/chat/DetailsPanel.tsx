@@ -9,6 +9,8 @@ import {
   type ChatState,
   type ReviewSnapshot,
   type Session,
+  type ToolName,
+  toolLabel,
 } from "../api";
 import { sessionCost, sessionTokens } from "../ui/format";
 import { conversationMarkdown } from "./conversation";
@@ -167,6 +169,7 @@ export default function DetailsPanel({
   drawer,
   onRefresh,
   onClose,
+  handOff,
 }: {
   chat: ChatState;
   session?: Session;
@@ -176,6 +179,8 @@ export default function DetailsPanel({
   drawer: boolean;
   onRefresh: () => void;
   onClose: () => void;
+  /** Continue this conversation with the other agent. */
+  handOff?: { to: ToolName; blocked: string; run: () => Promise<void> };
 }) {
   const [review, setReview] = useState<string>();
   const [dialog, setDialog] = useState<
@@ -203,6 +208,7 @@ export default function DetailsPanel({
   const busy = busyChat(chat.status);
   const context = contextFill(chat.context);
   const [revealError, setRevealError] = useState("");
+  const [handingOff, setHandingOff] = useState(false);
   const [copied, setCopied] = useState("");
   useEffect(() => {
     if (!copied) return;
@@ -445,6 +451,27 @@ export default function DetailsPanel({
         >
           <Icon name="issue" size={14} /> File an issue…
         </button>
+        {handOff && (
+          <button
+            className="button secondary reveal"
+            disabled={!!handOff.blocked || handingOff}
+            title={
+              handOff.blocked ||
+              `Open a new ${toolLabel(handOff.to)} conversation with a summary of this one to edit and send`
+            }
+            onClick={() => {
+              setHandingOff(true);
+              setRevealError("");
+              handOff
+                .run()
+                .catch((e) => setRevealError(errorText(e)))
+                .finally(() => setHandingOff(false));
+            }}
+          >
+            <Icon name="message" size={14} />
+            {handingOff ? "Opening…" : `Continue with ${toolLabel(handOff.to)}`}
+          </button>
+        )}
         <button
           className="button secondary reveal"
           title="The CLAUDE.md and AGENTS.md files the agents read for this project"

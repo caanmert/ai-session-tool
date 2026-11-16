@@ -150,6 +150,12 @@ They demonstrate the layout, not output from a live model run.
   added and removed line counts. Click a file or **Review all changes** to read the
   diff. Nothing is reverted from here. A folder that is not a Git repository
   simply says so.
+- **Continue with Codex / Claude Code** (in the details panel) opens a new
+  conversation with the other agent in the same project. Its message box holds
+  a summary of this one, ready to edit: your messages, the agent's last reply
+  and the files changed but not committed. Nothing is sent until you send it.
+  The two conversations link to each other ("Continued from…" and "Continued
+  in…" under the title).
 - **Run** (in the details panel) runs a project command beside the
   conversation: the scripts in `package.json` (with the project's package
   manager), `Makefile` targets, `go test ./...` or `cargo test`, or a command
