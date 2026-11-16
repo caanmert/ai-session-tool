@@ -394,6 +394,17 @@ try {
             deletions: 2,
             changedFiles: 3,
           }),
+          SearchMessages: async () => [
+            {
+              kind: "chat",
+              chatId: "chat",
+              messageId: "a",
+              title: "Make checkout retries safe",
+              tool: "codex",
+              snippet:
+                "…an idempotency key for each \u0002checkout\u0003 attempt. The request now uses the same key…",
+            },
+          ],
           RestorePlan: async () => [
             { path: "src/retry.ts", change: "remove" },
             { path: "src/checkout.ts", change: "restore" },
@@ -795,6 +806,10 @@ try {
   const palette = page.getByRole("dialog", { name: "Search and commands" });
   await palette.waitFor();
   await page.keyboard.type("checkout");
+  // Matches inside conversations arrive after a short pause.
+  const found = palette.locator(".palette-snippet mark").first();
+  await found.waitFor();
+  await found.scrollIntoViewIfNeeded();
   await checkContrast();
   await page.screenshot({
     path: `${screenshots}/desktop-palette${suffix}.png`,
