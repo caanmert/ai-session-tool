@@ -34,6 +34,40 @@
   font-size: var(--text-sm);
   color: var(--muted);
 }
+/* The limit closest to running out; opens Usage limits. */
+.capacity-limit {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  margin-top: 6px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--muted);
+  font-size: var(--text-xs);
+  text-align: left;
+}
+.capacity-limit .usage-meter {
+  flex: 0 0 72px;
+  height: 4px;
+}
+.capacity-limit-text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.capacity-limit:hover .capacity-limit-text {
+  color: var(--text);
+  text-decoration: underline;
+}
+.capacity-limit.warning .capacity-limit-text {
+  color: var(--warning-text);
+}
+.capacity-limit.reached .capacity-limit-text {
+  color: var(--danger-text);
+}
 .capacity-state {
   display: inline-flex;
   align-items: center;
@@ -233,6 +267,20 @@
     display: flex;
     align-items: baseline;
     gap: 10px;
+  }
+  /* One compact line per agent: name, counts, bar, percent. */
+  .capacity-card small {
+    white-space: nowrap;
+  }
+  .capacity-limit {
+    flex: 1;
+    align-self: center;
+    min-width: 0;
+    width: auto;
+    margin-top: 0;
+  }
+  .capacity-limit .usage-meter {
+    flex-basis: 56px;
   }
   .board-columns {
     grid-auto-columns: 250px;
