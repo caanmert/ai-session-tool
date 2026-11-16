@@ -107,3 +107,56 @@
   font-size: var(--text-md);
   color: var(--muted);
 }
+
+/* New issue dialog */
+.issue-dialog input.field {
+  width: 100%;
+  font-size: var(--text-md);
+}
+.issue-dialog .git-field textarea {
+  min-height: 140px;
+}
+.field-error {
+  color: var(--danger-text);
+}
+.issue-labels {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  max-height: 132px;
+  margin: 0 0 12px;
+  padding: 0;
+  overflow-y: auto;
+  border: 0;
+}
+.issue-labels legend {
+  width: 100%;
+  margin-bottom: 6px;
+  font-size: var(--text-sm);
+  color: var(--muted);
+}
+.issue-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 28px;
+  padding: 0 10px 0 8px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-pill);
+  font-size: var(--text-sm);
+  cursor: pointer;
+}
+.issue-label:has(input:checked) {
+  border-color: var(--accent);
+  background: var(--surface-hover);
+  font-weight: 600;
+}
+.issue-label input {
+  margin: 0;
+}
+.issue-label i {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  box-shadow: inset 0 0 0 1px var(--border-strong);
+}

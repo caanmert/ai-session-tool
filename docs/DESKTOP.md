@@ -112,8 +112,15 @@ They demonstrate the layout, not output from a live model run.
   author; pull requests show their branch, draft state, review decision and checks
   in words. **Start task** on an issue opens New task with the issue's title, link
   and description as the task, in that project; nothing is sent until you start
-  it. The page never changes anything on GitHub. The 50 most recent of each are
-  listed.
+  it. The 50 most recent of each are listed.
+
+  **New issue…** writes an issue for the project's repository: a title, a
+  Markdown description and any of the repository's labels. It is created with
+  `gh issue create` only when you choose **Create issue** (or **⌘⏎**; Enter alone
+  never creates it), as you, so anyone who can see the repository can read it.
+  It never assigns people or adds the issue to a project. The dialog then shows
+  the new issue's number with **Open on GitHub**, and the list reloads. Creating
+  an issue is the only change this page makes on GitHub.
 - **Agents board**: every open conversation in three columns, **Needs you** first.
   A simple approval can be allowed once or denied on its card; requests with
   questions are answered in the conversation. Tasks of the four newest parallel
@@ -128,7 +135,10 @@ They demonstrate the layout, not output from a live model run.
   a known price, what the usage would cost at API list prices. That figure is an
   equivalent: a subscription is not billed this way. **Show in Finder** opens the
   project folder and **Copy as Markdown** copies the conversation without tool
-  output.
+  output. **File an issue…** opens the same New issue dialog for the
+  conversation's project, starting from its title and the agent's latest reply
+  for you to edit. Pull requests are opened from **Pull request…** under the
+  changed files.
 - **Changes** (right of a conversation; the **Changes** button or **⌘\\** hides
   and shows it, and opens it as a drawer in a narrow window; a hidden panel stays
   hidden until you show it again): the project's uncommitted files against the last commit, with

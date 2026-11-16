@@ -27,6 +27,10 @@ func (f *fakeGitHubLists) run(_ context.Context, _ string, args ...string) (stri
 	case "pr list":
 		return `[{"number":7,"title":"Add retries","url":"https://github.com/me/app/pull/7","author":{"login":"bo"},"headRefName":"ais/retry","isDraft":true,"reviewDecision":"CHANGES_REQUESTED",
 			"statusCheckRollup":[{"__typename":"CheckRun","status":"COMPLETED","conclusion":"SUCCESS"},{"__typename":"CheckRun","status":"COMPLETED","conclusion":"FAILURE"}],"updatedAt":"2026-11-15T11:00:00Z"}]`, nil
+	case "label list":
+		return `[{"name":"bug","color":"d73a4a","description":"Something isn't working"},{"name":"-flaky","color":"ededed","description":""}]`, nil
+	case "issue create":
+		return "https://github.com/me/app/issues/13", nil
 	case "issue view":
 		return `{"number":12,"title":"Retry checkout","body":"Timeouts charge twice.\n\n## Done means\n- one charge","url":"https://github.com/me/app/issues/12"}`, nil
 	}

@@ -173,3 +173,37 @@ test("an issue without a description still makes a task", () => {
     issueTask({ number: 3, title: "Fix it", url: "https://x/3", body: "  " }),
   ).toBe("Work on issue #3: Fix it\n\nhttps://x/3");
 });
+
+test("New issue creates an issue in the chosen project and reloads the list", async () => {
+  backend.GitHubIssueForm = vi.fn().mockResolvedValue({
+    repository: "me/app",
+    url: "https://github.com/me/app",
+    labels: [],
+  });
+  backend.CreateGitHubIssue = vi.fn().mockResolvedValue({
+    number: 16,
+    url: "https://github.com/me/app/issues/16",
+  });
+  render(<IssuesPage projects={projects} project="" onStartTask={vi.fn()} />);
+  await screen.findByText("Retry checkout");
+  const reads = backend.GitHubOverview.mock.calls.length;
+  await userEvent.click(screen.getByRole("button", { name: /New issue/ }));
+  const dialog = await screen.findByRole("dialog", { name: "New issue" });
+  await userEvent.type(
+    within(dialog).getByLabelText("Issue title"),
+    "Add a status page",
+  );
+  await userEvent.click(
+    within(dialog).getByRole("button", { name: /Create issue/ }),
+  );
+  expect(backend.CreateGitHubIssue).toHaveBeenCalledWith(
+    "/work/app",
+    "Add a status page",
+    "",
+    [],
+  );
+  await screen.findByRole("dialog", { name: "Issue created" });
+  await waitFor(() =>
+    expect(backend.GitHubOverview.mock.calls.length).toBeGreaterThan(reads),
+  );
+});

@@ -9,7 +9,7 @@ import {
 } from "../api";
 
 /** A modal dialog: Escape and Cancel close it, and focus starts inside. */
-function Dialog({
+export function Dialog({
   title,
   className,
   busy,
