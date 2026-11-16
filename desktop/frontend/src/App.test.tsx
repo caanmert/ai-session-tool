@@ -140,6 +140,8 @@ beforeEach(() => {
     UseComparisonSide: vi.fn(),
     RemoveComparison: vi.fn(),
     UsageLimits: vi.fn().mockResolvedValue({ agents: [] }),
+    GitHubIssueForm: vi.fn(),
+    CreateGitHubIssue: vi.fn(),
     GitHubOverview: vi.fn(),
     GitHubIssue: vi.fn(),
     ChatModes: vi.fn().mockResolvedValue([]),

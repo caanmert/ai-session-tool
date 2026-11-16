@@ -50,6 +50,17 @@ export type AnnotationChange = {
   removeTags?: string[];
 };
 export type Tool = { name: ToolName; available: boolean; path: string };
+export type GitHubLabel = { name: string; color: string; description: string };
+/** Where a new issue would go. When reason is set, none can be created. */
+export type GitHubIssueForm = {
+  reason?: string;
+  repository?: string;
+  url?: string;
+  labels: GitHubLabel[];
+  /** Labels could not be read; an issue can still be created without them. */
+  partial?: string;
+};
+export type GitHubIssueCreated = { number: number; url: string };
 export type UsageLimit = {
   label: string;
   /** "session" or "weekly", when the agent says which. */
@@ -479,6 +490,15 @@ export interface Backend {
   RemoveComparison(id: string): Promise<void>;
   /** Each agent's plan limits. A read from the last minute is reused unless refresh is set. */
   UsageLimits(refresh: boolean): Promise<UsageOverview>;
+  /** Reads where a new issue would go and its labels. Only reads. */
+  GitHubIssueForm(project: string): Promise<GitHubIssueForm>;
+  /** Creates an issue through the GitHub CLI, after the user confirms. */
+  CreateGitHubIssue(
+    project: string,
+    title: string,
+    body: string,
+    labels: string[],
+  ): Promise<GitHubIssueCreated>;
   /** A project's open issues and pull requests, read with the GitHub CLI. */
   GitHubOverview(project: string): Promise<GitHubOverview>;
   GitHubIssue(project: string, number: number): Promise<GitHubIssueDetail>;
@@ -562,6 +582,9 @@ export const api: Backend = {
   UseComparisonSide: async (id, tool) => backend().UseComparisonSide(id, tool),
   RemoveComparison: async (id) => backend().RemoveComparison(id),
   UsageLimits: async (refresh) => backend().UsageLimits(refresh),
+  GitHubIssueForm: async (project) => backend().GitHubIssueForm(project),
+  CreateGitHubIssue: async (project, title, body, labels) =>
+    backend().CreateGitHubIssue(project, title, body, labels),
   GitHubOverview: async (project) => backend().GitHubOverview(project),
   GitHubIssue: async (project, number) =>
     backend().GitHubIssue(project, number),

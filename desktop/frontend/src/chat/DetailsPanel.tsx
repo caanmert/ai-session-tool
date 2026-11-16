@@ -13,6 +13,7 @@ import { sessionCost, sessionTokens } from "../ui/format";
 import { conversationMarkdown } from "./conversation";
 import { CommitDialog, PullRequestDialog } from "./GitDialogs";
 import { busyChat } from "../shell/OpenSessions";
+import NewIssueDialog from "../github/NewIssueDialog";
 
 const usageBreakdown = (session: Session) =>
   [
@@ -36,6 +37,16 @@ const statusName: Record<string, string> = {
  * stages, commits or reverts. The list refreshes when the conversation
  * changes, at most once every two seconds.
  */
+/** A starting description for an issue: the agent's latest reply. */
+export function issueStart(chat: ChatState) {
+  for (let i = chat.messages.length - 1; i >= 0; i--) {
+    const message = chat.messages[i];
+    if (message.role === "assistant" && message.kind === "text" && message.text)
+      return message.text.slice(0, 8000);
+  }
+  return "";
+}
+
 export function useChanges(chat: ChatState, enabled: boolean) {
   const [summary, setSummary] = useState<ChangeSummary>();
   const [error, setError] = useState("");
@@ -163,7 +174,7 @@ export default function DetailsPanel({
   onClose: () => void;
 }) {
   const [review, setReview] = useState<string>();
-  const [dialog, setDialog] = useState<"commit" | "pr">();
+  const [dialog, setDialog] = useState<"commit" | "pr" | "issue">();
   const [done, setDone] = useState("");
   const busy = busyChat(chat.status);
   const [revealError, setRevealError] = useState("");
@@ -375,6 +386,13 @@ export default function DetailsPanel({
           <Icon name="copy" size={14} />
           {copied ? <span role="status">{copied}</span> : "Copy as Markdown"}
         </button>
+        <button
+          className="button secondary reveal"
+          title="Write a GitHub issue, starting from this conversation"
+          onClick={() => setDialog("issue")}
+        >
+          <Icon name="issue" size={14} /> File an issue…
+        </button>
         {revealError && (
           <p className="details-note error" role="alert">
             {revealError}
@@ -401,6 +419,15 @@ export default function DetailsPanel({
             setDialog(undefined);
             onRefresh();
           }}
+        />
+      )}
+      {dialog === "issue" && (
+        <NewIssueDialog
+          project={chat.project}
+          initialTitle={chat.title}
+          initialBody={issueStart(chat)}
+          onClose={() => setDialog(undefined)}
+          onCreated={(issue) => setDone(`Created issue #${issue.number}`)}
         />
       )}
       {review !== undefined && (

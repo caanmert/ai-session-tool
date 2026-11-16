@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import Icon from "../Icon";
+import NewIssueDialog from "./NewIssueDialog";
 import {
   api,
   errorText,
@@ -75,6 +76,8 @@ export default function IssuesPage({
   const [revision, setRevision] = useState(0);
   const [updated, setUpdated] = useState("");
   const [starting, setStarting] = useState(0);
+  // The New issue dialog is open.
+  const [writing, setWriting] = useState(false);
   // Follow the project chosen in the top bar.
   useEffect(() => {
     if (project) setChosen(project);
@@ -178,6 +181,15 @@ export default function IssuesPage({
             onClick={() => void open(overview.url!)}
           >
             {overview.repository} <Icon name="external" size={13} />
+          </button>
+        )}
+        {overview?.repository && (
+          <button
+            className="button secondary"
+            title={`Write an issue and create it in ${overview.repository}`}
+            onClick={() => setWriting(true)}
+          >
+            <Icon name="plus" size={13} /> New issue…
           </button>
         )}
       </div>
@@ -313,13 +325,20 @@ export default function IssuesPage({
             </ul>
           )}
           <p className="git-note">
-            Read from GitHub with the GitHub CLI you are signed in to. This page
-            does not change anything on GitHub.
+            Read from GitHub with the GitHub CLI you are signed in to. The only
+            change this page makes is an issue you create with New issue.
             {overview.issues.length >= 50 || overview.pulls.length >= 50
               ? " Only the 50 most recent of each are listed."
               : ""}
           </p>
         </>
+      )}
+      {writing && (
+        <NewIssueDialog
+          project={chosen}
+          onClose={() => setWriting(false)}
+          onCreated={() => setRevision((n) => n + 1)}
+        />
       )}
     </div>
   );

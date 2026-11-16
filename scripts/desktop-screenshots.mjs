@@ -302,6 +302,19 @@ try {
               ],
             };
           },
+          GitHubIssueForm: async () => ({
+            repository: "acme/checkout",
+            url: "https://github.com/acme/checkout",
+            labels: [
+              {
+                name: "bug",
+                color: "d73a4a",
+                description: "Something isn't working",
+              },
+              { name: "payments", color: "0e8a16", description: "" },
+              { name: "documentation", color: "0075ca", description: "" },
+            ],
+          }),
           GitHubOverview: async () => ({
             repository: "acme/checkout",
             url: "https://github.com/acme/checkout",
@@ -659,6 +672,24 @@ try {
   await page.getByRole("list", { name: "Open issues" }).waitFor();
   await checkContrast();
   await page.screenshot({ path: `${screenshots}/desktop-issues${suffix}.png` });
+  // New issue: the repository it goes to, a title, a description and labels.
+  await page.getByRole("button", { name: /New issue/ }).click();
+  const newIssue = page.getByRole("dialog", { name: "New issue" });
+  // The title has focus at once, so typing right away is kept.
+  await page.keyboard.type("Declined cards are retried");
+  await newIssue.getByText("acme/checkout", { exact: true }).waitFor();
+  await newIssue
+    .getByLabel("Issue description")
+    .fill(
+      "A declined card is retried three times.\n\n## Done means\n- Declines return at once",
+    );
+  await newIssue.getByRole("checkbox", { name: "bug" }).check();
+  await checkContrast();
+  await page.screenshot({
+    path: `${screenshots}/desktop-new-issue${suffix}.png`,
+  });
+  await page.keyboard.press("Escape");
+  await newIssue.waitFor({ state: "detached" });
   await page.getByRole("button", { name: /Pull requests/ }).click();
   await page.getByRole("list", { name: "Open pull requests" }).waitFor();
   await checkContrast();
