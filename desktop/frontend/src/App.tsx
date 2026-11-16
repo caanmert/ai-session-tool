@@ -99,6 +99,8 @@ export default function App() {
   const [newProject, setNewProject] = useState("");
   const [newTool, setNewTool] = useState<ToolName>("codex");
   const [newMessage, setNewMessage] = useState("");
+  // Give the task to both agents, each in its own worktree, and compare.
+  const [newCompare, setNewCompare] = useState(false);
   const searchInput = useRef<HTMLInputElement>(null);
   const [showPalette, setShowPalette] = useState(false);
   const sessionRows = useRef<HTMLDivElement>(null);
@@ -558,6 +560,24 @@ export default function App() {
     setBusy(true);
     setError("");
     try {
+      if (fresh && newCompare) {
+        const started = await api.StartComparison(
+          newProject,
+          newMessage.trim(),
+        );
+        setNewMessage("");
+        setChats((items) => [
+          ...items,
+          ...started.chats.filter(
+            (chat) => !items.some((item) => item.id === chat.id),
+          ),
+        ]);
+        setActiveChat(started.chats[0]?.id || "");
+        setPage("history");
+        setShowNew(false);
+        if (started.problem) setError(started.problem);
+        return;
+      }
       const live = fresh
         ? await api.NewChat(newProject, newTool)
         : await api.ResumeChat(selected!.key);
@@ -597,10 +617,14 @@ export default function App() {
     !!snapshot?.projects.find(
       (p) => p.path === selected.project && p.available,
     );
+  const bothAgents =
+    !!snapshot && snapshot.tools.filter((t) => t.available).length >= 2;
   const canStart =
     !!newProject &&
     !!snapshot?.projects.find((p) => p.path === newProject && p.available) &&
-    !!snapshot?.tools.find((t) => t.name === newTool && t.available);
+    (newCompare
+      ? bothAgents && !!newMessage.trim()
+      : !!snapshot?.tools.find((t) => t.name === newTool && t.available));
 
   const history: HistoryProps = {
     hidden: !!activeChat || otherPage,
@@ -789,6 +813,7 @@ export default function App() {
                 .catch((e) => setError(errorText(e)));
             }}
             onState={chatChanged}
+            onClosed={(ids) => ids.forEach(chatClosed)}
           />
         ))}
         {page === "board" && (
@@ -944,10 +969,13 @@ export default function App() {
                 return (
                   <button
                     key={name}
-                    className={`agent-option ${newTool === name ? "selected" : ""}`}
+                    className={`agent-option ${!newCompare && newTool === name ? "selected" : ""}`}
                     disabled={!available || busy}
-                    aria-pressed={newTool === name}
-                    onClick={() => setNewTool(name)}
+                    aria-pressed={!newCompare && newTool === name}
+                    onClick={() => {
+                      setNewTool(name);
+                      setNewCompare(false);
+                    }}
                   >
                     <AgentMark tool={name} />
                     <span>
@@ -960,6 +988,24 @@ export default function App() {
                   </button>
                 );
               })}
+              {bothAgents && (
+                <button
+                  className={`agent-option compare ${newCompare ? "selected" : ""}`}
+                  disabled={busy}
+                  aria-pressed={newCompare}
+                  onClick={() => setNewCompare(true)}
+                >
+                  <span className="compare-marks" aria-hidden="true">
+                    <AgentMark tool="claude" dot />
+                    <AgentMark tool="codex" dot />
+                  </span>
+                  <span>
+                    <strong>Both, compared</strong>
+                    <small>Each in its own worktree</small>
+                  </span>
+                  <span className="radio-dot" />
+                </button>
+              )}
             </div>
             {snapshot?.tools.every((t) => !t.available) && (
               <p className="preview-note">
@@ -974,9 +1020,13 @@ export default function App() {
               </div>
             )}
             <p className="new-task-note">
-              {newMessage.trim()
-                ? "The agent starts working as soon as you start the task."
-                : "Leave the task empty to open the conversation and write your message there. Nothing is sent until you do."}
+              {newCompare
+                ? newMessage.trim()
+                  ? "Both agents start on this task, each in its own Git worktree and branch from the last commit. Uncommitted changes in the project are not included, and nothing reaches it until you choose a version."
+                  : "Describe the task to compare. Both agents get the same text."
+                : newMessage.trim()
+                  ? "The agent starts working as soon as you start the task."
+                  : "Leave the task empty to open the conversation and write your message there. Nothing is sent until you do."}
             </p>
             <button
               className="button accent start-session"
@@ -985,9 +1035,11 @@ export default function App() {
             >
               {busy
                 ? "Starting…"
-                : newMessage.trim()
-                  ? "Start task"
-                  : "Start in app"}
+                : newCompare
+                  ? "Start comparison"
+                  : newMessage.trim()
+                    ? "Start task"
+                    : "Start in app"}
               {!busy && newMessage.trim() && <kbd>⌘⏎</kbd>}
               <Icon name="arrow" size={17} />
             </button>

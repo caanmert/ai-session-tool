@@ -43,6 +43,7 @@ try {
       id: "chat",
       tool: "codex",
       project,
+      comparison: "cmp-demo",
       sessionId: "demo",
       sourceKey: "codex/demo",
       title: "Make checkout retries safe",
@@ -155,6 +156,76 @@ try {
       main: {
         App: {
           SetAppearance: async () => {},
+          ComparisonOverview: async () => ({
+            id: "cmp-demo",
+            project: "/projects/checkout",
+            base: "a1b2c3d4e5f6",
+            prompt: "Make checkout retries safe",
+            sides: [
+              {
+                tool: "claude",
+                chatId: "claude-side",
+                worktree: "/data/worktrees/cmp-demo/checkout-claude",
+                branch: "ais-compare/demo/claude",
+                status: "idle",
+                changes: {
+                  available: true,
+                  files: [
+                    {
+                      path: "src/checkout.ts",
+                      status: "M",
+                      added: 9,
+                      removed: 1,
+                    },
+                    {
+                      path: "src/retry.ts",
+                      status: "?",
+                      added: 31,
+                      removed: 0,
+                    },
+                  ],
+                  added: 40,
+                  removed: 1,
+                },
+              },
+              {
+                tool: "codex",
+                chatId: "chat",
+                worktree: "/data/worktrees/cmp-demo/checkout-codex",
+                branch: "ais-compare/demo/codex",
+                status: "idle",
+                changes: {
+                  available: true,
+                  files: [
+                    {
+                      path: "src/checkout.ts",
+                      status: "M",
+                      added: 7,
+                      removed: 1,
+                    },
+                  ],
+                  added: 7,
+                  removed: 1,
+                },
+              },
+            ],
+          }),
+          ComparisonDiff: async (_id, tool) => ({
+            root: "/data",
+            base: "a1b2c3d4e5f6",
+            hash: tool,
+            diff: "",
+            warnings: [],
+            files: [
+              {
+                path: "src/checkout.ts",
+                patch:
+                  tool === "claude"
+                    ? "diff --git a/src/checkout.ts b/src/checkout.ts\n@@ -1,3 +1,4 @@\n export function checkout(order) {\n-  return charge(order);\n+  const key = crypto.randomUUID();\n+  return retry(() => charge(order, { key }), 3);\n }\n"
+                    : "diff --git a/src/checkout.ts b/src/checkout.ts\n@@ -1,3 +1,3 @@\n export function checkout(order) {\n-  return charge(order);\n+  return withRetries(charge, order);\n }\n",
+              },
+            ],
+          }),
           GitHubOverview: async () => ({
             repository: "acme/checkout",
             url: "https://github.com/acme/checkout",
@@ -604,6 +675,21 @@ try {
   });
   await page.keyboard.press("Escape");
   await pullRequest.waitFor({ state: "detached" });
+  // Compare view: both sides and one file's two diffs.
+  await page.getByRole("button", { name: "Compare", exact: true }).click();
+  const compare = page.getByRole("dialog", { name: "Compare" });
+  await compare.getByRole("region", { name: "Codex version" }).waitFor();
+  await compare.getByRole("button", { name: "src/checkout.ts" }).click();
+  await compare
+    .getByRole("region", { name: "Codex: src/checkout.ts" })
+    .getByText("withRetries", { exact: false })
+    .waitFor();
+  await checkContrast();
+  await page.screenshot({
+    path: `${screenshots}/desktop-compare${suffix}.png`,
+  });
+  await page.keyboard.press("Escape");
+  await compare.waitFor({ state: "detached" });
   // Find in conversation: counts matches and marks them in the page.
   await page.keyboard.press("ControlOrMeta+f");
   const find = page.getByRole("textbox", { name: "Find in conversation" });

@@ -10,6 +10,7 @@ import ConfirmDialog from "./ui/ConfirmDialog";
 import { useFileMentions } from "./chat/FileMentions";
 import { conversationStatus, requestSummary } from "./chat/conversation";
 import FindBar from "./chat/FindBar";
+import CompareDialog from "./chat/CompareDialog";
 import ModePicker from "./chat/ModePicker";
 import {
   AttachedImages,
@@ -78,6 +79,8 @@ type Props = {
   onOpen: (chat: ChatState) => void;
   onSelect: (id: string) => void;
   onState: (chat: ChatState) => void;
+  /** Conversations that were closed from here, such as by removing a comparison. */
+  onClosed?: (ids: string[]) => void;
 };
 export default function ChatWorkspace({
   chat,
@@ -87,6 +90,7 @@ export default function ChatWorkspace({
   onOpen,
   onSelect,
   onState,
+  onClosed,
 }: Props) {
   const [state, setState] = useState(chat);
   const { prompt, updatePrompt, draftError, restored } = useChatDraft(chat.id);
@@ -214,6 +218,7 @@ export default function ChatWorkspace({
   const narrow = useNarrow();
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [confirmStop, setConfirmStop] = useState(false);
+  const [comparing, setComparing] = useState(false);
   const detailsToggle = useRef<HTMLButtonElement>(null);
   const showDetails = !state.review && (!narrow || detailsOpen);
   const changes = useChanges(state, active && !state.review);
@@ -366,6 +371,15 @@ export default function ChatWorkspace({
                 {!!changes.summary?.files.length && (
                   <b className="count">{changes.summary.files.length}</b>
                 )}
+              </button>
+            )}
+            {state.comparison && (
+              <button
+                className="button secondary"
+                title="See both agents' versions side by side"
+                onClick={() => setComparing(true)}
+              >
+                Compare
               </button>
             )}
             {!state.review && (
@@ -810,6 +824,17 @@ export default function ChatWorkspace({
           />
         )}
       </div>
+      {comparing && state.comparison && (
+        <CompareDialog
+          id={state.comparison}
+          onClose={() => setComparing(false)}
+          onOpenChat={(id) => {
+            setComparing(false);
+            onSelect(id);
+          }}
+          onRemoved={(ids) => onClosed?.(ids)}
+        />
+      )}
       {confirmStop && (
         <ConfirmDialog
           title={`Stop ${toolLabel(state.tool)}?`}

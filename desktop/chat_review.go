@@ -90,12 +90,18 @@ func reviewGit(ctx context.Context, dir string, args ...string) ([]byte, error) 
 	return out.Bytes(), nil
 }
 func captureReview(ctx context.Context, dir string) (ReviewSnapshot, error) {
+	return captureReviewFrom(ctx, dir, "HEAD")
+}
+
+// captureReviewFrom captures the working tree's diff against a commit,
+// including commits made on top of it.
+func captureReviewFrom(ctx context.Context, dir, from string) (ReviewSnapshot, error) {
 	raw, err := reviewGit(ctx, dir, "rev-parse", "--show-toplevel")
 	if err != nil {
 		return ReviewSnapshot{}, errors.New("review requires a Git working tree")
 	}
 	root := strings.TrimSuffix(string(raw), "\n")
-	baseBytes, err := reviewGit(ctx, root, "rev-parse", "--verify", "HEAD")
+	baseBytes, err := reviewGit(ctx, root, "rev-parse", "--verify", from+"^{commit}")
 	base := strings.TrimSpace(string(baseBytes))
 	if err != nil {
 		return ReviewSnapshot{}, errors.New("make an initial commit before reviewing working-tree changes")
