@@ -119,6 +119,12 @@ const paths = {
     </>
   ),
   chevron: <path d="m9 6 6 6-6 6" />,
+  undo: (
+    <>
+      <path d="M9 14 4 9l5-5" />
+      <path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11" />
+    </>
+  ),
   globe: (
     <>
       <circle cx="12" cy="12" r="8.5" />

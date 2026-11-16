@@ -46,6 +46,9 @@ try {
       comparison: "cmp-demo",
       // Near the window, so the amber indicator is checked for contrast.
       context: { used: 168000, window: 200000 },
+      checkpoints: [
+        { id: "p1", messageId: "u", commit: "abc", at: "", kind: "turn" },
+      ],
       sessionId: "demo",
       sourceKey: "codex/demo",
       title: "Make checkout retries safe",
@@ -391,6 +394,13 @@ try {
             deletions: 2,
             changedFiles: 3,
           }),
+          RestorePlan: async () => [
+            { path: "src/retry.ts", change: "remove" },
+            { path: "src/checkout.ts", change: "restore" },
+            { path: "test/checkout.test.ts", change: "restore" },
+          ],
+          RestoreCheckpoint: async () => [],
+          DiscardFile: async () => {},
           GitHubIssueForm: async () => ({
             repository: "acme/checkout",
             url: "https://github.com/acme/checkout",
@@ -1011,6 +1021,22 @@ try {
   await page.keyboard.press("Escape");
   await skillList.waitFor({ state: "detached" });
   await box.fill("");
+  // A turn can be undone: the files it would change are listed first.
+  const chatView = page.getByRole("region", { name: "Codex conversation" });
+  await chatView.locator(".chat-messages").evaluate((el) => (el.scrollTop = 0));
+  await chatView
+    .getByRole("button", { name: "Restore files to before this turn" })
+    .click({ force: true });
+  const restoreDialog = page.getByRole("dialog", {
+    name: "Restore files to before this turn?",
+  });
+  await restoreDialog.getByText("src/retry.ts").waitFor();
+  await checkContrast();
+  await page.screenshot({
+    path: `${screenshots}/desktop-restore${suffix}.png`,
+  });
+  await page.keyboard.press("Escape");
+  await restoreDialog.waitFor({ state: "detached" });
   // The model pill opens the model and reasoning choices.
   await page
     .getByRole("region", { name: "Codex conversation" })

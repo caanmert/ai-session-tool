@@ -107,7 +107,7 @@ describe("graphical conversations", () => {
     expect(backend.ChatDiff).not.toHaveBeenCalled();
     await userEvent.click(
       within(panel).getByRole("button", {
-        name: /Modified.*app\.txt|app\.txt/,
+        name: /^(Modified )?app\.txt/,
       }),
     );
     const dialog = await screen.findByRole("dialog", {
@@ -354,6 +354,72 @@ describe("graphical conversations", () => {
     await userEvent.keyboard("{Escape}");
     expect(pill).toHaveFocus();
     expect(pill).toHaveAttribute("aria-expanded", "false");
+  });
+  it("restores a turn only after showing which files change", async () => {
+    state.version = 2;
+    state.messages = [
+      { id: "u1", role: "user", kind: "text", text: "Add retries" },
+      { id: "a1", role: "assistant", kind: "text", text: "Done." },
+    ];
+    state.checkpoints = [
+      { id: "p1", messageId: "u1", commit: "abc", at: "", kind: "turn" },
+    ];
+    backend.RestorePlan = vi.fn().mockResolvedValue([
+      { path: "src/retry.ts", change: "remove" },
+      { path: "src/checkout.ts", change: "restore" },
+    ]);
+    backend.RestoreCheckpoint = vi.fn().mockResolvedValue([]);
+    show();
+    await userEvent.click(
+      await screen.findByRole("button", {
+        name: "Restore files to before this turn",
+      }),
+    );
+    const dialog = await screen.findByRole("dialog", {
+      name: "Restore files to before this turn?",
+    });
+    expect(backend.RestorePlan).toHaveBeenCalledWith("chat", "p1");
+    expect(await within(dialog).findByText("src/retry.ts")).toBeVisible();
+    expect(within(dialog).getByText("removed (new since)")).toBeVisible();
+    // The safe choice has focus; nothing changed yet.
+    expect(
+      within(dialog).getByRole("button", { name: "Cancel" }),
+    ).toHaveFocus();
+    expect(backend.RestoreCheckpoint).not.toHaveBeenCalled();
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: "Restore 2 files" }),
+    );
+    expect(backend.RestoreCheckpoint).toHaveBeenCalledWith("chat", "p1");
+    await waitFor(() =>
+      expect(
+        screen.queryByRole("dialog", { name: /Restore files/ }),
+      ).toBeNull(),
+    );
+  });
+  it("discards one file's changes after a confirmation", async () => {
+    backend.DiscardFile = vi.fn().mockResolvedValue(undefined);
+    show();
+    const panel = await screen.findByRole("complementary", {
+      name: "Conversation details",
+    });
+    await userEvent.click(
+      await within(panel).findByRole("button", {
+        name: "Discard changes to app.txt",
+      }),
+    );
+    const dialog = await screen.findByRole("dialog", {
+      name: "Discard changes to app.txt?",
+    });
+    expect(
+      within(dialog).getByRole("button", { name: "Keep them" }),
+    ).toHaveFocus();
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: "Discard changes" }),
+    );
+    expect(backend.DiscardFile).toHaveBeenCalledWith("chat", "app.txt");
+    expect(
+      await within(panel).findByText("Discarded the changes to app.txt"),
+    ).toBeVisible();
   });
   it("hides and shows the details panel on a wide window", async () => {
     const hidden = vi.fn();

@@ -551,3 +551,58 @@
 .context-fact.full .usage-meter i {
   background: var(--danger);
 }
+
+/* Discarding one file's changes, beside its row */
+.changed-files li {
+  display: flex;
+  align-items: stretch;
+}
+.changed-files li > button:first-child {
+  flex: 1;
+  min-width: 0;
+}
+.changed-files .discard-file {
+  justify-content: center;
+  width: 32px;
+  flex-shrink: 0;
+  padding: 0;
+  color: var(--muted);
+  opacity: 0;
+}
+.changed-files li:hover .discard-file,
+.changed-files .discard-file:focus-visible {
+  opacity: 1;
+}
+.changed-files .discard-file:disabled {
+  opacity: 0;
+}
+.restore-list {
+  max-height: 220px;
+  margin: 8px 0;
+  padding: 0;
+  overflow-y: auto;
+  list-style: none;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-control);
+}
+.restore-list li {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 5px 10px;
+  font-size: var(--text-sm);
+}
+.restore-list li + li {
+  border-top: 1px solid var(--border-subtle);
+}
+.restore-list code {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--font-mono);
+}
+.restore-list small {
+  flex-shrink: 0;
+  color: var(--muted);
+}

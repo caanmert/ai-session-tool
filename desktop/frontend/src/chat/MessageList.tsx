@@ -4,7 +4,7 @@ import AgentMark from "../AgentMark";
 import Icon from "../Icon";
 import Foldable, { useReveal } from "../ui/Foldable";
 import { describeToolStep, type ToolStepView } from "./toolStep";
-import { toolLabel, type ChatMessage } from "../api";
+import { toolLabel, type ChatMessage, type Checkpoint } from "../api";
 
 const stepStatus = (status?: string) =>
   ({
@@ -242,11 +242,18 @@ const TextMessage = memo(function TextMessage({
   tool,
   onReuse,
   imageNote,
+  checkpoint,
+  onRestore,
+  restoreDisabled,
 }: {
   message: ChatMessage;
   tool: string;
   onReuse?: (text: string) => void;
   imageNote?: string;
+  /** The files as they were at this message, to go back to. */
+  checkpoint?: Checkpoint;
+  onRestore?: (point: Checkpoint) => void;
+  restoreDisabled?: boolean;
 }) {
   const user = message.role === "user";
   const system = message.role === "system";
@@ -285,6 +292,27 @@ const TextMessage = memo(function TextMessage({
             </time>
           )}
           <span className="message-actions">
+            {checkpoint && onRestore && (
+              <button
+                className="message-copy"
+                aria-label={
+                  checkpoint.kind === "turn"
+                    ? "Restore files to before this turn"
+                    : "Undo this"
+                }
+                title={
+                  restoreDisabled
+                    ? "Wait for the response to finish to restore files"
+                    : checkpoint.kind === "turn"
+                      ? "Put the project's files back as they were before this turn. You see the list first."
+                      : "Put the files back as they were just before this. You see the list first."
+                }
+                disabled={restoreDisabled}
+                onClick={() => onRestore(checkpoint)}
+              >
+                <Icon name="undo" size={13} />
+              </button>
+            )}
             {user && onReuse && message.text && (
               <button
                 className="message-copy"
@@ -331,6 +359,8 @@ export default function MessageList({
   busy = false,
   onReuse,
   imageNote,
+  checkpoints,
+  onRestore,
 }: {
   messages: ChatMessage[];
   tool: string;
@@ -342,6 +372,9 @@ export default function MessageList({
   onReuse?: (text: string) => void;
   /** What stands in for an image, which is never loaded. */
   imageNote?: string;
+  /** Checkpoints by the message they belong to. */
+  checkpoints?: Record<string, Checkpoint>;
+  onRestore?: (point: Checkpoint) => void;
 }) {
   const items: (ChatMessage | ChatMessage[])[] = [];
   for (const message of messages) {
@@ -370,6 +403,9 @@ export default function MessageList({
         tool={tool}
         onReuse={onReuse}
         imageNote={imageNote}
+        checkpoint={checkpoints?.[item.id]}
+        onRestore={onRestore}
+        restoreDisabled={busy}
       />
     ),
   );

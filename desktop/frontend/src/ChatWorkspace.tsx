@@ -39,6 +39,8 @@ import {
   type ChatApproval,
   type Session,
   type ReviewDraft,
+  type Checkpoint,
+  type RestoreChange,
 } from "./api";
 
 export const chatBusy = (status: string) =>
@@ -288,6 +290,55 @@ export default function ChatWorkspace({
     else onDetailsHidden?.(!detailsHidden);
   }, [narrow, detailsHidden, onDetailsHidden]);
   const changes = useChanges(state, active && !state.review);
+  // Going back to a checkpoint: the files it would change are read first and
+  // shown; nothing changes until the user confirms.
+  const checkpointsByMessage = useMemo(
+    () =>
+      Object.fromEntries(
+        (state.checkpoints || []).map((point) => [point.messageId, point]),
+      ),
+    [state.checkpoints],
+  );
+  const [restoring, setRestoring] = useState<{
+    point: Checkpoint;
+    plan?: RestoreChange[];
+    error?: string;
+  }>();
+  const [restoreBusy, setRestoreBusy] = useState(false);
+  const askRestore = useCallback(
+    (point: Checkpoint) => {
+      setRestoring({ point });
+      api
+        .RestorePlan(state.id, point.id)
+        .then((plan) =>
+          setRestoring((current) =>
+            current?.point.id === point.id ? { ...current, plan } : current,
+          ),
+        )
+        .catch((e) =>
+          setRestoring((current) =>
+            current?.point.id === point.id
+              ? { ...current, error: errorText(e) }
+              : current,
+          ),
+        );
+    },
+    [state.id],
+  );
+  async function restoreNow() {
+    if (!restoring?.plan?.length) return;
+    setRestoreBusy(true);
+    try {
+      await api.RestoreCheckpoint(state.id, restoring.point.id);
+      setRestoring(undefined);
+      setRetry((n) => n + 1);
+      changes.refresh();
+    } catch (e) {
+      setRestoring((current) => current && { ...current, error: errorText(e) });
+    } finally {
+      setRestoreBusy(false);
+    }
+  }
   function closeDetails() {
     setDetailsOpen(false);
     detailsToggle.current?.focus();
@@ -590,6 +641,8 @@ export default function ChatWorkspace({
             project={state.project}
             busy={busy}
             onReuse={reuse}
+            checkpoints={checkpointsByMessage}
+            onRestore={askRestore}
             messages={earlier > 0 ? listed.slice(earlier) : listed}
           />
           {state.review?.complete && (
@@ -1026,6 +1079,56 @@ export default function ChatWorkspace({
           />
         )}
       </div>
+      {restoring && (
+        <ConfirmDialog
+          title={
+            restoring.point.kind === "turn"
+              ? "Restore files to before this turn?"
+              : "Undo this?"
+          }
+          confirmLabel={
+            restoring.plan?.length
+              ? `Restore ${restoring.plan.length} ${restoring.plan.length === 1 ? "file" : "files"}`
+              : "Restore"
+          }
+          cancelLabel="Cancel"
+          busy={restoreBusy}
+          confirmDisabled={!restoring.plan?.length}
+          onCancel={() => setRestoring(undefined)}
+          onConfirm={() => void restoreNow()}
+        >
+          {restoring.error ? (
+            <p role="alert">{restoring.error}</p>
+          ) : !restoring.plan ? (
+            <p>Reading which files would change…</p>
+          ) : !restoring.plan.length ? (
+            <p>Nothing to restore: the files are already as they were then.</p>
+          ) : (
+            <>
+              <p>These files go back to how they were:</p>
+              <ul className="restore-list">
+                {restoring.plan.slice(0, 12).map((change) => (
+                  <li key={change.path}>
+                    <code>{change.path}</code>
+                    <small>
+                      {change.change === "remove"
+                        ? "removed (new since)"
+                        : "restored"}
+                    </small>
+                  </li>
+                ))}
+              </ul>
+              {restoring.plan.length > 12 && (
+                <p>and {restoring.plan.length - 12} more.</p>
+              )}
+              <p>
+                The files as they are now are kept first, so you can undo this.
+                Nothing is committed, and staged changes stay staged.
+              </p>
+            </>
+          )}
+        </ConfirmDialog>
+      )}
       {comparing && state.comparison && (
         <CompareDialog
           id={state.comparison}

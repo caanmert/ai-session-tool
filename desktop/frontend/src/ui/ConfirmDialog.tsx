@@ -11,6 +11,7 @@ export default function ConfirmDialog({
   confirmLabel,
   cancelLabel,
   busy = false,
+  confirmDisabled = false,
   onConfirm,
   onCancel,
 }: {
@@ -19,6 +20,8 @@ export default function ConfirmDialog({
   confirmLabel: string;
   cancelLabel: string;
   busy?: boolean;
+  /** The confirm button waits, for example while what it would do is read. */
+  confirmDisabled?: boolean;
   onConfirm: () => void;
   onCancel: () => void;
 }) {
@@ -53,7 +56,11 @@ export default function ConfirmDialog({
         >
           {cancelLabel}
         </button>
-        <button className="button danger" disabled={busy} onClick={onConfirm}>
+        <button
+          className="button danger"
+          disabled={busy || confirmDisabled}
+          onClick={onConfirm}
+        >
           {confirmLabel}
         </button>
       </div>

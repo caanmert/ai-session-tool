@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import DiffViewer from "../DiffViewer";
 import Icon from "../Icon";
+import ConfirmDialog from "../ui/ConfirmDialog";
 import {
   api,
   errorText,
@@ -176,6 +177,24 @@ export default function DetailsPanel({
 }) {
   const [review, setReview] = useState<string>();
   const [dialog, setDialog] = useState<"commit" | "pr" | "issue">();
+  // The file whose changes are about to be discarded, after a confirmation.
+  const [discarding, setDiscarding] = useState("");
+  const [discardBusy, setDiscardBusy] = useState(false);
+  const [discardError, setDiscardError] = useState("");
+  async function discard() {
+    setDiscardBusy(true);
+    setDiscardError("");
+    try {
+      await api.DiscardFile(chat.id, discarding);
+      setDone(`Discarded the changes to ${discarding}`);
+      setDiscarding("");
+      onRefresh();
+    } catch (e) {
+      setDiscardError(errorText(e));
+    } finally {
+      setDiscardBusy(false);
+    }
+  }
   const [done, setDone] = useState("");
   const busy = busyChat(chat.status);
   const context = contextFill(chat.context);
@@ -281,6 +300,21 @@ export default function DetailsPanel({
                       </small>
                     )}
                   </button>
+                  {!chat.review && (
+                    <button
+                      className="discard-file"
+                      aria-label={`Discard changes to ${file.path}`}
+                      title={
+                        busy
+                          ? "Wait for the response to finish"
+                          : "Discard the uncommitted changes to this file"
+                      }
+                      disabled={busy}
+                      onClick={() => setDiscarding(file.path)}
+                    >
+                      <Icon name="undo" size={13} />
+                    </button>
+                  )}
                 </li>
               ))}
             </ul>
@@ -433,6 +467,26 @@ export default function DetailsPanel({
             onRefresh();
           }}
         />
+      )}
+      {discarding && (
+        <ConfirmDialog
+          title={`Discard changes to ${discarding}?`}
+          confirmLabel="Discard changes"
+          cancelLabel="Keep them"
+          busy={discardBusy}
+          onCancel={() => {
+            setDiscarding("");
+            setDiscardError("");
+          }}
+          onConfirm={() => void discard()}
+        >
+          <p>
+            The file goes back to the last commit; a file that is new since then
+            is removed. The current version is kept first, so you can undo this
+            from the note it leaves in the conversation.
+          </p>
+          {discardError && <p role="alert">{discardError}</p>}
+        </ConfirmDialog>
       )}
       {dialog === "issue" && (
         <NewIssueDialog

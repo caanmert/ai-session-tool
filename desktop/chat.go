@@ -68,6 +68,9 @@ type ChatState struct {
 	// WebSearch is Codex's web search for this conversation: "" for Codex's
 	// own setting, or disabled, cached or live.
 	WebSearch string `json:"webSearch,omitempty"`
+	// Checkpoints are the working tree before each turn (and before each
+	// restore), newest last, so a turn can be undone.
+	Checkpoints []Checkpoint `json:"checkpoints,omitempty"`
 	// Context is how full the model's context is after the latest response.
 	Context *ContextUsage `json:"context,omitempty"`
 	// Comparison links the two conversations of a comparison; see chat_compare.go.
@@ -549,11 +552,17 @@ func (m *chatManager) sendWith(id, text string, images []ChatImage) error {
 	if len(names) == 0 {
 		names = nil
 	}
-	c.message(ChatMessage{ID: uuid.NewString(), Role: "user", Kind: "text", Text: display, Images: names}, false)
+	userMessage := uuid.NewString()
+	c.message(ChatMessage{ID: userMessage, Role: "user", Kind: "text", Text: display, Images: names}, false)
 	m.saveOrWarn(c)
 	go func() {
 		defer close(done)
 		defer cancel()
+		// Keep the files as they are before the agent starts, so this turn
+		// can be undone. A project outside Git simply has no checkpoint.
+		if state.Review == nil {
+			_, _ = m.addCheckpoint(ctx, c, state.Project, userMessage, "turn")
+		}
 		var result string
 		execution, cleanup, err := reviewDirectory(state)
 		if err == nil {
