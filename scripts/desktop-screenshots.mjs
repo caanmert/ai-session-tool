@@ -15,6 +15,8 @@ const browser = await (engine === "webkit"
   : chromium.launch({ channel: "chrome", headless: true }));
 try {
   const page = await browser.newPage({
+    // Transitions are off so captures and contrast checks see settled frames.
+    reducedMotion: "reduce",
     viewport: { width: 1360, height: 900 },
     deviceScaleFactor: 1,
   });
@@ -139,6 +141,7 @@ try {
       ...source,
       id: "review",
       tool: "claude",
+      handedTo: undefined,
       title: "Review with Claude Code",
       settings: source.reviewerSettings,
       activeModel: "claude-demo",
@@ -1360,6 +1363,54 @@ try {
   await page.getByText("Stop retrying permanent payment failures").waitFor();
   await checkContrast();
   await page.screenshot({ path: `${screenshots}/desktop-review${suffix}.png` });
+  // Two conversations side by side: the source opens beside its review.
+  const sourceItem = page
+    .getByRole("navigation", { name: "Open conversations" })
+    .locator(".session-item", { hasText: "Make checkout retries safe" });
+  await sourceItem.hover();
+  await sourceItem
+    .getByRole("button", { name: "Open Make checkout retries safe beside" })
+    .click();
+  await page.locator(".chat-panes.split").waitFor();
+  const splitLayout = await page.evaluate(() => ({
+    panes: document.querySelectorAll(
+      ".chat-panes.split > .chat-workspace:not([hidden])",
+    ).length,
+    overflow: document.body.scrollWidth > innerWidth,
+    // The message box toolbar keeps to one row in each pane.
+    toolbars: [
+      ...document.querySelectorAll(
+        ".chat-workspace:not([hidden]) .composer-footer",
+      ),
+    ].every((row) => row.getBoundingClientRect().height < 48),
+    composers: [
+      ...document.querySelectorAll(
+        ".chat-workspace:not([hidden]) .chat-composer",
+      ),
+    ].every(
+      (composer) => composer.getBoundingClientRect().bottom <= innerHeight,
+    ),
+  }));
+  if (
+    splitLayout.panes !== 2 ||
+    splitLayout.overflow ||
+    !splitLayout.composers ||
+    !splitLayout.toolbars
+  )
+    throw Error(`Split layout: ${JSON.stringify(splitLayout)}`);
+  await checkContrast();
+  await page.screenshot({ path: `${screenshots}/desktop-split${suffix}.png` });
+  // A narrow window shows only the focused pane.
+  await resize(960, 640);
+  if ((await page.locator(".chat-workspace:not([hidden])").count()) !== 1)
+    throw Error("A narrow window must show one pane");
+  await resize(1360, 900);
+  await page
+    .locator(".chat-workspace.focused")
+    .getByRole("button", { name: "Close this pane" })
+    .click();
+  await page.locator(".chat-panes.split").waitFor({ state: "detached" });
+  await page.getByText("Stop retrying permanent payment failures").waitFor();
   await page.getByRole("button", { name: "src/checkout.ts:6" }).click();
   if ((await page.locator(".diff-line.focused").count()) !== 1)
     throw Error("Missing finding highlight");

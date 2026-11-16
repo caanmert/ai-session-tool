@@ -17,12 +17,31 @@ vi.mock("./ChatWorkspace", () => ({
   default: ({
     chat: session,
     active,
+    focused = true,
+    pane,
+    onFocusPane,
+    onClosePane,
   }: {
     chat: ChatState;
     active: boolean;
+    focused?: boolean;
+    pane?: string;
+    onFocusPane?: () => void;
+    onClosePane?: () => void;
   }) => (
-    <section hidden={!active} aria-label="Chat conversation">
+    <section
+      hidden={!active}
+      aria-label="Chat conversation"
+      data-pane={pane || ""}
+      data-focused={String(focused)}
+    >
       {session.id}
+      {pane && !focused && (
+        <button onClick={onFocusPane}>Focus {session.id}</button>
+      )}
+      {onClosePane && (
+        <button onClick={onClosePane}>Close pane {session.id}</button>
+      )}
     </section>
   ),
 }));
@@ -875,6 +894,125 @@ describe("desktop workflows", () => {
     expect(
       screen.getByRole("region", { name: "Chat conversation" }),
     ).toBeVisible();
+  });
+  describe("two conversations side by side", () => {
+    const chat = (id: string, title: string): ChatState => ({
+      ...live,
+      id,
+      title,
+      sourceKey: "",
+    });
+    const panes = () =>
+      screen
+        .getAllByRole("region", { name: "Chat conversation", hidden: true })
+        .filter((section) => !section.hidden)
+        .map(
+          (section) =>
+            `${section.firstChild?.textContent}:${section.dataset.pane || "-"}:${section.dataset.focused}`,
+        );
+    beforeEach(() => {
+      window.localStorage.clear();
+      backend.ListChats = vi
+        .fn()
+        .mockResolvedValue([
+          chat("a", "First task"),
+          chat("b", "Second task"),
+          chat("c", "Third task"),
+        ]);
+    });
+    it("opens beside, moves focus, replaces the focused pane and closes a pane", async () => {
+      render(<App />);
+      const sidebar = await screen.findByRole("navigation", {
+        name: "Open conversations",
+      });
+      await userEvent.click(
+        await within(sidebar).findByRole("button", { name: /^First task/ }),
+      );
+      expect(panes()).toEqual(["a:-:true"]);
+      await userEvent.click(
+        within(sidebar).getByRole("button", {
+          name: "Open Second task beside",
+        }),
+      );
+      expect(panes()).toEqual(["a:first:false", "b:second:true"]);
+      // Neither shown conversation offers "beside" again; the third does.
+      expect(
+        within(sidebar).queryByRole("button", {
+          name: "Open First task beside",
+        }),
+      ).toBeNull();
+      // Clicking into a pane focuses it.
+      await userEvent.click(screen.getByRole("button", { name: "Focus a" }));
+      expect(panes()).toEqual(["a:first:true", "b:second:false"]);
+      // Choosing another conversation replaces the focused pane.
+      await userEvent.click(
+        within(sidebar).getByRole("button", { name: /^Third task/ }),
+      );
+      expect(panes()).toEqual(["b:second:false", "c:first:true"]);
+      // Closing a pane leaves the other conversation, still open in the sidebar.
+      await userEvent.click(
+        screen.getByRole("button", { name: "Close pane c" }),
+      );
+      expect(panes()).toEqual(["b:-:true"]);
+      expect(
+        within(sidebar).getByRole("button", { name: /^Third task/ }),
+      ).toBeVisible();
+    });
+    it("offers the split in the palette and leaves the other side when one closes", async () => {
+      render(<App />);
+      const sidebar = await screen.findByRole("navigation", {
+        name: "Open conversations",
+      });
+      await userEvent.click(
+        await within(sidebar).findByRole("button", { name: /^First task/ }),
+      );
+      await userEvent.keyboard("{Meta>}k{/Meta}");
+      const palette = await screen.findByRole("dialog", {
+        name: "Search and commands",
+      });
+      await userEvent.type(
+        within(palette).getByRole("combobox"),
+        "beside second",
+      );
+      await userEvent.click(
+        within(palette).getByRole("option", {
+          name: /Open beside: Second task/,
+        }),
+      );
+      expect(panes()).toEqual(["a:first:false", "b:second:true"]);
+      backend.CloseChat = vi.fn().mockResolvedValue(undefined);
+      await userEvent.click(
+        within(sidebar).getByRole("button", { name: "Close Second task" }),
+      );
+      await waitFor(() => expect(panes()).toEqual(["a:-:true"]));
+    });
+    it("shows only the focused pane on a narrow window", async () => {
+      window.localStorage.setItem(
+        "ais:split:v1",
+        JSON.stringify({ first: "a", second: "b" }),
+      );
+      const original = window.matchMedia;
+      window.matchMedia = ((query: string) => ({
+        matches: query.includes("max-width"),
+        addEventListener: () => {},
+        removeEventListener: () => {},
+      })) as unknown as typeof window.matchMedia;
+      try {
+        render(<App />);
+        const sidebar = await screen.findByRole("navigation", {
+          name: "Open conversations",
+        });
+        await userEvent.click(
+          await within(sidebar).findByRole("button", { name: /^Second task/ }),
+        );
+        expect(panes()).toEqual(["b:-:true"]);
+        expect(
+          within(sidebar).queryByRole("button", { name: /beside$/ }),
+        ).toBeNull();
+      } finally {
+        window.matchMedia = original;
+      }
+    });
   });
   it("shows usage limits from the sidebar and reads them again on request", async () => {
     backend.UsageLimits = vi.fn().mockResolvedValue({

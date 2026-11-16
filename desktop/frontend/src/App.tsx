@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import RunDashboard from "./RunDashboard";
 import ChatWorkspace, { chatBusy } from "./ChatWorkspace";
+import { useNarrow } from "./ui/useNarrow";
 import SavedWorkspace from "./SavedWorkspace";
 import { useAppearance } from "./Appearance";
 import { storeDraft } from "./useChatDraft";
@@ -139,10 +140,26 @@ function AgentChoices({
   );
 }
 
+type SplitPair = { first: string; second: string };
+const isSplitPair = (value: unknown): value is SplitPair | null =>
+  value === null ||
+  (typeof value === "object" &&
+    typeof (value as SplitPair).first === "string" &&
+    typeof (value as SplitPair).second === "string");
+
 export default function App() {
   const [snapshot, setSnapshot] = useState<Snapshot>();
   const [chats, setChats] = useState<ChatState[]>([]);
   const [activeChat, setActiveChat] = useState("");
+  // Two conversations side by side. activeChat stays the focused one; split
+  // names both panes, in order. Shown on wide windows while one of them is
+  // the focused conversation.
+  const [split, setSplit] = useStored<SplitPair | null>(
+    "ais:split:v1",
+    null,
+    isSplitPair,
+  );
+  const wide = !useNarrow();
   const [project, setProject] = useState("");
   // The page behind any open conversation: History, Parallel runs or Settings.
   const [page, setPage] = useState<
@@ -172,6 +189,35 @@ export default function App() {
   );
   const showRuns = page === "runs";
   const otherPage = page !== "history";
+  // Choosing another conversation while split replaces the focused pane.
+  const lastActive = useRef(activeChat);
+  useEffect(() => {
+    const previous = lastActive.current;
+    lastActive.current = activeChat;
+    if (!split || !activeChat) return;
+    if (activeChat === split.first || activeChat === split.second) return;
+    if (previous === split.first) setSplit({ ...split, first: activeChat });
+    else if (previous === split.second)
+      setSplit({ ...split, second: activeChat });
+    // Only when the focused conversation changes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeChat]);
+  const pair =
+    split &&
+    chats.some((chat) => chat.id === split.first) &&
+    chats.some((chat) => chat.id === split.second)
+      ? split
+      : null;
+  const splitShown =
+    !!pair &&
+    wide &&
+    !otherPage &&
+    (activeChat === pair.first || activeChat === pair.second);
+  const besideChat = splitShown
+    ? activeChat === pair!.first
+      ? pair!.second
+      : pair!.first
+    : "";
   const setShowRuns = useCallback(
     (on: boolean) => setPage(on ? "runs" : "history"),
     [],
@@ -297,7 +343,30 @@ export default function App() {
   }, [chats]);
   function chatClosed(id: string) {
     setChats((items) => items.filter((item) => item.id !== id));
-    setActiveChat((current) => (current === id ? "" : current));
+    // Closing one side of a split leaves the other.
+    const other =
+      split?.first === id
+        ? split.second
+        : split?.second === id
+          ? split.first
+          : "";
+    if (other) setSplit(null);
+    setActiveChat((current) => (current === id ? other : current));
+  }
+  function openBeside(id: string) {
+    setShowRuns(false);
+    if (!activeChat || activeChat === id) {
+      setActiveChat(id);
+      return;
+    }
+    setSplit({ first: activeChat, second: id });
+    setActiveChat(id);
+  }
+  function closePane(id: string) {
+    if (!split) return;
+    const other = split.first === id ? split.second : split.first;
+    setSplit(null);
+    setActiveChat(other);
   }
   async function closeChat(id: string) {
     if (closingOperation.current) return;
@@ -535,6 +604,36 @@ export default function App() {
         icon: "folder",
         run: () => setShowLibrary(true),
       },
+      ...(wide && activeChat && !otherPage
+        ? chats
+            .filter((chat) => chat.id !== activeChat && chat.id !== besideChat)
+            .map((chat): Command => ({
+              id: `beside-${chat.id}`,
+              group: "Side by side",
+              label: `Open beside: ${chat.title || "New conversation"}`,
+              hint: `${toolLabel(chat.tool)} · ${folder(chat.project)}`,
+              icon: "columns",
+              run: () => openBeside(chat.id),
+            }))
+        : []),
+      ...(splitShown
+        ? [
+            {
+              id: "split-focus-other",
+              group: "Side by side",
+              label: "Focus the other pane",
+              icon: "columns",
+              run: () => setActiveChat(besideChat),
+            } as Command,
+            {
+              id: "split-close",
+              group: "Side by side",
+              label: "Close this pane",
+              icon: "close",
+              run: () => closePane(activeChat),
+            } as Command,
+          ]
+        : []),
       ...chats.map((chat): Command => ({
         id: `open-${chat.id}`,
         group: "Open conversations",
@@ -574,7 +673,24 @@ export default function App() {
         },
       })),
     ];
-  }, [chats, snapshot, openNew, showHistory, setShowRuns, rail, setRail]);
+    // openBeside and closePane are new each render; they read split and
+    // activeChat, which are listed.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    chats,
+    snapshot,
+    openNew,
+    showHistory,
+    setShowRuns,
+    rail,
+    setRail,
+    wide,
+    activeChat,
+    besideChat,
+    splitShown,
+    otherPage,
+    split,
+  ]);
   // Search inside conversations: the app's own conversations open at the
   // matching message; saved sessions open in History.
   const [focus, setFocus] = useState<{
@@ -917,6 +1033,8 @@ export default function App() {
           setActiveChat(id);
         }}
         onCloseChat={(id) => void closeChat(id)}
+        onBesideChat={wide && !otherPage ? openBeside : undefined}
+        besideChat={besideChat}
       />
       <main
         className={`workspace ${activeChat ? "has-chat" : ""} ${showRuns ? "has-runs" : ""}`}
@@ -1010,35 +1128,57 @@ export default function App() {
             ))}
           </details>
         )}
-        {chats.map((live) => (
-          <ChatWorkspace
-            key={live.id}
-            chat={live}
-            session={snapshot?.sessions.find(
-              (s) => s.tool === live.tool && s.id === live.sessionId,
-            )}
-            active={activeChat === live.id && !otherPage}
-            reviewerAvailable={
-              !!snapshot?.tools.some((t) => t.name !== live.tool && t.available)
-            }
-            detailsHidden={detailsHidden}
-            onDetailsHidden={setDetailsHidden}
-            onOpen={openChat}
-            onSelect={(id) => {
-              void api
-                .ReopenChat(id)
-                .then(openChat)
-                .catch((e) => setError(errorText(e)));
-            }}
-            onState={chatChanged}
-            onClosed={(ids) => ids.forEach(chatClosed)}
-            focusMessage={
-              focus?.chatId === live.id
-                ? { id: focus.id, at: focus.at }
-                : undefined
-            }
-          />
-        ))}
+        <div className={`chat-panes ${splitShown ? "split" : ""}`}>
+          {chats.map((live) => (
+            <ChatWorkspace
+              key={live.id}
+              chat={live}
+              session={snapshot?.sessions.find(
+                (s) => s.tool === live.tool && s.id === live.sessionId,
+              )}
+              active={
+                (activeChat === live.id || besideChat === live.id) && !otherPage
+              }
+              focused={activeChat === live.id}
+              pane={
+                !splitShown
+                  ? undefined
+                  : live.id === pair!.first
+                    ? "first"
+                    : live.id === pair!.second
+                      ? "second"
+                      : undefined
+              }
+              onFocusPane={() => setActiveChat(live.id)}
+              onClosePane={
+                splitShown && (live.id === activeChat || live.id === besideChat)
+                  ? () => closePane(live.id)
+                  : undefined
+              }
+              reviewerAvailable={
+                !!snapshot?.tools.some(
+                  (t) => t.name !== live.tool && t.available,
+                )
+              }
+              detailsHidden={detailsHidden}
+              onDetailsHidden={setDetailsHidden}
+              onOpen={openChat}
+              onSelect={(id) => {
+                void api
+                  .ReopenChat(id)
+                  .then(openChat)
+                  .catch((e) => setError(errorText(e)));
+              }}
+              onState={chatChanged}
+              onClosed={(ids) => ids.forEach(chatClosed)}
+              focusMessage={
+                focus?.chatId === live.id
+                  ? { id: focus.id, at: focus.at }
+                  : undefined
+              }
+            />
+          ))}
+        </div>
         {page === "board" && (
           <Board
             chats={chats}

@@ -1070,3 +1070,69 @@
 .chat-chips .chat-link:hover {
   color: var(--text);
 }
+
+/* Two conversations side by side. Without a split the wrapper adds nothing. */
+.chat-panes {
+  display: contents;
+}
+.chat-panes.split {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+}
+.chat-panes.split > .chat-workspace {
+  flex: 1 1 0;
+  min-width: 0;
+}
+.chat-workspace.pane.first {
+  order: 1;
+}
+.chat-workspace.pane.second {
+  order: 2;
+  border-left: 1px solid var(--border);
+}
+/* The focused pane: a quiet line along its top edge. */
+.chat-workspace.pane::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  right: 0;
+  left: 0;
+  z-index: 4;
+  height: 2px;
+  background: transparent;
+  pointer-events: none;
+  transition: background-color 160ms ease;
+}
+.chat-workspace.pane.focused::before {
+  background: var(--accent);
+}
+.close-pane {
+  order: 99;
+}
+
+/* A pane is about half the window: actions wrap under the title, and the
+   message box keeps to one row as in a narrow window. */
+.chat-workspace.pane .chat-header {
+  flex-wrap: wrap;
+  row-gap: 10px;
+  padding-right: 20px;
+  padding-left: 20px;
+}
+.chat-workspace.pane .chat-heading {
+  flex: 1 1 240px;
+}
+.chat-workspace.pane .chat-actions {
+  flex-wrap: wrap;
+  flex-shrink: 1;
+}
+.chat-workspace.pane .chat-composer:not(.review-footer) .composer-hint {
+  display: none;
+}
+.chat-workspace.pane .composer-footer > .button:last-child {
+  margin-left: auto;
+}
+.chat-workspace.pane .chat-composer .model-settings select {
+  max-width: 150px;
+}

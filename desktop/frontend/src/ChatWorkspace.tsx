@@ -22,6 +22,7 @@ import { useQueuedMessage } from "./chat/queuedMessage";
 import ContextMeter from "./chat/ContextMeter";
 import Popover from "./ui/Popover";
 import { revealAround } from "./ui/Foldable";
+import { useNarrow } from "./ui/useNarrow";
 import CompareDialog from "./chat/CompareDialog";
 import ModePicker from "./chat/ModePicker";
 import WebSearchPicker from "./chat/WebSearchPicker";
@@ -68,23 +69,6 @@ function Elapsed() {
 /** How many messages a conversation draws at first, and adds per request. */
 export const MESSAGE_WINDOW = 150;
 
-// True below the width where the details panel leaves the layout.
-function useNarrow() {
-  const query = "(max-width: 1199px)";
-  const [narrow, setNarrow] = useState(
-    () => window.matchMedia?.(query).matches ?? false,
-  );
-  useEffect(() => {
-    const media = window.matchMedia?.(query);
-    if (!media) return;
-    const update = () => setNarrow(media.matches);
-    update();
-    media.addEventListener("change", update);
-    return () => media.removeEventListener("change", update);
-  }, []);
-  return narrow;
-}
-
 type Props = {
   chat: ChatState;
   /** The saved session behind this conversation, once the agent has one. */
@@ -96,6 +80,14 @@ type Props = {
   onState: (chat: ChatState) => void;
   /** Conversations that were closed from here, such as by removing a comparison. */
   onClosed?: (ids: string[]) => void;
+  /** Whether this pane takes the keyboard: false for the other pane of a split. */
+  focused?: boolean;
+  /** Which side this conversation is on in a split. */
+  pane?: "first" | "second";
+  /** A split pane asks for focus when clicked or tabbed into. */
+  onFocusPane?: () => void;
+  /** Closes this pane of a split, keeping the conversation open. */
+  onClosePane?: () => void;
   /** A message to show, for example one found by search. */
   focusMessage?: { id: string; at: number };
   /** The details panel is hidden on wide windows (a remembered choice). */
@@ -114,6 +106,10 @@ export default function ChatWorkspace({
   detailsHidden = false,
   onDetailsHidden,
   focusMessage,
+  focused = true,
+  pane,
+  onFocusPane,
+  onClosePane,
 }: Props) {
   const [state, setState] = useState(chat);
   const { prompt, updatePrompt, draftError, restored } = useChatDraft(chat.id);
@@ -137,6 +133,8 @@ export default function ChatWorkspace({
   const [awayFromLatest, setAwayFromLatest] = useState(false);
   const activeRef = useRef(active);
   activeRef.current = active;
+  const focusedRef = useRef(focused);
+  focusedRef.current = focused;
   const notify = useRef(onState);
   notify.current = onState;
   const input = useRef<HTMLTextAreaElement>(null);
@@ -196,7 +194,8 @@ export default function ChatWorkspace({
     };
   }, [chat.id, retry]);
   useEffect(() => {
-    if (active && !chatBusy(state.status)) input.current?.focus();
+    if (active && focusedRef.current && !chatBusy(state.status))
+      input.current?.focus();
   }, [active]);
   useEffect(() => {
     if (following.current && messages.current)
@@ -282,7 +281,8 @@ export default function ChatWorkspace({
   const [queueNote, setQueueNote] = useState("");
   // Details sit beside the conversation on wide windows and in a drawer below
   // 1200px. Reviews have their own fixed snapshot instead.
-  const narrow = useNarrow();
+  // A pane of a split is narrow whatever the window: details open as a drawer.
+  const narrow = useNarrow() || !!pane;
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [confirmStop, setConfirmStop] = useState(false);
   const [comparing, setComparing] = useState(false);
@@ -400,7 +400,7 @@ export default function ChatWorkspace({
   // Cmd+F searches this conversation; the window has no page search of its own.
   const [finding, setFinding] = useState(false);
   useEffect(() => {
-    if (!active) return;
+    if (!active || !focused) return;
     const key = (e: KeyboardEvent) => {
       if (
         (e.metaKey || e.ctrlKey) &&
@@ -413,9 +413,9 @@ export default function ChatWorkspace({
     };
     document.addEventListener("keydown", key);
     return () => document.removeEventListener("keydown", key);
-  }, [active]);
+  }, [active, focused]);
   useEffect(() => {
-    if (!active || state.review) return;
+    if (!active || !focused || state.review) return;
     const key = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === "\\") {
         e.preventDefault();
@@ -424,7 +424,7 @@ export default function ChatWorkspace({
     };
     document.addEventListener("keydown", key);
     return () => document.removeEventListener("keydown", key);
-  }, [active, state.review, toggleDetails]);
+  }, [active, focused, state.review, toggleDetails]);
   const other = state.tool === "codex" ? "claude" : "codex";
   // Only a conversation with something asked can be handed over.
   const hasAsked = state.messages.some(
@@ -507,9 +507,11 @@ export default function ChatWorkspace({
   }
   return (
     <section
-      className="chat-workspace"
+      className={`chat-workspace ${pane ? `pane ${pane}` : ""} ${pane && focused ? "focused" : ""}`}
       hidden={!active}
       aria-label={`${toolLabel(state.tool)} conversation`}
+      onPointerDownCapture={pane && !focused ? onFocusPane : undefined}
+      onFocusCapture={pane && !focused ? onFocusPane : undefined}
     >
       <div className="chat-main">
         <header className="chat-header">
@@ -554,6 +556,16 @@ export default function ChatWorkspace({
             </div>
           </div>
           <div className="chat-actions">
+            {onClosePane && (
+              <button
+                className="icon-button close-pane"
+                aria-label="Close this pane"
+                title="Close this pane; the conversation stays open"
+                onClick={onClosePane}
+              >
+                <Icon name="close" size={14} />
+              </button>
+            )}
             {!state.review && (
               <button
                 ref={detailsToggle}

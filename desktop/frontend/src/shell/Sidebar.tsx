@@ -148,6 +148,8 @@ export default function Sidebar({
   onUsage,
   onSelectChat,
   onCloseChat,
+  onBesideChat,
+  besideChat,
 }: {
   view: "history" | "runs" | "settings" | "board" | "github" | "usage" | "chat";
   snapshot?: Snapshot;
@@ -173,6 +175,10 @@ export default function Sidebar({
   onUsage: () => void;
   onSelectChat: (id: string) => void;
   onCloseChat: (id: string) => void;
+  /** Opens a conversation beside the current one, on wide windows. */
+  onBesideChat?: (id: string) => void;
+  /** The conversation in the other pane. */
+  besideChat?: string;
 }) {
   const needsYou = chats.filter((chat) => chat.status === "waiting").length;
   const nav: Parameters<typeof NavItem>[0][] = [
@@ -352,6 +358,8 @@ export default function Sidebar({
               active={activeChat}
               onSelect={onSelectChat}
               onClose={onCloseChat}
+              onBeside={onBesideChat}
+              beside={besideChat}
               closing={closingChat}
               folded={folded}
               onFold={onFold}
