@@ -146,6 +146,28 @@ They demonstrate the layout, not output from a live model run.
   instead. Pushes are never forced, and nothing is merged. Without `gh`, on the
   default branch, or with nothing to propose, the dialog explains why.
 
+## Usage limits
+
+**Usage limits** in the sidebar shows how much of each agent's plan limits you have
+used and when each limit resets, as the agents report them for the account they are
+signed in to: the same figures as Claude Code's `/usage` and Codex's `/status`.
+
+- **Claude Code** reports the 5-hour session and the weekly limits (all models, and
+  per model where your plan has one), whether extra usage is on, and where the
+  week's usage went. It is asked with the `get_usage` request of a session started
+  with no tools, MCP servers or slash commands.
+- **Codex** reports its windows (for example weekly, or 5-hour and weekly) and any
+  free full resets you have. It is asked with the app server's
+  `account/rateLimits/read`. ais shows the free resets and never uses one.
+
+Reading limits starts no model turn and leaves no conversation behind. Under each
+agent in the sidebar, a line such as "Session 59% · Week 88%" turns amber near a
+limit and red when one is used up; it opens the page. ais reads the limits when it
+starts, every ten minutes while it is in front, when it comes back to the front after
+a while, just after a limit's reset time, and when you choose **Refresh**. A read is
+reused for a minute. If an agent can't report limits, for example when it is signed
+in with an API key or is an older version, the page says why.
+
 ## Compare two agents
 
 With both agents installed, choose **Both, compared** in New task and describe the

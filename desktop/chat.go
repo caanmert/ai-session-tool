@@ -128,6 +128,7 @@ type chatManager struct {
 	// gh runs the GitHub CLI; replaced in tests so no real request is made.
 	gh              func(ctx context.Context, dir string, args ...string) (string, error)
 	catalogs        map[string]*modelCache
+	usage           map[string]*usageCache
 	discoveryCtx    context.Context
 	cancelDiscovery context.CancelFunc
 }

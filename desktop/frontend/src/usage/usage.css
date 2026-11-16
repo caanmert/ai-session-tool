@@ -1,0 +1,112 @@
+/* Usage limits page */
+.usage-page {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 4px 28px 28px;
+}
+.usage-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+.usage-toolbar p {
+  font-size: var(--text-sm);
+  color: var(--muted);
+}
+.usage-toolbar .button svg {
+  color: var(--muted);
+}
+.usage-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 14px;
+  align-items: start;
+}
+.usage-card {
+  display: grid;
+  gap: 14px;
+  padding: 16px 18px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  background: var(--surface);
+}
+.usage-card header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.usage-card h2 {
+  flex: 1;
+  font-size: var(--text-base);
+  font-weight: 600;
+}
+.usage-limits {
+  display: grid;
+  gap: 14px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.usage-limits li {
+  display: grid;
+  gap: 6px;
+}
+.usage-limit-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: var(--text-md);
+}
+.usage-limit-head b {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.usage-limit-head b.warning {
+  color: var(--warning-text);
+}
+.usage-limit-head b.reached {
+  color: var(--danger-text);
+}
+.usage-limits small {
+  font-size: var(--text-sm);
+  color: var(--muted);
+}
+.usage-meter {
+  height: 6px;
+  border-radius: 3px;
+  background: var(--surface-hover);
+  overflow: hidden;
+}
+.usage-meter i {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--accent);
+}
+.usage-meter.warning i {
+  background: var(--warning);
+}
+.usage-meter.reached i {
+  background: var(--danger);
+}
+.usage-reason {
+  font-size: var(--text-md);
+  color: var(--muted);
+}
+.usage-extra {
+  display: grid;
+  gap: 6px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border-subtle);
+  font-size: var(--text-sm);
+  color: var(--muted);
+}
+.usage-note {
+  max-width: 72ch;
+  margin-top: 16px;
+  font-size: var(--text-sm);
+  color: var(--muted);
+}

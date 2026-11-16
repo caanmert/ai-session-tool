@@ -50,6 +50,30 @@ export type AnnotationChange = {
   removeTags?: string[];
 };
 export type Tool = { name: ToolName; available: boolean; path: string };
+export type UsageLimit = {
+  label: string;
+  /** "session" or "weekly", when the agent says which. */
+  window?: string;
+  percent: number;
+  resetsAt?: string;
+  level: "normal" | "warning" | "reached";
+};
+export type AgentUsage = {
+  tool: ToolName;
+  plan?: string;
+  limits: UsageLimit[];
+  /** The agent says ordinary usage is not allowed right now. */
+  blocked?: boolean;
+  extraUsage?: "on" | "off";
+  /** Where this week's usage went, when the agent reports it. */
+  breakdown?: { label: string; percent: number }[];
+  /** Free full resets Codex offers. Shown only; never used by ais. */
+  resetCredits?: { available: number; nextExpiry?: string };
+  /** Why no limits could be read. */
+  reason?: string;
+  readAt: string;
+};
+export type UsageOverview = { agents: AgentUsage[] };
 export type Snapshot = {
   sessions: Session[];
   projects: Project[];
@@ -451,6 +475,8 @@ export interface Backend {
   UseComparisonSide(id: string, tool: string): Promise<string[]>;
   /** Deletes both worktrees and branches, and closes both conversations. */
   RemoveComparison(id: string): Promise<void>;
+  /** Each agent's plan limits. A read from the last minute is reused unless refresh is set. */
+  UsageLimits(refresh: boolean): Promise<UsageOverview>;
   /** A project's open issues and pull requests, read with the GitHub CLI. */
   GitHubOverview(project: string): Promise<GitHubOverview>;
   GitHubIssue(project: string, number: number): Promise<GitHubIssueDetail>;
@@ -533,6 +559,7 @@ export const api: Backend = {
   ComparisonDiff: async (id, tool) => backend().ComparisonDiff(id, tool),
   UseComparisonSide: async (id, tool) => backend().UseComparisonSide(id, tool),
   RemoveComparison: async (id) => backend().RemoveComparison(id),
+  UsageLimits: async (refresh) => backend().UsageLimits(refresh),
   GitHubOverview: async (project) => backend().GitHubOverview(project),
   GitHubIssue: async (project, number) =>
     backend().GitHubIssue(project, number),

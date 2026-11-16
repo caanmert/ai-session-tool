@@ -8,6 +8,8 @@ import { lastAgent, rememberAgent } from "./shell/lastAgent";
 import Settings from "./settings/Settings";
 import Board from "./board/Board";
 import IssuesPage from "./github/IssuesPage";
+import UsagePage from "./usage/UsagePage";
+import { useUsageLimits } from "./usage/limits";
 import { basename } from "./ui/format";
 import {
   HistoryBrowser,
@@ -51,8 +53,11 @@ export default function App() {
   const [project, setProject] = useState("");
   // The page behind any open conversation: History, Parallel runs or Settings.
   const [page, setPage] = useState<
-    "history" | "runs" | "settings" | "board" | "github"
+    "history" | "runs" | "settings" | "board" | "github" | "usage"
   >("history");
+  const usage = useUsageLimits(
+    !!snapshot?.tools.some((tool) => tool.available),
+  );
   const showRuns = page === "runs";
   const otherPage = page !== "history";
   const setShowRuns = useCallback(
@@ -385,6 +390,16 @@ export default function App() {
         },
       },
       {
+        id: "usage",
+        group: "Actions",
+        label: "Usage limits",
+        icon: "gauge",
+        run: () => {
+          setActiveChat("");
+          setPage("usage");
+        },
+      },
+      {
         id: "settings",
         group: "Actions",
         label: "Settings",
@@ -693,6 +708,11 @@ export default function App() {
           setActiveChat("");
           setPage("github");
         }}
+        usage={usage.overview?.agents}
+        onUsage={() => {
+          setActiveChat("");
+          setPage("usage");
+        }}
         onNew={openNew}
         onHistory={showHistory}
         onRuns={() => {
@@ -714,28 +734,32 @@ export default function App() {
             <h1>
               {page === "settings"
                 ? "Settings"
-                : page === "github"
-                  ? "Issues and pull requests"
-                  : page === "board"
-                    ? "Agents board"
-                    : showRuns
-                      ? "Parallel runs"
-                      : project
-                        ? currentProject?.name || basename(project)
-                        : "Your conversations"}
+                : page === "usage"
+                  ? "Usage limits"
+                  : page === "github"
+                    ? "Issues and pull requests"
+                    : page === "board"
+                      ? "Agents board"
+                      : showRuns
+                        ? "Parallel runs"
+                        : project
+                          ? currentProject?.name || basename(project)
+                          : "Your conversations"}
             </h1>
             <p title={project}>
               {page === "settings"
                 ? "Appearance, agents and shortcuts for this Mac."
-                : page === "github"
-                  ? "Open issues and pull requests on GitHub. Start a task from an issue."
-                  : page === "board"
-                    ? boardSummary(chats)
-                    : showRuns
-                      ? project ||
-                        "Launch independent tasks and review their changes."
-                      : project ||
-                        "Every conversation. Every project. One place to pick up where you left off."}
+                : page === "usage"
+                  ? "How much of each agent's plan limits you have used, and when they reset."
+                  : page === "github"
+                    ? "Open issues and pull requests on GitHub. Start a task from an issue."
+                    : page === "board"
+                      ? boardSummary(chats)
+                      : showRuns
+                        ? project ||
+                          "Launch independent tasks and review their changes."
+                        : project ||
+                          "Every conversation. Every project. One place to pick up where you left off."}
             </p>
           </header>
         )}
@@ -836,6 +860,15 @@ export default function App() {
             projects={snapshot?.projects || []}
             project={project}
             onStartTask={startTaskFrom}
+          />
+        )}
+        {page === "usage" && (
+          <UsagePage
+            agents={usage.overview?.agents}
+            tools={snapshot?.tools || []}
+            loading={usage.loading}
+            error={usage.error}
+            onRefresh={() => void usage.refresh(true)}
           />
         )}
         {page === "settings" && (

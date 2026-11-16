@@ -87,10 +87,15 @@ func (m *chatManager) models(ctx context.Context, tool, project string, refresh 
 	cached.expires = time.Now().Add(5 * time.Minute)
 	return catalog, nil
 }
+
+// claudeQueryArgs start a Claude Code session that only answers control
+// requests: no tools, no MCP servers and no slash commands. No turn is sent.
+var claudeQueryArgs = []string{"-p", "--input-format", "stream-json", "--output-format", "stream-json", "--verbose", "--tools", "", "--strict-mcp-config", "--mcp-config", `{"mcpServers":{}}`, "--disable-slash-commands"}
+
 func (m *chatManager) discoverModels(ctx context.Context, tool, project string) (ModelCatalog, error) {
 	args := []string{"app-server", "--listen", "stdio://"}
 	if tool == "claude" {
-		args = []string{"-p", "--input-format", "stream-json", "--output-format", "stream-json", "--verbose", "--tools", "", "--strict-mcp-config", "--mcp-config", `{"mcpServers":{}}`, "--disable-slash-commands"}
+		args = claudeQueryArgs
 	}
 	cmd := m.command(tool, args...)
 	cmd.Dir = project

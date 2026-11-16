@@ -187,6 +187,33 @@ kbd {
 .agent-row small.missing {
   color: var(--danger-text);
 }
+/* Session and weekly use under an agent; opens Usage limits. */
+.agent-limit {
+  display: block;
+  width: calc(100% - 28px);
+  margin: -6px 0 4px 28px;
+  padding: 1px 0;
+  border: 0;
+  background: none;
+  text-align: left;
+  font-size: var(--text-xs);
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.agent-limit:hover {
+  color: var(--text);
+}
+.agent-limit .warning {
+  color: var(--warning-text);
+}
+.agent-limit .reached {
+  color: var(--danger-text);
+}
+.agent-limit .sep {
+  color: var(--muted);
+}
 
 /* A bare agent dot inside a line of text. */
 .agent-dot.claude,

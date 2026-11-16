@@ -139,6 +139,7 @@ beforeEach(() => {
     ComparisonDiff: vi.fn(),
     UseComparisonSide: vi.fn(),
     RemoveComparison: vi.fn(),
+    UsageLimits: vi.fn().mockResolvedValue({ agents: [] }),
     GitHubOverview: vi.fn(),
     GitHubIssue: vi.fn(),
     ChatModes: vi.fn().mockResolvedValue([]),
@@ -824,6 +825,42 @@ describe("desktop workflows", () => {
     expect(
       screen.getByRole("region", { name: "Chat conversation" }),
     ).toBeVisible();
+  });
+  it("shows usage limits from the sidebar and reads them again on request", async () => {
+    backend.UsageLimits = vi.fn().mockResolvedValue({
+      agents: [
+        {
+          tool: "claude",
+          plan: "Pro",
+          limits: [
+            {
+              label: "5-hour session",
+              window: "session",
+              percent: 40,
+              resetsAt: new Date(Date.now() + 3_600_000).toISOString(),
+              level: "normal",
+            },
+          ],
+          readAt: new Date().toISOString(),
+        },
+      ],
+    });
+    render(<App />);
+    await screen.findByRole("heading", { name: "Retry webhook delivery" });
+    expect(backend.UsageLimits).toHaveBeenCalledWith(false);
+    await userEvent.click(
+      await screen.findByRole("button", {
+        name: "Claude Code: Session 40%. Open usage limits",
+      }),
+    );
+    expect(
+      screen.getByRole("heading", { name: "Usage limits", level: 1 }),
+    ).toBeVisible();
+    expect(
+      screen.getByRole("meter", { name: "Claude Code: 5-hour session" }),
+    ).toHaveAttribute("aria-valuenow", "40");
+    await userEvent.click(screen.getByRole("button", { name: "Refresh" }));
+    expect(backend.UsageLimits).toHaveBeenLastCalledWith(true);
   });
   it("opens saved desktop work without starting or resuming a provider", async () => {
     backend.ListSavedChats = vi.fn().mockResolvedValue([
