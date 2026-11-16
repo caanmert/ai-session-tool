@@ -150,6 +150,12 @@ beforeEach(() => {
     RestorePlan: vi.fn(),
     SearchMessages: vi.fn().mockResolvedValue([]),
     ProjectInstructions: vi.fn(),
+    ProjectCommands: vi.fn().mockResolvedValue([]),
+    StartProjectCommand: vi.fn(),
+    ProjectRun: vi
+      .fn()
+      .mockRejectedValue(new Error("nothing has run here yet")),
+    StopProjectCommand: vi.fn(),
     ReadInstruction: vi.fn(),
     WriteInstruction: vi.fn(),
     RevealInstruction: vi.fn(),
