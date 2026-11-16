@@ -126,8 +126,9 @@ They demonstrate the layout, not output from a live model run.
   equivalent: a subscription is not billed this way. **Show in Finder** opens the
   project folder and **Copy as Markdown** copies the conversation without tool
   output.
-- **Changes** (right of a conversation, or the **Changes** button and **⌘\\** in
-  a narrow window): the project's uncommitted files against the last commit, with
+- **Changes** (right of a conversation; the **Changes** button or **⌘\\** hides
+  and shows it, and opens it as a drawer in a narrow window; a hidden panel stays
+  hidden until you show it again): the project's uncommitted files against the last commit, with
   added and removed line counts. Click a file or **Review all changes** to read the
   diff. Nothing is reverted from here. A folder that is not a Git repository
   simply says so.
@@ -249,6 +250,14 @@ dialogs. History refreshes when a response finishes; the refresh button rescans
 manually. **⌘1**–**⌘9** switch to an open conversation by its place in the
 sidebar, **⌘F** finds text in the open conversation, and **⌘,** opens Settings,
 which lists all shortcuts.
+
+**⌘B**, or the button left of the project picker, narrows the sidebar to icons:
+every page, each agent and each open conversation stay one click away, with their
+names in tooltips, and a count of conversations that need you stays on the
+Agents board icon. The **Agents** section and each project's group of open
+conversations fold with their headings. A folded group still shows the
+conversation that is open, and says how many it holds and how many need you. The
+app remembers these choices on this Mac.
 
 Sidebar rows show conversation titles, the agent, and working, waiting or error
 states in words. **↑/↓**, **Home**, and **End** move between open conversations

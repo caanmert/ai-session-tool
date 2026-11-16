@@ -8,6 +8,8 @@ export default function TopBar({
   onProject,
   onAddProject,
   onSearch,
+  rail = false,
+  onToggleSidebar,
 }: {
   snapshot?: Snapshot;
   project: string;
@@ -15,14 +17,33 @@ export default function TopBar({
   onProject: (path: string) => void;
   onAddProject: () => void;
   onSearch: () => void;
+  /** The sidebar is narrowed to icons. */
+  rail?: boolean;
+  onToggleSidebar?: () => void;
 }) {
   return (
     <header className="top-bar">
       <div className="top-brand">
-        <span className="brand-symbol" aria-hidden="true">
-          <Icon name="terminal" size={15} />
-        </span>
-        <strong>ais</strong>
+        {!rail && (
+          <>
+            <span className="brand-symbol" aria-hidden="true">
+              <Icon name="terminal" size={15} />
+            </span>
+            <strong>ais</strong>
+          </>
+        )}
+        {onToggleSidebar && (
+          <button
+            className="icon-button sidebar-toggle"
+            aria-label={rail ? "Expand sidebar" : "Narrow sidebar"}
+            aria-controls="app-sidebar"
+            aria-expanded={!rail}
+            title={`${rail ? "Expand" : "Narrow"} the sidebar (⌘B)`}
+            onClick={onToggleSidebar}
+          >
+            <Icon name="sidebar" size={17} />
+          </button>
+        )}
       </div>
       <div className="project-switcher">
         <Icon name="folder" size={15} />

@@ -666,7 +666,47 @@ try {
   });
   if (Object.values(usageOverflow).some(Boolean))
     throw Error(`Usage limits overflow: ${JSON.stringify(usageOverflow)}`);
+  // The narrow sidebar keeps every page reachable at the smallest window.
+  await page.keyboard.press("ControlOrMeta+b");
+  await page.locator(".sidebar.rail").waitFor();
+  await checkContrast();
+  await page.screenshot({
+    path: join(tmpdir(), `ais-rail-small${suffix}.png`),
+  });
+  const railLayout = await page.evaluate(() => {
+    const sidebar = document.querySelector(".sidebar.rail");
+    const edge = sidebar.getBoundingClientRect();
+    const buttons = [...sidebar.querySelectorAll("button")];
+    return {
+      width: edge.width,
+      body: document.body.scrollWidth > innerWidth,
+      clipped: buttons.some((button) => {
+        const box = button.getBoundingClientRect();
+        return box.left < edge.left || box.right > edge.right;
+      }),
+      pages: sidebar.querySelectorAll(".sidebar-nav button").length,
+      conversations: sidebar.querySelectorAll(".rail-session").length,
+    };
+  });
+  if (
+    railLayout.width > 60 ||
+    railLayout.body ||
+    railLayout.clipped ||
+    railLayout.pages !== 7 ||
+    railLayout.conversations < 1
+  )
+    throw Error(`Narrow sidebar layout: ${JSON.stringify(railLayout)}`);
+  await page.getByRole("button", { name: "Expand sidebar" }).click();
+  await page.locator(".sidebar.rail").waitFor({ state: "detached" });
   await resize(1360, 900);
+  // Folded sections say what they hold.
+  await page.getByRole("button", { name: "Agents", exact: true }).click();
+  await page.getByRole("button", { name: "checkout", exact: true }).click();
+  await page.getByRole("button", { name: /^checkout, folded, 1/ }).waitFor();
+  await checkContrast();
+  await page.screenshot({ path: `${screenshots}/desktop-folded${suffix}.png` });
+  await page.getByRole("button", { name: /^Agents, folded/ }).click();
+  await page.getByRole("button", { name: /^checkout, folded/ }).click();
   await page.getByRole("button", { name: /^History/ }).click();
   // New task dialog: the task box has focus and fits the window.
   await page.getByRole("button", { name: /New task/ }).click();
@@ -720,6 +760,17 @@ try {
   await page.getByRole("group", { name: "Changed lines" }).waitFor();
   await checkContrast();
   await page.screenshot({ path: `${screenshots}/desktop-chat${suffix}.png` });
+  // The details panel can be hidden on a wide window too.
+  const details = page.getByRole("complementary", {
+    name: "Conversation details",
+  });
+  await page.keyboard.press("ControlOrMeta+Backslash");
+  await details.waitFor({ state: "detached" });
+  await page.screenshot({
+    path: join(tmpdir(), `ais-chat-no-details${suffix}.png`),
+  });
+  await page.keyboard.press("ControlOrMeta+Backslash");
+  await details.waitFor();
   // Attach an image through the file input: it shows as a removable chip.
   await page.getByLabel("Choose images to attach").setInputFiles({
     name: "checkout-error.png",

@@ -118,6 +118,13 @@ const paths = {
       <path d="m12 17 4-5" />
     </>
   ),
+  chevron: <path d="m9 6 6 6-6 6" />,
+  sidebar: (
+    <>
+      <rect x="3" y="4" width="18" height="16" rx="2.5" />
+      <path d="M9 4v16" />
+    </>
+  ),
   filter: <path d="M4 5h16l-6 7v6l-4 2v-8L4 5Z" />,
   image: (
     <>
