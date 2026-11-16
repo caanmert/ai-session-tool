@@ -3,6 +3,12 @@ import AgentMark from "../AgentMark";
 import Icon, { type IconName } from "../Icon";
 import { requestSummary } from "../chat/conversation";
 import {
+  runTaskColumn,
+  runTaskState,
+  useRunTasks,
+  type BoardRunTask,
+} from "./runTasks";
+import {
   api,
   errorText,
   toolLabel,
@@ -20,7 +26,65 @@ type Column = {
   icon: IconName;
   empty: string;
   chats: ChatState[];
+  runs: BoardRunTask[];
 };
+
+/** A task of a parallel run. Its process state and whether it wants attention
+ * are shown as two separate chips, never merged into one label. */
+function RunTaskCard({
+  task,
+  onOpen,
+}: {
+  task: BoardRunTask;
+  onOpen: (run: string, window: string) => void;
+}) {
+  const { run, status } = task;
+  const files = status.files.length;
+  return (
+    <article
+      className={`task-card run ${status.error ? "error" : ""}`}
+      aria-label={`${status.task.prompt}, parallel run task`}
+    >
+      <header>
+        <span className={`task-agent ${run.tool}`}>
+          <AgentMark tool={run.tool} dot />
+          {toolLabel(run.tool)} · run
+        </span>
+        <span title={run.repository}>{projectName(run.repository)}</span>
+      </header>
+      <h3>
+        <button onClick={() => onOpen(run.id, status.task.window)}>
+          {status.task.prompt}
+        </button>
+      </h3>
+      <p className="task-chips">
+        <span className="chip outline">{runTaskState(status)}</span>
+        {status.attention && (
+          <span className="chip status waiting">
+            <Icon name="alert" size={12} /> Agent event
+          </span>
+        )}
+        {status.quiet && (
+          <span className="chip status waiting">
+            <Icon name="alert" size={12} /> Gone quiet
+          </span>
+        )}
+      </p>
+      {status.error ? (
+        <p className="task-problem">
+          <Icon name="alert" size={13} />
+          {status.error}
+        </p>
+      ) : (
+        <p className="task-note">
+          {files
+            ? `${files} changed ${files === 1 ? "file" : "files"} to review`
+            : "No changed files yet"}
+        </p>
+      )}
+    </article>
+  );
+}
 
 /** Approve or deny in place. Requests with questions are answered in the
  * conversation, where the full context is visible. */
@@ -161,11 +225,17 @@ export default function Board({
   chats,
   tools,
   onOpen,
+  onOpenRun,
 }: {
   chats: ChatState[];
   tools: Tool[];
   onOpen: (id: string) => void;
+  /** Open a task of a parallel run on the Parallel runs page. */
+  onOpenRun: (run: string, window: string) => void;
 }) {
+  const runs = useRunTasks(true);
+  const inColumn = (column: string) =>
+    runs.tasks.filter((task) => runTaskColumn(task.status) === column);
   const columns: Column[] = [
     {
       id: "needs",
@@ -173,6 +243,7 @@ export default function Board({
       icon: "alert",
       empty: "Nothing is waiting for you.",
       chats: chats.filter((c) => c.status === "waiting"),
+      runs: inColumn("needs"),
     },
     {
       id: "working",
@@ -182,6 +253,7 @@ export default function Board({
       chats: chats.filter(
         (c) => c.status === "running" || c.status === "stopping",
       ),
+      runs: inColumn("working"),
     },
     {
       id: "ready",
@@ -191,6 +263,7 @@ export default function Board({
       chats: chats.filter((c) =>
         ["idle", "stopped", "error"].includes(c.status),
       ),
+      runs: inColumn("ready"),
     },
   ];
   return (
@@ -224,6 +297,11 @@ export default function Board({
           );
         })}
       </div>
+      {runs.error && (
+        <p className="board-note" role="status">
+          Some parallel runs could not be read: {runs.error}
+        </p>
+      )}
       {/* Columns keep their width and scroll sideways in a narrow window, so
           the region must be focusable to scroll it from the keyboard. */}
       <div
@@ -238,12 +316,19 @@ export default function Board({
             <h2 id={`board-${column.id}`} className={column.id}>
               <Icon name={column.icon} size={15} />
               {column.title}
-              <span>{column.chats.length}</span>
+              <span>{column.chats.length + column.runs.length}</span>
             </h2>
             {column.chats.map((chat) => (
               <TaskCard key={chat.id} chat={chat} onOpen={onOpen} />
             ))}
-            {!column.chats.length && (
+            {column.runs.map((task) => (
+              <RunTaskCard
+                key={`${task.run.id}/${task.status.task.window}`}
+                task={task}
+                onOpen={onOpenRun}
+              />
+            ))}
+            {!column.chats.length && !column.runs.length && (
               <p className="board-empty">{column.empty}</p>
             )}
           </section>

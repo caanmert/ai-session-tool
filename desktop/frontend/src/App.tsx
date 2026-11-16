@@ -70,6 +70,12 @@ export default function App() {
     (on: boolean) => setPage(on ? "runs" : "history"),
     [],
   );
+  // The run task to show when the Parallel runs page is opened from the board.
+  const [runFocus, setRunFocus] = useState<{
+    run: string;
+    task: string;
+    at: number;
+  }>();
   const appearance = useAppearance();
   // Whether each installed agent still accepts what ais sends it. Checked at
   // startup and on request; it never contacts a model.
@@ -837,6 +843,11 @@ export default function App() {
               setPage("history");
               setActiveChat(id);
             }}
+            onOpenRun={(run, task) => {
+              setRunFocus({ run, task, at: Date.now() });
+              setActiveChat("");
+              setPage("runs");
+            }}
           />
         )}
         {page === "settings" && (
@@ -853,6 +864,8 @@ export default function App() {
         )}
         {showRuns && (
           <RunDashboard
+            key={runFocus?.at || 0}
+            focus={runFocus}
             project={project}
             projects={snapshot?.projects || []}
             tools={snapshot?.tools || []}

@@ -155,6 +155,63 @@ try {
       main: {
         App: {
           SetAppearance: async () => {},
+          ListRuns: async () => [
+            {
+              id: "ais-demo",
+              tool: "claude",
+              repository: "/projects/checkout",
+              base: "a1b2c3d4e5f6",
+              createdAt: "2026-11-14T08:30:00Z",
+              notifications: true,
+              tasks: [],
+            },
+          ],
+          RunStatus: async () => ({
+            id: "ais-demo",
+            base: "a1b2c3d4e5f6",
+            tasks: [
+              {
+                task: {
+                  window: "task-1",
+                  prompt: "Bound checkout retries and keep the request key",
+                  branch: "ais-demo/task-1",
+                  path: "/work/checkout/task-1",
+                },
+                state: "running",
+                attention: true,
+                quiet: false,
+                files: [{ status: "M", path: "src/checkout.ts" }],
+              },
+              {
+                task: {
+                  window: "task-2",
+                  prompt: "Test permanent payment failures",
+                  branch: "ais-demo/task-2",
+                  path: "/work/checkout/task-2",
+                },
+                state: "running",
+                attention: false,
+                quiet: false,
+                files: [],
+              },
+              {
+                task: {
+                  window: "task-3",
+                  prompt: "Document the retry contract",
+                  branch: "ais-demo/task-3",
+                  path: "/work/checkout/task-3",
+                },
+                state: "exited",
+                exitCode: 0,
+                attention: false,
+                quiet: false,
+                files: [
+                  { status: "M", path: "README.md" },
+                  { status: "A", path: "docs/retries.md" },
+                ],
+              },
+            ],
+          }),
           ChatModes: async () => [
             {
               id: "plan",

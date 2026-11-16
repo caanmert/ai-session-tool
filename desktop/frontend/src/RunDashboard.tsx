@@ -12,12 +12,24 @@ import {
 import DiffViewer from "./DiffViewer";
 import "./runs.css";
 
-type Props = { project: string; projects: Project[]; tools: Tool[] };
-export default function RunDashboard({ project, projects, tools }: Props) {
+type Props = {
+  project: string;
+  projects: Project[];
+  tools: Tool[];
+  /** A run task to show first, when arriving from the board. */
+  focus?: { run: string; task: string };
+};
+export default function RunDashboard({
+  project,
+  projects,
+  tools,
+  focus,
+}: Props) {
   const [runs, setRuns] = useState<Run[]>([]);
-  const [scope, setScope] = useState(project);
-  const [runId, setRunId] = useState("");
-  const [task, setTask] = useState("");
+  // A focused run may belong to another project, so show all projects for it.
+  const [scope, setScope] = useState(focus ? "" : project);
+  const [runId, setRunId] = useState(focus?.run || "");
+  const [task, setTask] = useState(focus?.task || "");
   const [file, setFile] = useState("");
   const [status, setStatus] = useState<RunStatus>();
   const [patch, setPatch] = useState<RunPatch & { context: string }>();

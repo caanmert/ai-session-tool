@@ -57,6 +57,12 @@
   font-weight: 500;
   white-space: nowrap;
 }
+/* Process state: outlined, so it never reads as a call for attention. */
+.chip.outline {
+  border: 1px solid var(--border-strong);
+  background: transparent;
+  color: var(--muted);
+}
 .chip.agent.claude {
   background: var(--agent-claude-soft);
   color: var(--agent-claude-text);
