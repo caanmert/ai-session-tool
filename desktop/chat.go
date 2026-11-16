@@ -65,6 +65,8 @@ type ChatState struct {
 	Settings         ModelSettings `json:"settings"`
 	ReviewerSettings ModelSettings `json:"reviewerSettings"`
 	ActiveModel      string        `json:"activeModel"`
+	// Context is how full the model's context is after the latest response.
+	Context *ContextUsage `json:"context,omitempty"`
 	// Comparison links the two conversations of a comparison; see chat_compare.go.
 	Comparison string `json:"comparison,omitempty"`
 	// Mode is the permission mode for the next message; see chat_modes.go.

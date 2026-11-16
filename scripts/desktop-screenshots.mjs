@@ -44,6 +44,8 @@ try {
       tool: "codex",
       project,
       comparison: "cmp-demo",
+      // Near the window, so the amber indicator is checked for contrast.
+      context: { used: 168000, window: 200000 },
       sessionId: "demo",
       sourceKey: "codex/demo",
       title: "Make checkout retries safe",
@@ -863,6 +865,18 @@ try {
   await page.getByRole("group", { name: "Changed lines" }).waitFor();
   await checkContrast();
   await page.screenshot({ path: `${screenshots}/desktop-chat${suffix}.png` });
+  // The message box toolbar, context indicator included, keeps to one row.
+  const toolbar = await page.evaluate(() => {
+    const footer = document.querySelector(
+      '[aria-label="Codex conversation"] .composer-footer',
+    );
+    return {
+      height: footer.getBoundingClientRect().height,
+      meter: !!footer.querySelector('[role="meter"]'),
+    };
+  });
+  if (toolbar.height > 48 || !toolbar.meter)
+    throw Error(`Message box toolbar: ${JSON.stringify(toolbar)}`);
   // The details panel can be hidden on a wide window too.
   const details = page.getByRole("complementary", {
     name: "Conversation details",

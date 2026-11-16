@@ -885,3 +885,51 @@
   font-size: var(--text-sm);
   color: var(--warning-text);
 }
+
+/* How full the context is, by the message box */
+.context-meter {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 28px;
+  padding: 0 4px;
+  font-size: var(--text-sm);
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.context-meter svg {
+  transform: rotate(-90deg);
+}
+.context-meter circle {
+  fill: none;
+  stroke-width: 2.4;
+}
+.context-meter .track {
+  stroke: var(--border-strong);
+}
+.context-meter .value {
+  stroke: var(--muted);
+  stroke-linecap: round;
+}
+.context-meter.high {
+  color: var(--warning-text);
+}
+.context-meter.high .value {
+  stroke: var(--warning);
+}
+.context-meter.full {
+  color: var(--danger-text);
+}
+.context-meter.full .value {
+  stroke: var(--danger);
+}
+@media (max-width: 1150px) {
+  /* The key hint is hidden here: the meter stays by the send button. */
+  .composer-footer > .context-meter {
+    margin-left: auto;
+  }
+  .composer-footer > .context-meter ~ .button:last-child {
+    margin-left: 0;
+  }
+}

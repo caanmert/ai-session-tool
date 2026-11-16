@@ -227,6 +227,14 @@ or committed and pushed are lost.
    its path; the paperclip opens the system file picker instead. **↑** in an
    empty message box recalls your earlier messages.
 
+   Next to the send button, a small ring shows how full the conversation's
+   context is after the agent's latest response, for example **84%**; hover it
+   for the tokens ("168K of 200K"). It turns amber from 80% and red from 95%,
+   when a new conversation is the way to an empty context. The figure comes
+   from the agent's own token counts and is saved with the conversation;
+   nothing is shown until the agent has reported it. **Session** in the details
+   lists the same figure as **Context**.
+
    While the agent works, **Enter** (or **Queue**) queues your message instead:
    it shows above the box and is sent when the response ends normally. More
    messages join it. If the response is stopped or ends with an error, it is held

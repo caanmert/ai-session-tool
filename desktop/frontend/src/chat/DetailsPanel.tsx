@@ -14,6 +14,7 @@ import { conversationMarkdown } from "./conversation";
 import { CommitDialog, PullRequestDialog } from "./GitDialogs";
 import { busyChat } from "../shell/OpenSessions";
 import NewIssueDialog from "../github/NewIssueDialog";
+import { contextFill } from "./ContextMeter";
 
 const usageBreakdown = (session: Session) =>
   [
@@ -177,6 +178,7 @@ export default function DetailsPanel({
   const [dialog, setDialog] = useState<"commit" | "pr" | "issue">();
   const [done, setDone] = useState("");
   const busy = busyChat(chat.status);
+  const context = contextFill(chat.context);
   const [revealError, setRevealError] = useState("");
   const [copied, setCopied] = useState("");
   useEffect(() => {
@@ -356,6 +358,17 @@ export default function DetailsPanel({
                 </div>
               )}
             </>
+          )}
+          {context && (
+            <div title={`${context.tokens} after the latest response`}>
+              <dt>Context</dt>
+              <dd className={`context-fact ${context.level}`}>
+                <span className="usage-meter" aria-hidden="true">
+                  <i style={{ width: `${context.share * 100}%` }} />
+                </span>
+                {context.percent}% used
+              </dd>
+            </div>
           )}
           <div>
             <dt>Project</dt>
