@@ -483,90 +483,85 @@ export default function App() {
       })),
     ];
   }, [chats, snapshot, openNew, showHistory, setShowRuns, rail, setRail]);
-  useEffect(() => {
-    function key(event: KeyboardEvent) {
-      if (showLibrary || document.querySelector("dialog[open]")) return;
-      if (
-        (event.metaKey || event.ctrlKey) &&
-        event.key.toLowerCase() === "k" &&
-        !showNew
-      ) {
+  // App shortcuts. The listener is added once and reads the latest state, so
+  // a key pressed right after the state changes, such as Cmd+N as soon as
+  // projects load, is never handled with the state from before the change.
+  const shortcuts = useRef<(event: KeyboardEvent) => void>(() => {});
+  shortcuts.current = (event: KeyboardEvent) => {
+    if (showLibrary || document.querySelector("dialog[open]")) return;
+    if (
+      (event.metaKey || event.ctrlKey) &&
+      event.key.toLowerCase() === "k" &&
+      !showNew
+    ) {
+      event.preventDefault();
+      setShowPalette(true);
+    }
+    // Cmd+1..9 switches to the open conversation in that sidebar position.
+    if (
+      (event.metaKey || event.ctrlKey) &&
+      !event.shiftKey &&
+      !event.altKey &&
+      /^[1-9]$/.test(event.key) &&
+      !showNew
+    ) {
+      const target = sidebarOrder(chats).ordered[Number(event.key) - 1];
+      if (target) {
         event.preventDefault();
-        setShowPalette(true);
-      }
-      // Cmd+1..9 switches to the open conversation in that sidebar position.
-      if (
-        (event.metaKey || event.ctrlKey) &&
-        !event.shiftKey &&
-        !event.altKey &&
-        /^[1-9]$/.test(event.key) &&
-        !showNew
-      ) {
-        const target = sidebarOrder(chats).ordered[Number(event.key) - 1];
-        if (target) {
-          event.preventDefault();
-          setPage("history");
-          setActiveChat(target.id);
-        }
-      }
-      if (
-        (event.metaKey || event.ctrlKey) &&
-        event.key.toLowerCase() === "b" &&
-        !event.shiftKey &&
-        !event.altKey &&
-        !showNew
-      ) {
-        event.preventDefault();
-        setRail((on) => !on);
-      }
-      if ((event.metaKey || event.ctrlKey) && event.key === "," && !showNew) {
-        event.preventDefault();
-        setActiveChat("");
-        setPage("settings");
-      }
-      if (
-        (event.metaKey || event.ctrlKey) &&
-        event.key.toLowerCase() === "n" &&
-        !showNew &&
-        snapshot
-      ) {
-        event.preventDefault();
-        openNew();
-      }
-      if (event.key === "Escape" && showNew && !busy) {
-        setShowNew(false);
-        newButton.current?.focus();
-      }
-      if (event.key === "Tab" && showNew) {
-        const items = modal.current?.querySelectorAll<HTMLElement>(
-          'button:not(:disabled), select, textarea:not(:disabled), input:not(:disabled), [tabindex="0"]',
-        );
-        if (!items?.length) return;
-        const first = items[0],
-          last = items[items.length - 1];
-        if (event.shiftKey && document.activeElement === first) {
-          event.preventDefault();
-          last.focus();
-        }
-        if (!event.shiftKey && document.activeElement === last) {
-          event.preventDefault();
-          first.focus();
-        }
+        setPage("history");
+        setActiveChat(target.id);
       }
     }
+    if (
+      (event.metaKey || event.ctrlKey) &&
+      event.key.toLowerCase() === "b" &&
+      !event.shiftKey &&
+      !event.altKey &&
+      !showNew
+    ) {
+      event.preventDefault();
+      setRail((on) => !on);
+    }
+    if ((event.metaKey || event.ctrlKey) && event.key === "," && !showNew) {
+      event.preventDefault();
+      setActiveChat("");
+      setPage("settings");
+    }
+    if (
+      (event.metaKey || event.ctrlKey) &&
+      event.key.toLowerCase() === "n" &&
+      !showNew &&
+      snapshot
+    ) {
+      event.preventDefault();
+      openNew();
+    }
+    if (event.key === "Escape" && showNew && !busy) {
+      setShowNew(false);
+      newButton.current?.focus();
+    }
+    if (event.key === "Tab" && showNew) {
+      const items = modal.current?.querySelectorAll<HTMLElement>(
+        'button:not(:disabled), select, textarea:not(:disabled), input:not(:disabled), [tabindex="0"]',
+      );
+      if (!items?.length) return;
+      const first = items[0],
+        last = items[items.length - 1];
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      }
+      if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    }
+  };
+  useEffect(() => {
+    const key = (event: KeyboardEvent) => shortcuts.current(event);
     document.addEventListener("keydown", key);
     return () => document.removeEventListener("keydown", key);
-  }, [
-    showNew,
-    showLibrary,
-    busy,
-    openNew,
-    snapshot,
-    activeChat,
-    showRuns,
-    chats,
-    setRail,
-  ]);
+  }, []);
   useEffect(() => {
     if (showNew)
       (
