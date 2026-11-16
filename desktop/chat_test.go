@@ -113,6 +113,14 @@ func TestAgentProcess(t *testing.T) {
 		emit(map[string]any{"id": 2, "result": map[string]any{"model": model, "thread": map[string]any{"id": "native-thread"}}})
 		turnRequest := read()
 		require(str(turnRequest["method"]) == "turn/start", "expected turn start")
+		if mode == "image" {
+			input := array(object(turnRequest["params"])["input"])
+			require(len(input) == 2 && str(object(input[0])["type"]) == "text" && str(object(input[1])["type"]) == "localImage", "expected text and one local image")
+			data, err := os.ReadFile(str(object(input[1])["path"]))
+			require(err == nil && len(data) > 8 && string(data[1:4]) == "PNG", "the image file must exist and be the PNG that was attached")
+		} else {
+			require(len(array(object(turnRequest["params"])["input"])) == 1, "a plain message has only text")
+		}
 		if mode == "settings" {
 			require(str(object(turnRequest["params"])["model"]) == "model-b" && str(object(turnRequest["params"])["effort"]) == "high", "missing turn settings")
 		}
@@ -185,7 +193,17 @@ func TestAgentProcess(t *testing.T) {
 			model = "model-fallback"
 		}
 		emit(map[string]any{"type": "control_response", "response": map[string]any{"subtype": "success", "request_id": "ais-initialize"}})
-		require(str(read()["type"]) == "user", "expected user input")
+		userInput := read()
+		require(str(userInput["type"]) == "user", "expected user input")
+		content := object(userInput["message"])["content"]
+		if mode == "image" {
+			blocks := array(content)
+			require(len(blocks) == 2 && str(object(blocks[0])["type"]) == "text", "expected text and one image block")
+			source := object(object(blocks[1])["source"])
+			require(str(object(blocks[1])["type"]) == "image" && str(source["type"]) == "base64" && str(source["media_type"]) == "image/png" && len(str(source["data"])) > 20, "expected an inline PNG")
+		} else {
+			require(str(content) != "", "a plain message is sent as a string")
+		}
 		if mode == "resume" {
 			require(strings.Contains(cliArgs, "--resume native-thread"), "expected saved Claude session")
 		}

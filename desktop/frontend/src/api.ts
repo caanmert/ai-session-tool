@@ -96,7 +96,11 @@ export type ModelCatalog = {
   defaultModel: string;
   defaultEffort: string;
 };
+/** An image attached to a message: its name and bytes in base64. */
+export type ChatImage = { name: string; data: string };
 export type ChatMessage = {
+  /** Names of images attached to a user message. */
+  images?: string[];
   model?: string;
   id: string;
   role: string;
@@ -280,6 +284,11 @@ export interface Backend {
   ReopenChat(id: string): Promise<ChatState>;
   ReadChat(id: string, version: number): Promise<ChatUpdate>;
   SendChat(id: string, text: string): Promise<void>;
+  SendChatWithImages(
+    id: string,
+    text: string,
+    images: ChatImage[],
+  ): Promise<void>;
   StopChat(id: string): Promise<void>;
   CloseChat(id: string): Promise<void>;
   AnswerChat(
@@ -350,6 +359,8 @@ export const api: Backend = {
   ReopenChat: async (id) => backend().ReopenChat(id),
   ReadChat: async (id, version) => backend().ReadChat(id, version),
   SendChat: async (id, text) => backend().SendChat(id, text),
+  SendChatWithImages: async (id, text, images) =>
+    backend().SendChatWithImages(id, text, images),
   StopChat: async (id) => backend().StopChat(id),
   CloseChat: async (id) => backend().CloseChat(id),
   AnswerChat: async (id, request, allow, answers) =>

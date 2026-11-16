@@ -9,7 +9,7 @@ import (
 	"time"
 )
 
-func (m *chatManager) runCodex(ctx context.Context, c *chatSession, state ChatState, text string) (string, error) {
+func (m *chatManager) runCodex(ctx context.Context, c *chatSession, state ChatState, text string, images []savedImage) (string, error) {
 	settings := state.Settings
 	if settings.Configured {
 		project := state.Project
@@ -109,7 +109,12 @@ func (m *chatManager) runCodex(ctx context.Context, c *chatSession, state ChatSt
 					c.sessionID(thread)
 					c.reportModel(str(result["model"]))
 					m.saveOrWarn(c)
-					params := map[string]any{"threadId": thread, "input": []any{map[string]any{"type": "text", "text": text}}}
+					// Codex reads attached images from the files saved with the conversation.
+					input := []any{map[string]any{"type": "text", "text": text}}
+					for _, image := range images {
+						input = append(input, map[string]any{"type": "localImage", "path": image.Path})
+					}
+					params := map[string]any{"threadId": thread, "input": input}
 					if settings.Configured {
 						params["model"] = settings.Model
 						if settings.Effort != "" {
