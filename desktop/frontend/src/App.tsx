@@ -25,7 +25,7 @@ import CommandPalette, { type Command } from "./shell/CommandPalette";
 import {
   attentionChange,
   attentionNotices,
-  notificationsEnabled,
+  wantedNotices,
 } from "./shell/attention";
 import Icon from "./Icon";
 import AgentMark from "./AgentMark";
@@ -39,6 +39,7 @@ import {
   type ChatState,
   type AnnotationChange,
   type AgentHealth,
+  onNotificationOpen,
 } from "./api";
 
 function boardSummary(chats: ChatState[]) {
@@ -337,10 +338,26 @@ export default function App() {
       chats,
     );
     seenStatuses.current = statuses;
-    if (!document.hasFocus() && notificationsEnabled())
-      for (const notice of notices.slice(0, 3))
-        api.Notify(notice.title, notice.body).catch(() => {});
+    if (!document.hasFocus())
+      for (const notice of wantedNotices(notices).slice(0, 3))
+        api.Notify(notice.title, notice.body, notice.chatId).catch(() => {});
   }, [chats]);
+  // A clicked notification opens its conversation, reopening it if needed.
+  const openFromBanner = useRef<(chatId: string) => void>(() => {});
+  openFromBanner.current = (chatId) => {
+    setShowRuns(false);
+    setPage("history");
+    if (chats.some((chat) => chat.id === chatId)) setActiveChat(chatId);
+    else
+      api
+        .ReopenChat(chatId)
+        .then(openChat)
+        .catch((e) => setError(errorText(e)));
+  };
+  useEffect(
+    () => onNotificationOpen((chatId) => openFromBanner.current(chatId)),
+    [],
+  );
   function chatClosed(id: string) {
     setChats((items) => items.filter((item) => item.id !== id));
     // Closing one side of a split leaves the other.

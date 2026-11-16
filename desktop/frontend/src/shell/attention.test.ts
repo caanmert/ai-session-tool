@@ -5,6 +5,8 @@ import {
   attentionNotices,
   notificationsEnabled,
   setNotificationsEnabled,
+  setNotifyOnlyWhenNeeded,
+  wantedNotices,
 } from "./attention";
 
 const chats = (...statuses: string[]) =>
@@ -69,9 +71,19 @@ test("notices cover waiting and finishing, not starting or stopping by hand", ()
     named("new", "waiting"),
   ]);
   expect(notices).toEqual([
-    { title: "Task a", body: "Claude Code: needs approval" },
-    { title: "Task b", body: "Codex finished" },
-    { title: "Task e", body: "Claude Code stopped with an error" },
+    {
+      title: "Task a",
+      body: "Claude Code: needs approval",
+      chatId: "a",
+      needsYou: true,
+    },
+    { title: "Task b", body: "Codex finished", chatId: "b", needsYou: false },
+    {
+      title: "Task e",
+      body: "Claude Code stopped with an error",
+      chatId: "e",
+      needsYou: true,
+    },
   ]);
   expect(now.get("new")).toBe("waiting");
   // Nothing changed since: nothing to say.
@@ -85,4 +97,20 @@ test("notifications are on by default and the choice is remembered", () => {
   expect(notificationsEnabled()).toBe(false);
   setNotificationsEnabled(true);
   expect(notificationsEnabled()).toBe(true);
+});
+
+test("only-when-needed keeps waiting and errors, and off keeps nothing", () => {
+  window.localStorage.clear();
+  const notices = [
+    { title: "a", body: "", chatId: "a", needsYou: true },
+    { title: "b", body: "", chatId: "b", needsYou: false },
+  ];
+  expect(wantedNotices(notices)).toHaveLength(2);
+  setNotifyOnlyWhenNeeded(true);
+  expect(wantedNotices(notices).map((n) => n.chatId)).toEqual(["a"]);
+  setNotificationsEnabled(false);
+  expect(wantedNotices(notices)).toEqual([]);
+  setNotificationsEnabled(true);
+  setNotifyOnlyWhenNeeded(false);
+  expect(wantedNotices(notices)).toHaveLength(2);
 });

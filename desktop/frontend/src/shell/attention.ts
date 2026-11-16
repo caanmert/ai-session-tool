@@ -27,7 +27,14 @@ export function attentionChange(before: Attention, chats: ChatState[]) {
   };
 }
 
-export type Notice = { title: string; body: string };
+export type Notice = {
+  title: string;
+  body: string;
+  /** The conversation to open when the banner is clicked. */
+  chatId: string;
+  /** Waiting for an answer, or stopped with an error; not just finished. */
+  needsYou: boolean;
+};
 
 /**
  * What is worth telling someone who is not looking at the app: a conversation
@@ -49,11 +56,23 @@ export function attentionNotices(
       notices.push({
         title,
         body: `${agent}: ${conversationStatus(chat).toLowerCase()}`,
+        chatId: chat.id,
+        needsYou: true,
       });
     else if (busy(was) && chat.status === "idle")
-      notices.push({ title, body: `${agent} finished` });
+      notices.push({
+        title,
+        body: `${agent} finished`,
+        chatId: chat.id,
+        needsYou: false,
+      });
     else if (busy(was) && chat.status === "error")
-      notices.push({ title, body: `${agent} stopped with an error` });
+      notices.push({
+        title,
+        body: `${agent} stopped with an error`,
+        chatId: chat.id,
+        needsYou: true,
+      });
   }
   return { now, notices };
 }
@@ -78,4 +97,32 @@ export function setNotificationsEnabled(on: boolean) {
   } catch {
     return false;
   }
+}
+
+const needsKey = "ais:notifications-needs:v1";
+
+/** Banners only when an agent needs the user, not when one just finishes. */
+export function notifyOnlyWhenNeeded() {
+  try {
+    return window.localStorage.getItem(needsKey) === "on";
+  } catch {
+    return false;
+  }
+}
+
+/** Returns false when the choice could not be saved. */
+export function setNotifyOnlyWhenNeeded(on: boolean) {
+  try {
+    if (on) window.localStorage.setItem(needsKey, "on");
+    else window.localStorage.removeItem(needsKey);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/** The banners worth showing under the user's choices. */
+export function wantedNotices(notices: Notice[]) {
+  if (!notificationsEnabled()) return [];
+  return notifyOnlyWhenNeeded() ? notices.filter((n) => n.needsYou) : notices;
 }

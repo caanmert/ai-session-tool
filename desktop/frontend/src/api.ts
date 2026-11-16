@@ -539,7 +539,8 @@ export interface Backend {
   /** Dock badge with the number of conversations waiting; `alert` bounces the icon. */
   SetAttention(count: number, alert: boolean): Promise<void>;
   /** Posts a notification banner. macOS asks for permission the first time. */
-  Notify(title: string, body: string): Promise<void>;
+  /** Posts a banner; clicking it opens the conversation chatId names. */
+  Notify(title: string, body: string, chatId: string): Promise<void>;
   AgentHealth(): Promise<AgentHealth[]>;
   /** Opens the conversation's project folder in Finder. */
   RevealProject(id: string): Promise<void>;
@@ -690,7 +691,22 @@ export interface Backend {
 declare global {
   interface Window {
     go?: { main: { App: Backend } };
+    /** The desktop shell's event channel; absent outside the app. */
+    runtime?: {
+      EventsOn?: (
+        name: string,
+        callback: (...data: unknown[]) => void,
+      ) => () => void;
+    };
   }
+}
+
+/** Calls back with a conversation's ID when its notification is clicked. */
+export function onNotificationOpen(callback: (chatId: string) => void) {
+  const off = window.runtime?.EventsOn?.("notification:open", (chatId) => {
+    if (typeof chatId === "string" && chatId) callback(chatId);
+  });
+  return () => off?.();
 }
 function backend(): Backend {
   const app = window.go?.main.App;
@@ -703,7 +719,7 @@ function backend(): Backend {
 export const api: Backend = {
   SetAppearance: async (theme) => backend().SetAppearance(theme),
   SetAttention: async (count, alert) => backend().SetAttention(count, alert),
-  Notify: async (title, body) => backend().Notify(title, body),
+  Notify: async (title, body, chatId) => backend().Notify(title, body, chatId),
   AgentHealth: async () => backend().AgentHealth(),
   RevealProject: async (id) => backend().RevealProject(id),
   ChatModels: async (id, reviewer, refresh) =>

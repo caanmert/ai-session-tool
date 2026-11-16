@@ -2,7 +2,9 @@ import { useState } from "react";
 import AgentMark from "../AgentMark";
 import {
   notificationsEnabled,
+  notifyOnlyWhenNeeded,
   setNotificationsEnabled,
+  setNotifyOnlyWhenNeeded,
 } from "../shell/attention";
 import { AppearanceSetting, type AppearanceControl } from "../Appearance";
 import Icon from "../Icon";
@@ -51,6 +53,7 @@ export default function Settings({
   project?: string;
 }) {
   const [notify, setNotify] = useState(notificationsEnabled);
+  const [needsOnly, setNeedsOnly] = useState(notifyOnlyWhenNeeded);
   const [notifyError, setNotifyError] = useState("");
   return (
     <div className="settings" role="region" aria-label="Settings">
@@ -84,8 +87,31 @@ export default function Settings({
             <span>
               Notify me when an agent needs me or finishes
               <small>
-                Only while ais is in the background. macOS asks for permission
-                the first time. The Dock icon shows the count either way.
+                Only while ais is in the background; clicking one opens its
+                conversation. macOS asks for permission the first time. The Dock
+                icon shows the count either way.
+              </small>
+            </span>
+          </label>
+          <label className="setting-check nested">
+            <input
+              type="checkbox"
+              checked={needsOnly}
+              disabled={!notify}
+              onChange={(e) => {
+                setNeedsOnly(e.target.checked);
+                setNotifyError(
+                  setNotifyOnlyWhenNeeded(e.target.checked)
+                    ? ""
+                    : "This choice could not be saved and applies until you quit.",
+                );
+              }}
+            />
+            <span>
+              Only when an agent needs me
+              <small>
+                An approval, a question or an error; not when a response just
+                finishes.
               </small>
             </span>
           </label>

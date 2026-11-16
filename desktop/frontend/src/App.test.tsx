@@ -658,6 +658,16 @@ describe("desktop workflows", () => {
     await userEvent.click(notify);
     expect(notify).not.toBeChecked();
     expect(window.localStorage.getItem("ais:notifications:v1")).toBe("off");
+    // The narrower choice depends on notifications being on.
+    const needsOnly = within(settings).getByRole("checkbox", {
+      name: /Only when an agent needs me/,
+    });
+    expect(needsOnly).toBeDisabled();
+    await userEvent.click(notify);
+    await userEvent.click(needsOnly);
+    expect(window.localStorage.getItem("ais:notifications-needs:v1")).toBe(
+      "on",
+    );
     await userEvent.click(
       within(settings).getByRole("button", { name: "Check again" }),
     );
@@ -668,6 +678,28 @@ describe("desktop workflows", () => {
       screen.queryByRole("region", { name: "Settings" }),
     ).not.toBeInTheDocument();
     expect(document.documentElement.dataset.theme).toBe("dark");
+  });
+  it("opens a conversation when its notification is clicked", async () => {
+    let fire: (id: unknown) => void = () => {};
+    window.runtime = {
+      EventsOn: (name, callback) => {
+        if (name === "notification:open") fire = callback;
+        return () => {};
+      },
+    };
+    try {
+      render(<App />);
+      await screen.findByRole("heading", { name: "Retry webhook delivery" });
+      fire(live.id);
+      await waitFor(() =>
+        expect(backend.ReopenChat).toHaveBeenCalledWith(live.id),
+      );
+      expect(
+        await screen.findByRole("region", { name: "Chat conversation" }),
+      ).toBeVisible();
+    } finally {
+      window.runtime = undefined;
+    }
   });
   it("renames, pins and tags a saved conversation without starting an agent", async () => {
     const annotated = (change: Partial<(typeof snapshot.sessions)[0]>) => ({

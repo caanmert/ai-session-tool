@@ -4,4 +4,6 @@ package main
 
 func setDockAttention(int, bool) {}
 
-func postNotification(string, string) {}
+func postNotification(string, string, string) {}
+
+func listenForNotificationClicks() {}
