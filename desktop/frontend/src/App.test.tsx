@@ -281,7 +281,7 @@ describe("desktop workflows", () => {
       "/demo/docs",
     );
     await userEvent.click(
-      within(dialog).getByRole("button", { name: /Claude Code Ready/ }),
+      within(dialog).getByRole("radio", { name: /Claude Code Ready/ }),
     );
     const start = within(dialog).getByRole("button", {
       name: "Start in app",
@@ -340,7 +340,7 @@ describe("desktop workflows", () => {
       "/demo/docs",
     );
     await userEvent.click(
-      within(dialog).getByRole("button", { name: /Claude Code Ready/ }),
+      within(dialog).getByRole("radio", { name: /Claude Code Ready/ }),
     );
     await userEvent.click(
       within(dialog).getByRole("button", { name: "Start in app" }),
@@ -358,15 +358,44 @@ describe("desktop workflows", () => {
       "/demo/api",
     );
     await userEvent.click(
-      within(dialog).getByRole("button", { name: /Codex Ready/ }),
+      within(dialog).getByRole("radio", { name: /Codex Ready/ }),
     );
     await userEvent.selectOptions(
       within(dialog).getByLabelText("Project"),
       "/demo/docs",
     );
     expect(
-      within(dialog).getByRole("button", { name: /Claude Code Ready/ }),
-    ).toHaveAttribute("aria-pressed", "true");
+      within(dialog).getByRole("radio", { name: /Claude Code Ready/ }),
+    ).toHaveAttribute("aria-checked", "true");
+  });
+  it("chooses the agent for a new task with arrow keys, as a radio group", async () => {
+    render(<App />);
+    await screen.findByRole("heading", { name: "Retry webhook delivery" });
+    fireEvent.keyDown(document, { key: "n", metaKey: true });
+    const dialog = await screen.findByRole("dialog");
+    const group = within(dialog).getByRole("radiogroup", { name: "Agent" });
+    const codex = within(group).getByRole("radio", { name: /Codex Ready/ });
+    const claude = within(group).getByRole("radio", {
+      name: /Claude Code Ready/,
+    });
+    const both = within(group).getByRole("radio", {
+      name: "Both, compared Each in its own worktree",
+    });
+    expect(codex).toHaveAttribute("aria-checked", "true");
+    // Only the chosen option is in the Tab order.
+    expect(codex).toHaveAttribute("tabindex", "0");
+    expect(claude).toHaveAttribute("tabindex", "-1");
+    codex.focus();
+    await userEvent.keyboard("{ArrowDown}");
+    expect(claude).toHaveAttribute("aria-checked", "true");
+    expect(claude).toHaveFocus();
+    await userEvent.keyboard("{ArrowRight}");
+    expect(both).toHaveAttribute("aria-checked", "true");
+    await userEvent.keyboard("{ArrowDown}");
+    expect(codex).toHaveAttribute("aria-checked", "true");
+    await userEvent.keyboard("{ArrowUp}");
+    expect(both).toHaveAttribute("aria-checked", "true");
+    expect(codex).toHaveAttribute("aria-checked", "false");
   });
   it("keeps the task as a draft when the first message cannot be sent", async () => {
     backend.SendChat = vi
@@ -795,7 +824,7 @@ describe("desktop workflows", () => {
       "/demo/docs",
     );
     await userEvent.click(
-      within(dialog).getByRole("button", { name: /Both, compared/ }),
+      within(dialog).getByRole("radio", { name: /Both, compared/ }),
     );
     // A comparison needs the task text.
     expect(

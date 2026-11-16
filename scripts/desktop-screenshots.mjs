@@ -801,6 +801,25 @@ try {
   await page.screenshot({
     path: `${screenshots}/desktop-new-task${suffix}.png`,
   });
+  // At the smallest window each agent choice still reads on one line.
+  await resize(960, 640);
+  await page.screenshot({
+    path: join(tmpdir(), `ais-new-task-small${suffix}.png`),
+  });
+  const choices = await page.evaluate(() => {
+    const dialog = document
+      .getElementById("new-session-title")
+      .closest('[role="dialog"]');
+    const names = [...dialog.querySelectorAll(".agent-option strong")];
+    return {
+      sideways: dialog.scrollWidth > dialog.clientWidth,
+      count: names.length,
+      wrapped: names.some((name) => name.getBoundingClientRect().height > 24),
+    };
+  });
+  if (choices.sideways || choices.wrapped || choices.count !== 3)
+    throw Error(`New task agent choices: ${JSON.stringify(choices)}`);
+  await resize(1360, 900);
   await page.keyboard.press("Escape");
   await newTask.waitFor({ state: "detached" });
   await resize(960, 640);
