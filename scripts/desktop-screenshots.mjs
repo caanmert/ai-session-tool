@@ -405,6 +405,75 @@ try {
                 "…an idempotency key for each \u0002checkout\u0003 attempt. The request now uses the same key…",
             },
           ],
+          ProjectInstructions: async () => [
+            {
+              agent: "claude",
+              scope: "project",
+              name: "CLAUDE.md",
+              path: "/projects/checkout/CLAUDE.md",
+              exists: true,
+              size: 1840,
+              editable: true,
+            },
+            {
+              agent: "claude",
+              scope: "project",
+              name: ".claude/CLAUDE.md",
+              path: "/projects/checkout/.claude/CLAUDE.md",
+              exists: false,
+              size: 0,
+              editable: true,
+            },
+            {
+              agent: "claude",
+              scope: "project",
+              name: "CLAUDE.local.md",
+              path: "/projects/checkout/CLAUDE.local.md",
+              exists: false,
+              size: 0,
+              editable: true,
+            },
+            {
+              agent: "codex",
+              scope: "project",
+              name: "AGENTS.md",
+              path: "/projects/checkout/AGENTS.md",
+              exists: true,
+              size: 620,
+              editable: true,
+            },
+            {
+              agent: "claude",
+              scope: "user",
+              name: "~/.claude/CLAUDE.md",
+              path: "/Users/me/.claude/CLAUDE.md",
+              exists: true,
+              size: 2400,
+              editable: false,
+            },
+            {
+              agent: "codex",
+              scope: "user",
+              name: "~/.codex/AGENTS.md",
+              path: "/Users/me/.codex/AGENTS.md",
+              exists: false,
+              size: 0,
+              editable: false,
+            },
+          ],
+          ReadInstruction: async (_project, name) => ({
+            name,
+            text: "# Checkout\n\n- Run `npm test -- checkout` before calling a change done.\n- Never retry a declined card.\n- Keep the idempotency key for every retry.\n",
+            exists: true,
+            version: "v1",
+          }),
+          WriteInstruction: async (_project, name, text) => ({
+            name,
+            text,
+            exists: true,
+            version: "v2",
+          }),
+          RevealInstruction: async () => {},
           RestorePlan: async () => [
             { path: "src/retry.ts", change: "remove" },
             { path: "src/checkout.ts", change: "restore" },
@@ -1052,6 +1121,18 @@ try {
   });
   await page.keyboard.press("Escape");
   await restoreDialog.waitFor({ state: "detached" });
+  // Project instructions: each agent's files, editable in the project.
+  await page.getByRole("button", { name: /Project instructions/ }).click();
+  const instructions = page.getByRole("dialog", {
+    name: "Project instructions",
+  });
+  await instructions.getByLabel("Contents of CLAUDE.md").waitFor();
+  await checkContrast();
+  await page.screenshot({
+    path: `${screenshots}/desktop-instructions${suffix}.png`,
+  });
+  await instructions.getByRole("button", { name: "Close" }).click();
+  await instructions.waitFor({ state: "detached" });
   // The model pill opens the model and reasoning choices.
   await page
     .getByRole("region", { name: "Codex conversation" })

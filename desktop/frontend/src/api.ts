@@ -284,6 +284,24 @@ export type GitHubOverview = {
   /** One of the two lists could not be read. */
   partial?: string;
 };
+/** An instructions file an agent reads for a project. */
+export type InstructionFile = {
+  agent: string;
+  /** "project" (editable here) or "user" (shown, edited outside ais). */
+  scope: string;
+  name: string;
+  path: string;
+  exists: boolean;
+  size: number;
+  editable: boolean;
+};
+export type InstructionText = {
+  name: string;
+  text: string;
+  exists: boolean;
+  /** Changes with the content, so a save can tell the file changed meanwhile. */
+  version: string;
+};
 /** A conversation whose text matches a search. */
 export type MessageHit = {
   /** "chat" for a conversation in the app, "session" for a saved agent session. */
@@ -577,6 +595,17 @@ export interface Backend {
   /** A project's open issues and pull requests, read with the GitHub CLI. */
   GitHubOverview(project: string): Promise<GitHubOverview>;
   GitHubIssue(project: string, number: number): Promise<GitHubIssueDetail>;
+  /** The instructions files each agent reads for a project. */
+  ProjectInstructions(project: string): Promise<InstructionFile[]>;
+  ReadInstruction(project: string, name: string): Promise<InstructionText>;
+  /** Saves a project's instructions file; refused if it changed on disk. */
+  WriteInstruction(
+    project: string,
+    name: string,
+    text: string,
+    version: string,
+  ): Promise<InstructionText>;
+  RevealInstruction(project: string, name: string): Promise<void>;
   /** Conversations whose text matches, with the passage. Only reads. */
   SearchMessages(query: string): Promise<MessageHit[]>;
   /** The files restoring a checkpoint would change. Changes nothing. */
@@ -681,6 +710,14 @@ export const api: Backend = {
     backend().GitHubIssue(project, number),
   GitHubPull: async (project, number) => backend().GitHubPull(project, number),
   SearchMessages: async (query) => backend().SearchMessages(query),
+  ProjectInstructions: async (project) =>
+    backend().ProjectInstructions(project),
+  ReadInstruction: async (project, name) =>
+    backend().ReadInstruction(project, name),
+  WriteInstruction: async (project, name, text, version) =>
+    backend().WriteInstruction(project, name, text, version),
+  RevealInstruction: async (project, name) =>
+    backend().RevealInstruction(project, name),
   RestorePlan: async (chatId, checkpointId) =>
     backend().RestorePlan(chatId, checkpointId),
   RestoreCheckpoint: async (chatId, checkpointId) =>
