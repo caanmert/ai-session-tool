@@ -898,6 +898,8 @@ export default function App() {
               setActiveChat("");
               setPage("runs");
             }}
+            usage={usage.overview?.agents}
+            onUsage={() => setPage("usage")}
           />
         )}
         {page === "github" && (

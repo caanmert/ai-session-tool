@@ -12,13 +12,60 @@ import {
   api,
   errorText,
   toolLabel,
+  type AgentUsage,
   type ChatApproval,
   type ChatState,
   type Tool,
 } from "../api";
+import { resetClock, tightest } from "../usage/limits";
 
 const projectName = (path: string) =>
   path.split("/").filter(Boolean).at(-1) || path;
+
+/**
+ * The agent's limit closest to running out, as a bar with its reset time. It
+ * opens the Usage limits page. Nothing is shown when no limits were read, so
+ * a missing figure never looks like 0%.
+ */
+function CapacityLimit({
+  agent,
+  onOpen,
+}: {
+  agent: AgentUsage;
+  onOpen: () => void;
+}) {
+  const worst = tightest(agent);
+  if (!worst) return null;
+  const limit = agent.blocked
+    ? agent.limits.find((item) => item.level === "reached") || worst
+    : worst;
+  const level = agent.blocked ? "reached" : limit.level;
+  const percent = Math.round(limit.percent);
+  const at = limit.resetsAt ? new Date(limit.resetsAt) : undefined;
+  const resets = at ? ` · resets ${resetClock(at, new Date())}` : "";
+  const what =
+    limit.window === "session"
+      ? "5-hour session"
+      : limit.window === "weekly"
+        ? "week"
+        : limit.label;
+  const text = agent.blocked
+    ? `Limit reached${resets}`
+    : `${percent}% of ${what}${resets}`;
+  return (
+    <button
+      className={`capacity-limit ${level}`}
+      aria-label={`${toolLabel(agent.tool)}: ${text}. Open usage limits`}
+      title={`${limit.label}: ${percent}% used`}
+      onClick={onOpen}
+    >
+      <span className={`usage-meter ${level}`} aria-hidden="true">
+        <i style={{ width: `${Math.min(100, Math.max(0, limit.percent))}%` }} />
+      </span>
+      <span className="capacity-limit-text">{text}</span>
+    </button>
+  );
+}
 
 type Column = {
   id: string;
@@ -226,12 +273,17 @@ export default function Board({
   tools,
   onOpen,
   onOpenRun,
+  usage,
+  onUsage = () => {},
 }: {
   chats: ChatState[];
   tools: Tool[];
   onOpen: (id: string) => void;
   /** Open a task of a parallel run on the Parallel runs page. */
   onOpenRun: (run: string, window: string) => void;
+  /** Each agent's plan limits, once read. */
+  usage?: AgentUsage[];
+  onUsage?: () => void;
 }) {
   const runs = useRunTasks(true);
   const inColumn = (column: string) =>
@@ -275,6 +327,9 @@ export default function Board({
           const working = mine.filter(
             (c) => c.status === "running" || c.status === "stopping",
           ).length;
+          const limits = tool.available
+            ? usage?.find((agent) => agent.tool === tool.name)
+            : undefined;
           return (
             <div className="capacity-card" key={tool.name}>
               <AgentMark tool={tool.name} />
@@ -283,6 +338,7 @@ export default function Board({
                 <small>
                   {working} working · {waiting} waiting · {mine.length} open
                 </small>
+                {limits && <CapacityLimit agent={limits} onOpen={onUsage} />}
               </div>
               {tool.available ? (
                 <span className="capacity-state found">

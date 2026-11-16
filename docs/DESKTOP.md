@@ -120,7 +120,10 @@ They demonstrate the layout, not output from a live model run.
   runs appear in the same columns: an outlined chip gives the process state
   (Running, Exited) and a separate filled chip marks an agent event or a task
   that has gone quiet. Choosing a run task opens it on the Parallel runs page.
-  The board only reads run state; it never starts or stops a run.
+  The board only reads run state; it never starts or stops a run. Each agent's
+  card at the top shows its limit closest to running out, such as "88% of week ·
+  resets 17:29" (amber near a limit, red when one is used up), and opens
+  **Usage limits**. An agent whose limits could not be read shows no bar.
 - **Session** (below Changes): the model, turns, tokens and, where the model has
   a known price, what the usage would cost at API list prices. That figure is an
   equivalent: a subscription is not billed this way. **Show in Finder** opens the
