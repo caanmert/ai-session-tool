@@ -343,6 +343,7 @@ try {
                     },
                   ],
           }),
+          SetChatWebSearch: async () => {},
           GitHubIssueForm: async () => ({
             repository: "acme/checkout",
             url: "https://github.com/acme/checkout",
@@ -927,6 +928,16 @@ try {
   await page.keyboard.press("Escape");
   await skillList.waitFor({ state: "detached" });
   await box.fill("");
+  // Codex's web search is chosen from a globe button's short menu.
+  await page.getByRole("button", { name: /^Web search:/ }).click();
+  const searchMenu = page.getByRole("menu", { name: "Web search" });
+  await searchMenu.waitFor();
+  await checkContrast();
+  await page.screenshot({
+    path: `${screenshots}/desktop-web-search${suffix}.png`,
+  });
+  await page.keyboard.press("Escape");
+  await searchMenu.waitFor({ state: "detached" });
   // The details panel can be hidden on a wide window too.
   const details = page.getByRole("complementary", {
     name: "Conversation details",

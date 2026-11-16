@@ -232,6 +232,13 @@ or committed and pushed are lost.
    each agent has for a project. **↑** in an
    empty message box recalls your earlier messages.
 
+   **Web search.** Claude Code searches and fetches pages when it needs to,
+   asking first like for any other tool. Codex's web search is off unless its
+   own setting turns it on; the globe button in a Codex conversation chooses,
+   from the next message: Codex's own setting, **Off**, **Cached** (an index of
+   pages) or **Live** (pages as they are now). The button is marked while search
+   is on, and searches show as "Web" steps.
+
    Next to the send button, a small ring shows how full the conversation's
    context is after the agent's latest response, for example **84%**; hover it
    for the tokens ("168K of 200K"). It turns amber from 80% and red from 95%,

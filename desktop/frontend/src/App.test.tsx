@@ -142,6 +142,7 @@ beforeEach(() => {
     UsageLimits: vi.fn().mockResolvedValue({ agents: [] }),
     GitHubIssueForm: vi.fn(),
     AgentSkills: vi.fn().mockResolvedValue({ tool: "codex", skills: [] }),
+    SetChatWebSearch: vi.fn(),
     CreateGitHubIssue: vi.fn(),
     GitHubOverview: vi.fn(),
     GitHubIssue: vi.fn(),

@@ -110,6 +110,11 @@ func TestAgentProcess(t *testing.T) {
 		if mode == "default-settings" {
 			require(model == "model-a", "default model was not restored")
 		}
+		if mode == "websearch" {
+			require(str(object(params["config"])["web_search"]) == "live", "web search must reach the thread config")
+		} else if _, set := object(params["config"])["web_search"]; set {
+			require(false, "web search must not be set unless chosen")
+		}
 		emit(map[string]any{"id": 2, "result": map[string]any{"model": model, "thread": map[string]any{"id": "native-thread"}}})
 		turnRequest := read()
 		require(str(turnRequest["method"]) == "turn/start", "expected turn start")

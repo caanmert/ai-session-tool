@@ -146,3 +146,19 @@ test("an edit whose input is still streaming shows the raw text and no diff", ()
   expect(partial.diff).toBeUndefined();
   expect(partial.output).toBe('{"file_path": "/work/app/src/ke');
 });
+
+test("a Codex web search reads as a web step with its query", () => {
+  const step = describeToolStep({
+    id: "w",
+    role: "assistant",
+    kind: "tool",
+    name: "webSearch",
+    status: "completed",
+    text: JSON.stringify(
+      { type: "webSearch", id: "ws_1", query: "codex web_search modes" },
+      null,
+      2,
+    ),
+  });
+  expect([step.verb, step.target]).toEqual(["Web", "codex web_search modes"]);
+});

@@ -87,11 +87,18 @@ func (m *chatManager) runCodex(ctx context.Context, c *chatSession, state ChatSt
 						params["sandbox"] = "read-only"
 						params["approvalPolicy"] = "never"
 					}
+					config := map[string]any{}
 					if settings.Configured {
 						params["model"] = settings.Model
 						if settings.Effort != "" {
-							params["config"] = map[string]any{"model_reasoning_effort": settings.Effort}
+							config["model_reasoning_effort"] = settings.Effort
 						}
+					}
+					if state.WebSearch != "" && state.Review == nil {
+						config["web_search"] = state.WebSearch
+					}
+					if len(config) > 0 {
+						params["config"] = config
 					}
 					operation := "thread/start"
 					if thread != "" {

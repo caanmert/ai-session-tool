@@ -352,6 +352,8 @@ export type ReviewDraft = {
   created: string;
 };
 export type ChatState = {
+  /** Codex's web search here: "" for Codex's own setting, or disabled, cached or live. */
+  webSearch?: string;
   /** How full the context is after the latest response, as the agent reported it. */
   context?: { used: number; window?: number };
   /** Set on both conversations of a comparison. */
@@ -512,6 +514,8 @@ export interface Backend {
     project: string,
     refresh: boolean,
   ): Promise<SkillList>;
+  /** Codex's web search for a conversation, from its next message. */
+  SetChatWebSearch(id: string, mode: string): Promise<void>;
   /** Reads where a new issue would go and its labels. Only reads. */
   GitHubIssueForm(project: string): Promise<GitHubIssueForm>;
   /** Creates an issue through the GitHub CLI, after the user confirms. */
@@ -607,6 +611,7 @@ export const api: Backend = {
   GitHubIssueForm: async (project) => backend().GitHubIssueForm(project),
   AgentSkills: async (tool, project, refresh) =>
     backend().AgentSkills(tool, project, refresh),
+  SetChatWebSearch: async (id, mode) => backend().SetChatWebSearch(id, mode),
   CreateGitHubIssue: async (project, title, body, labels) =>
     backend().CreateGitHubIssue(project, title, body, labels),
   GitHubOverview: async (project) => backend().GitHubOverview(project),

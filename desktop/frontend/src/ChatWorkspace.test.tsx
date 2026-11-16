@@ -266,6 +266,45 @@ describe("graphical conversations", () => {
     await userEvent.type(box, "see src/app");
     expect(screen.queryByRole("listbox", { name: "Skills" })).toBeNull();
   });
+  it("chooses Codex's web search from the next message", async () => {
+    backend.SetChatWebSearch = vi.fn(async (_id: string, mode: string) => {
+      state.webSearch = mode;
+      state.version += 1;
+    });
+    show();
+    const globe = await screen.findByRole("button", {
+      name: "Web search: Codex's own setting",
+    });
+    await userEvent.click(globe);
+    const menu = screen.getByRole("menu", { name: "Web search" });
+    expect(
+      within(menu).getByRole("menuitemradio", { name: /Codex's own setting/ }),
+    ).toHaveFocus();
+    await userEvent.keyboard("{ArrowDown}{ArrowDown}{ArrowDown}");
+    expect(
+      within(menu).getByRole("menuitemradio", { name: /Live/ }),
+    ).toHaveFocus();
+    await userEvent.keyboard("{Enter}");
+    expect(backend.SetChatWebSearch).toHaveBeenCalledWith("chat", "live");
+    expect(
+      await screen.findByRole("button", { name: "Web search: Live" }),
+    ).toHaveClass("on");
+    expect(screen.queryByRole("menu")).toBeNull();
+    expect(backend.SendChat).not.toHaveBeenCalled();
+  });
+  it("Claude Code conversations have no web search setting", async () => {
+    state.tool = "claude";
+    render(
+      <ChatWorkspace
+        chat={{ ...initial, tool: "claude" }}
+        active
+        reviewerAvailable
+        {...handlers}
+      />,
+    );
+    await screen.findByRole("textbox", { name: /Message/ });
+    expect(screen.queryByRole("button", { name: /Web search/ })).toBeNull();
+  });
   it("hides and shows the details panel on a wide window", async () => {
     const hidden = vi.fn();
     const view = render(
