@@ -815,3 +815,23 @@ button.search:hover {
 .session-item.beside {
   box-shadow: inset 2px 0 0 var(--border-strong);
 }
+
+/* New task: work in a separate copy */
+.new-task-copy {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin-top: 14px;
+  font-size: var(--text-md);
+  color: var(--text);
+}
+.new-task-copy input {
+  margin-top: 3px;
+}
+.new-task-copy small {
+  display: block;
+  margin-top: 2px;
+  font-size: var(--text-sm);
+  line-height: 1.45;
+  color: var(--muted);
+}

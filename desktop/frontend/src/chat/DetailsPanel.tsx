@@ -19,6 +19,7 @@ import NewIssueDialog from "../github/NewIssueDialog";
 import InstructionsDialog from "./InstructionsDialog";
 import RunPanel from "./RunPanel";
 import ChangesDialog from "./ChangesDialog";
+import CopyPanel from "./CopyPanel";
 import {
   commentPlace,
   commentsMessage,
@@ -99,6 +100,7 @@ export default function DetailsPanel({
   onClose,
   handOff,
   onDraft,
+  onCopyRemoved,
 }: {
   chat: ChatState;
   session?: Session;
@@ -112,6 +114,8 @@ export default function DetailsPanel({
   handOff?: { to: ToolName; blocked: string; run: () => Promise<void> };
   /** Puts text in the message box, after anything already there. */
   onDraft?: (text: string) => void;
+  /** The conversation closed because its copy was removed. */
+  onCopyRemoved?: () => void;
 }) {
   const [review, setReview] = useState<string>();
   const [dialog, setDialog] = useState<
@@ -335,6 +339,17 @@ export default function DetailsPanel({
           <p className="details-note done" role="status">
             {done}
           </p>
+        )}
+        {chat.copy && (
+          <CopyPanel
+            chat={chat}
+            busy={busy}
+            onDone={(text) => {
+              setDone(text);
+              onRefresh();
+            }}
+            onRemoved={() => onCopyRemoved?.()}
+          />
         )}
         {commentCount > 0 && !chat.review && (
           <section className="line-comments" aria-label="Comments on changes">

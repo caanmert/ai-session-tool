@@ -827,6 +827,10 @@ try {
           }),
           ChatDiff: async () => snapshot,
           TurnDiff: async () => snapshot,
+          CopyChanges: async () => snapshot,
+          BringBackCopy: async () => ["src/checkout.ts"],
+          RemoveCopy: async () => {},
+          NewChatInCopy: async () => source,
           SavedPrompts: async () => [
             {
               id: "starter-review",
@@ -1225,6 +1229,39 @@ try {
     throw Error("The turn diff must be read-only");
   await since.getByRole("button", { name: "Close changes" }).click();
   await since.waitFor({ state: "detached" });
+  // A conversation in its own copy of the project.
+  await page.evaluate(() => {
+    const { source } = window.__aisDemo;
+    source.copy = {
+      project: "/projects/checkout",
+      base: "a1b2c3d4e5f6",
+      branch: "ais/7f3c9e21",
+      worktree: "/data/copies/7f3c9e21/checkout",
+    };
+    source.version += 1;
+  });
+  const copyPanel = page.getByRole("region", { name: "Separate copy" });
+  await copyPanel.waitFor();
+  await page.getByText("Copy · ais/7f3c9e21").waitFor();
+  await checkContrast();
+  await page.screenshot({ path: `${screenshots}/desktop-copy${suffix}.png` });
+  await copyPanel.getByRole("button", { name: "Bring changes back…" }).click();
+  const bring = page.getByRole("dialog", {
+    name: "Bring 1 file back into the project?",
+  });
+  await bring.waitFor();
+  await checkContrast();
+  await page.screenshot({
+    path: `${screenshots}/desktop-copy-bring${suffix}.png`,
+  });
+  await bring.getByRole("button", { name: "Not now" }).click();
+  await bring.waitFor({ state: "detached" });
+  await page.evaluate(() => {
+    const { source } = window.__aisDemo;
+    delete source.copy;
+    source.version += 1;
+  });
+  await copyPanel.waitFor({ state: "detached" });
   // Project instructions: each agent's files, editable in the project.
   await page.getByRole("button", { name: /Project instructions/ }).click();
   const instructions = page.getByRole("dialog", {

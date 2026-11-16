@@ -9,7 +9,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"sort"
 	"strings"
 	"time"
 )
@@ -259,31 +258,9 @@ func (m *chatManager) comparisonDiff(ctx context.Context, id, tool string) (Revi
 	return captureReviewFrom(ctx, side.Worktree, record.Base)
 }
 
-// sidePatch is one side's changes against the comparison's base commit,
-// including new files, as a binary-safe patch. A private index is used so the
-// worktree's own index is not touched.
-func sidePatch(ctx context.Context, record Comparison, side ComparisonSide) (patch string, files []string, err error) {
-	temp, err := os.MkdirTemp("", "ais-compare-")
-	if err != nil {
-		return "", nil, err
-	}
-	defer os.RemoveAll(temp)
-	env := []string{"GIT_INDEX_FILE=" + filepath.Join(temp, "index")}
-	if _, err := gitRunWith(ctx, side.Worktree, env, "read-tree", record.Base); err != nil {
-		return "", nil, err
-	}
-	if _, err := gitRunWith(ctx, side.Worktree, env, "add", "--all"); err != nil {
-		return "", nil, err
-	}
-	names, err := gitRunWith(ctx, side.Worktree, env, "diff", "--cached", "--no-renames", "--name-only", record.Base)
-	if err != nil {
-		return "", nil, err
-	}
-	if names == "" {
-		return "", nil, nil
-	}
-	patch, err = gitRunWith(ctx, side.Worktree, env, "diff", "--cached", "--no-renames", "--binary", "--no-ext-diff", "--no-textconv", record.Base)
-	return patch + "\n", strings.Split(names, "\n"), err
+// sidePatch is one side's changes against the comparison's base commit.
+func sidePatch(ctx context.Context, record Comparison, side ComparisonSide) (string, []string, error) {
+	return patchFrom(ctx, side.Worktree, record.Base)
 }
 
 func (m *chatManager) useComparisonSide(ctx context.Context, id, tool string) ([]string, error) {
@@ -310,38 +287,10 @@ func (m *chatManager) useComparisonSide(ctx context.Context, id, tool string) ([
 	if len(files) == 0 {
 		return nil, fmt.Errorf("%s has not changed anything", toolName(tool))
 	}
-	// Never mix the agent's changes into files the user has changed too.
-	if own := summarizeChanges(ctx, record.Project); own.Available {
-		mine := map[string]bool{}
-		for _, file := range own.Files {
-			mine[file.Path] = true
-		}
-		overlap := []string{}
-		for _, file := range files {
-			if mine[file] {
-				overlap = append(overlap, file)
-			}
-		}
-		if len(overlap) > 0 {
-			sort.Strings(overlap)
-			return nil, fmt.Errorf("your project has its own uncommitted changes in %s. Commit or set them aside first; nothing was changed", strings.Join(overlap, ", "))
-		}
-	}
-	temp, err := os.MkdirTemp("", "ais-compare-")
-	if err != nil {
+	// Never mix the agent's changes into files the user has changed too, and
+	// change all files or none.
+	if err := applyPatch(ctx, record.Project, patch, files, toolName(tool)+"'s changes"); err != nil {
 		return nil, err
-	}
-	defer os.RemoveAll(temp)
-	patchFile := filepath.Join(temp, "side.patch")
-	if err := os.WriteFile(patchFile, []byte(patch), 0o600); err != nil {
-		return nil, err
-	}
-	// git apply changes all files or none.
-	if _, err := gitRun(ctx, record.Project, "apply", "--check", "--binary", patchFile); err != nil {
-		return nil, fmt.Errorf("%s's changes do not apply to your project as it is now, so nothing was changed: %w", toolName(tool), err)
-	}
-	if _, err := gitRun(ctx, record.Project, "apply", "--binary", patchFile); err != nil {
-		return nil, fmt.Errorf("%s's changes could not be applied: %w", toolName(tool), err)
 	}
 	if c, err := m.get(side.ChatID); err == nil {
 		c.message(ChatMessage{ID: fmt.Sprintf("use/%d", time.Now().UnixNano()), Role: "system", Kind: "text", Text: fmt.Sprintf("This version was copied into %s (%d files). Nothing was committed.", record.Project, len(files))}, false)

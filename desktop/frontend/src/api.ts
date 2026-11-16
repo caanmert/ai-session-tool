@@ -284,6 +284,14 @@ export type GitHubOverview = {
   /** One of the two lists could not be read. */
   partial?: string;
 };
+/** The copy of a project a conversation works in: a worktree on its own branch. */
+export type WorkCopy = {
+  project: string;
+  base: string;
+  branch: string;
+  worktree: string;
+  brought?: string;
+};
 /** A reusable message; {project}, {branch} and {changed files} are filled in. */
 export type SavedPrompt = { id: string; name: string; text: string };
 /** A conversation continued with the other agent, and its drafted first message. */
@@ -468,6 +476,8 @@ export type ChatState = {
   handedFrom?: string;
   /** Conversations that continue this one with the other agent. */
   handedTo?: string[];
+  /** Set when the conversation works in its own copy of the project. */
+  copy?: WorkCopy;
   review?: ReviewState;
   updatedAt: string;
   shortened: boolean;
@@ -624,6 +634,15 @@ export interface Backend {
   /** A project's open issues and pull requests, read with the GitHub CLI. */
   GitHubOverview(project: string): Promise<GitHubOverview>;
   GitHubIssue(project: string, number: number): Promise<GitHubIssueDetail>;
+  /** Starts a conversation in a new copy (Git worktree) of the project. */
+  NewChatInCopy(project: string, tool: ToolName): Promise<ChatState>;
+  /** What bringing a copy back would change. Only reads. */
+  CopyChanges(chatId: string): Promise<ReviewSnapshot>;
+  /** Applies a copy's changes to the project, uncommitted; all or none. */
+  BringBackCopy(chatId: string): Promise<string[]>;
+  /** Deletes a copy and closes its conversation; refused with changes not
+   * brought back unless discard is set. */
+  RemoveCopy(chatId: string, discard: boolean): Promise<void>;
   /** The saved prompts, or a few starters until the list is first saved. */
   SavedPrompts(): Promise<SavedPrompt[]>;
   SetSavedPrompts(prompts: SavedPrompt[]): Promise<void>;
@@ -772,6 +791,11 @@ export const api: Backend = {
   GitHubPull: async (project, number) => backend().GitHubPull(project, number),
   SearchMessages: async (query) => backend().SearchMessages(query),
   HandOffChat: async (chatId) => backend().HandOffChat(chatId),
+  NewChatInCopy: async (project, tool) =>
+    backend().NewChatInCopy(project, tool),
+  CopyChanges: async (chatId) => backend().CopyChanges(chatId),
+  BringBackCopy: async (chatId) => backend().BringBackCopy(chatId),
+  RemoveCopy: async (chatId, discard) => backend().RemoveCopy(chatId, discard),
   SavedPrompts: async () => backend().SavedPrompts(),
   SetSavedPrompts: async (prompts) => backend().SetSavedPrompts(prompts),
   TurnDiff: async (chatId, checkpointId) =>

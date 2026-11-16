@@ -1142,3 +1142,12 @@
   font-family: var(--font-sans);
   font-weight: 600;
 }
+
+/* A conversation in its own copy of the project */
+.chip.copy {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+}

@@ -79,6 +79,9 @@ type ChatState struct {
 	// agent; see chat_handoff.go.
 	HandedFrom string   `json:"handedFrom,omitempty"`
 	HandedTo   []string `json:"handedTo,omitempty"`
+	// Copy is set when the conversation works in its own copy of the
+	// project; see chat_copy.go.
+	Copy *WorkCopy `json:"copy,omitempty"`
 	// Mode is the permission mode for the next message; see chat_modes.go.
 	Mode      string         `json:"mode"`
 	ID        string         `json:"id"`

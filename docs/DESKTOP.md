@@ -155,6 +155,16 @@ They demonstrate the layout, not output from a live model run.
 - **Motion.** Dialogs, menus, the details drawer, pages and new messages ease
   in over 200ms or less. With **Reduce motion** on in macOS Accessibility
   settings, the app does not animate.
+- **Work in a separate copy.** In **New task**, "Work in a separate copy" starts
+  the conversation in a Git worktree on a new branch (`ais/…`) from the last
+  commit, kept in the app's data folder, so other agents can work in the
+  project at the same time. The agent, Changes, undo, Run and instructions all
+  work in the copy, and a "Copy" chip marks it. In the details panel, **Copy's
+  changes** shows its work since it started (committed or not), **Bring changes
+  back…** applies them to the project as uncommitted changes after you confirm
+  the list (all or none, never into files you changed yourself), and **Remove
+  copy…** deletes the folder and branch and closes the conversation, asking
+  again if changes were not brought back.
 - **Side by side.** On a window at least 1200px wide, an open conversation can
   open beside the current one: the columns button on its sidebar row, or
   "Open beside" in ⌘K. Each pane is a full conversation; clicking into one

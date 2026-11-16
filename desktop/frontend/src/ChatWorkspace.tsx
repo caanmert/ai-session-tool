@@ -550,6 +550,15 @@ export default function ChatWorkspace({
               {state.activeModel && !state.review && (
                 <span className="chat-meta">{state.activeModel}</span>
               )}
+              {state.copy && (
+                <span
+                  className="chip copy"
+                  title={`Works in its own copy of ${state.copy.project}, on branch ${state.copy.branch}. Your project changes only when you bring the changes back.`}
+                >
+                  <Icon name="branch" size={12} />
+                  Copy · {state.copy.branch}
+                </span>
+              )}
               {state.handedFrom && (
                 <button
                   className="text-button chat-link"
@@ -1285,6 +1294,7 @@ export default function ChatWorkspace({
               : { to: other, blocked: handOffBlocked, run: handOff }
           }
           onDraft={state.review ? undefined : draftAppend}
+          onCopyRemoved={() => onClosed?.([state.id])}
         />
       )}
     </section>
