@@ -807,3 +807,11 @@ button.search:hover {
   font-size: var(--text-sm);
   color: var(--muted);
 }
+
+/* Open a conversation beside the current one */
+.session-item.can-beside .session-beside {
+  right: 28px;
+}
+.session-item.beside {
+  box-shadow: inset 2px 0 0 var(--border-strong);
+}

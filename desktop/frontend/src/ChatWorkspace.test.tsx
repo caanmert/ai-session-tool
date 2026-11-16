@@ -497,6 +497,56 @@ describe("graphical conversations", () => {
     expect(handlers.onSelect).toHaveBeenLastCalledWith("next");
   });
 
+  it("in a split, only the focused pane takes the keyboard", async () => {
+    const focusPane = vi.fn();
+    const closePane = vi.fn();
+    const view = render(
+      <ChatWorkspace
+        chat={initial}
+        active
+        reviewerAvailable
+        {...handlers}
+        pane="second"
+        focused={false}
+        onFocusPane={focusPane}
+        onClosePane={closePane}
+      />,
+    );
+    const pane = screen.getByRole("region", { name: "Codex conversation" });
+    expect(pane).toHaveClass("pane", "second");
+    expect(pane).not.toHaveClass("focused");
+    await userEvent.keyboard("{Meta>}f{/Meta}");
+    expect(
+      screen.queryByRole("textbox", { name: "Find in conversation" }),
+    ).toBeNull();
+    // A click inside asks for focus.
+    await userEvent.click(
+      screen.getByRole("heading", { name: "Fix checkout" }),
+    );
+    expect(focusPane).toHaveBeenCalled();
+    view.rerender(
+      <ChatWorkspace
+        chat={initial}
+        active
+        reviewerAvailable
+        {...handlers}
+        pane="second"
+        focused
+        onFocusPane={focusPane}
+        onClosePane={closePane}
+      />,
+    );
+    expect(pane).toHaveClass("focused");
+    await userEvent.keyboard("{Meta>}f{/Meta}");
+    expect(
+      await screen.findByRole("textbox", { name: "Find in conversation" }),
+    ).toBeVisible();
+    await userEvent.click(
+      screen.getByRole("button", { name: "Close this pane" }),
+    );
+    expect(closePane).toHaveBeenCalled();
+  });
+
   it("shows a message found by search, unfolding what hides it", async () => {
     const tool = (id: string) => ({
       id,

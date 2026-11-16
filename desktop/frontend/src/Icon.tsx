@@ -83,6 +83,12 @@ const paths = {
     </>
   ),
   play: <path d="M7 5v14l11-7L7 5Z" />,
+  columns: (
+    <>
+      <rect x="3.5" y="4.5" width="17" height="15" rx="2" />
+      <path d="M12 4.5v15" />
+    </>
+  ),
   stop: (
     <rect
       x="6"

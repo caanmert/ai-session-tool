@@ -25,6 +25,8 @@ export default function OpenSessions({
   active,
   onSelect,
   onClose,
+  onBeside,
+  beside = "",
   closing,
   folded = [],
   onFold,
@@ -34,6 +36,10 @@ export default function OpenSessions({
   active: string;
   onSelect: (id: string) => void;
   onClose: (id: string) => void;
+  /** Opens a conversation beside the current one; absent when it can't. */
+  onBeside?: (id: string) => void;
+  /** The conversation shown in the other pane, if any. */
+  beside?: string;
   closing: string;
   /** Sections folded away, by key. */
   folded?: string[];
@@ -118,7 +124,7 @@ export default function OpenSessions({
             return (
               <div
                 key={chat.id}
-                className={`session-item ${active === chat.id ? "active" : ""}`}
+                className={`session-item ${active === chat.id ? "active" : ""} ${beside === chat.id ? "beside" : ""} ${onBeside ? "can-beside" : ""}`}
               >
                 <button
                   data-open-session
@@ -140,6 +146,19 @@ export default function OpenSessions({
                     </span>
                   </small>
                 </button>
+                {onBeside &&
+                  active !== chat.id &&
+                  beside !== chat.id &&
+                  !!active && (
+                    <button
+                      className="session-close session-beside"
+                      aria-label={`Open ${title} beside`}
+                      title="Open beside the current conversation"
+                      onClick={() => onBeside(chat.id)}
+                    >
+                      <Icon name="columns" size={13} />
+                    </button>
+                  )}
                 <button
                   className="session-close"
                   aria-label={`Close ${title}`}
