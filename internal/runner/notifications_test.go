@@ -84,7 +84,7 @@ func TestNotificationAgentHelper(t *testing.T) {
 	}
 	tool, agentArgs := args[0], args[1:]
 	data, _ := json.Marshal(agentArgs)
-	if err := os.WriteFile("ready.json", data, 0o600); err != nil {
+	if err := writeWhole("ready.json", data); err != nil {
 		os.Exit(3)
 	}
 	deadline := time.Now().Add(20 * time.Second)
@@ -129,13 +129,22 @@ func TestNotificationAgentHelper(t *testing.T) {
 				errText = "missing Codex event configuration"
 			}
 		}
-		if err := os.WriteFile("notified", []byte(errText), 0o600); err != nil {
+		if err := writeWhole("notified", []byte(errText)); err != nil {
 			os.Exit(5)
 		}
 		// Avoid test harness output generating unrelated terminal activity.
 		os.Exit(0)
 	}
 	os.Exit(6)
+}
+
+// writeWhole writes a file the test is waiting for under a temporary name
+// and renames it into place, so the test never reads it half-written.
+func writeWhole(name string, data []byte) error {
+	if err := os.WriteFile(name+".partial", data, 0o600); err != nil {
+		return err
+	}
+	return os.Rename(name+".partial", name)
 }
 
 func waitFile(t *testing.T, path string) []byte {
