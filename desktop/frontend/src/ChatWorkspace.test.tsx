@@ -421,6 +421,47 @@ describe("graphical conversations", () => {
       await within(panel).findByText("Discarded the changes to app.txt"),
     ).toBeVisible();
   });
+  it("shows a message found by search, unfolding what hides it", async () => {
+    const tool = (id: string) => ({
+      id,
+      role: "assistant",
+      kind: "tool",
+      name: "Bash",
+      status: "completed",
+      text: JSON.stringify({ command: `step ${id}` }, null, 2),
+    });
+    state.version = 2;
+    state.messages = [
+      { id: "u1", role: "user", kind: "text", text: "Go" },
+      tool("t1"),
+      tool("t2"),
+      tool("t3"),
+      tool("t4"),
+      { id: "a1", role: "assistant", kind: "text", text: "Done." },
+    ];
+    const view = render(
+      <ChatWorkspace chat={initial} active reviewerAvailable {...handlers} />,
+    );
+    const summary = await screen.findByRole("button", { name: /^4 steps/ });
+    expect(summary).toHaveAttribute("aria-expanded", "false");
+    view.rerender(
+      <ChatWorkspace
+        chat={initial}
+        active
+        reviewerAvailable
+        {...handlers}
+        focusMessage={{ id: "t3", at: 1 }}
+      />,
+    );
+    await waitFor(() =>
+      expect(summary).toHaveAttribute("aria-expanded", "true"),
+    );
+    await waitFor(() =>
+      expect(document.querySelector('[data-message-id="t3"]')).toHaveClass(
+        "found",
+      ),
+    );
+  });
   it("hides and shows the details panel on a wide window", async () => {
     const hidden = vi.fn();
     const view = render(
