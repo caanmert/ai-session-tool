@@ -150,6 +150,16 @@ They demonstrate the layout, not output from a live model run.
   added and removed line counts. Click a file or **Review all changes** to read the
   diff. Nothing is reverted from here. A folder that is not a Git repository
   simply says so.
+- **Undo a turn.** Before each turn in a Git project, ais keeps the project's
+  files as they are (tracked and untracked, not ignored ones) as a checkpoint
+  under `refs/ais/`, without committing, moving the branch, or touching the
+  index or stash. The undo arrow on the message that started a turn, **Restore
+  files to before this turn**, lists the files that would change and asks first.
+  Restoring keeps the files as they are just before, so the note it leaves can
+  undo the restore too. The newest 50 checkpoints of a conversation are kept.
+  The undo arrow beside a changed file discards its uncommitted changes (back to
+  the last commit, or removed if new) after a confirmation, and can be undone
+  the same way. Staged changes stay staged.
 - **Commit…** (below the changed files) makes a local commit of the files you
   check, with a message prefilled from the conversation title. Other staged work is
   left out and stays staged; Git hooks and commit signing run as they do in a

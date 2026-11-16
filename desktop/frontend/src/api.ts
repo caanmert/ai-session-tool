@@ -284,6 +284,17 @@ export type GitHubOverview = {
   /** One of the two lists could not be read. */
   partial?: string;
 };
+export type Checkpoint = {
+  id: string;
+  /** The message it belongs to: the one that started a turn, or a restore's note. */
+  messageId: string;
+  commit: string;
+  at: string;
+  /** "turn" for before a turn, "restore" for before a restore or discard. */
+  kind: string;
+};
+/** One file a restore changes back: "restore" earlier content or "remove" a new file. */
+export type RestoreChange = { path: string; change: "restore" | "remove" };
 export type GitHubComment = { author: string; body: string; createdAt: string };
 export type GitHubIssueDetail = {
   number: number;
@@ -378,6 +389,8 @@ export type ReviewDraft = {
 export type ChatState = {
   /** Codex's web search here: "" for Codex's own setting, or disabled, cached or live. */
   webSearch?: string;
+  /** The files before each turn and each restore, so a turn can be undone. */
+  checkpoints?: Checkpoint[];
   /** How full the context is after the latest response, as the agent reported it. */
   context?: { used: number; window?: number };
   /** Set on both conversations of a comparison. */
@@ -552,6 +565,15 @@ export interface Backend {
   /** A project's open issues and pull requests, read with the GitHub CLI. */
   GitHubOverview(project: string): Promise<GitHubOverview>;
   GitHubIssue(project: string, number: number): Promise<GitHubIssueDetail>;
+  /** The files restoring a checkpoint would change. Changes nothing. */
+  RestorePlan(chatId: string, checkpointId: string): Promise<RestoreChange[]>;
+  /** Puts files back as they were at a checkpoint, after the user confirmed. */
+  RestoreCheckpoint(
+    chatId: string,
+    checkpointId: string,
+  ): Promise<RestoreChange[]>;
+  /** Undoes the uncommitted changes to one file, after the user confirmed. */
+  DiscardFile(chatId: string, path: string): Promise<void>;
   /** One pull request in full. Only reads. */
   GitHubPull(project: string, number: number): Promise<GitHubPullDetail>;
   ChatDiff(id: string): Promise<ReviewSnapshot>;
@@ -644,6 +666,11 @@ export const api: Backend = {
   GitHubIssue: async (project, number) =>
     backend().GitHubIssue(project, number),
   GitHubPull: async (project, number) => backend().GitHubPull(project, number),
+  RestorePlan: async (chatId, checkpointId) =>
+    backend().RestorePlan(chatId, checkpointId),
+  RestoreCheckpoint: async (chatId, checkpointId) =>
+    backend().RestoreCheckpoint(chatId, checkpointId),
+  DiscardFile: async (chatId, path) => backend().DiscardFile(chatId, path),
   ChatDiff: async (id) => backend().ChatDiff(id),
   StartReview: async (id) => backend().StartReview(id),
   SendReviewFindings: async (id, findings) =>
