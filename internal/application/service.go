@@ -234,6 +234,43 @@ func (s *Service) Search(ctx context.Context, query string) ([]string, error) {
 	return keys, nil
 }
 
+// TextHit is a saved session whose conversation matches a search, with the
+// matching passage. Matches are marked with index.MarkStart and MarkEnd.
+type TextHit struct {
+	Key     string `json:"key"`
+	Snippet string `json:"snippet"`
+}
+
+// SearchText finds saved sessions whose conversation contains every term of
+// query, best matches first, with the matching passage. Sessions that match
+// only by title or other metadata are left out: Search covers those.
+func (s *Service) SearchText(ctx context.Context, query string, limit int) ([]TextHit, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.closed {
+		return nil, errors.New("session manager is closed")
+	}
+	if !s.loaded {
+		if _, err := s.refresh(ctx); err != nil {
+			return nil, err
+		}
+	}
+	hits := []TextHit{}
+	if s.ix == nil || strings.TrimSpace(query) == "" {
+		return hits, nil
+	}
+	found, err := s.ix.Search(ctx, query, limit)
+	if err != nil {
+		return nil, err
+	}
+	for _, hit := range found {
+		if hit.Snippet != "" {
+			hits = append(hits, TextHit{Key: index.Key(hit.Tool, hit.ID), Snippet: hit.Snippet})
+		}
+	}
+	return hits, nil
+}
+
 func (s *Service) find(key string) (model.Session, error) {
 	if s.closed {
 		return model.Session{}, errors.New("session manager is closed")

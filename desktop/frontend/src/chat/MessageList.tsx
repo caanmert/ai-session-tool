@@ -45,6 +45,7 @@ const ToolStep = memo(function ToolStep({
   return (
     <details
       className="tool-step"
+      data-message-id={message.id}
       open={open}
       onToggle={(e) => {
         if (e.currentTarget.open !== open) setChosen(e.currentTarget.open);
@@ -264,7 +265,10 @@ const TextMessage = memo(function TextMessage({
     </div>
   );
   return (
-    <article className={`chat-message ${message.role}`}>
+    <article
+      className={`chat-message ${message.role}`}
+      data-message-id={message.id}
+    >
       {user ? (
         <span className="avatar" aria-hidden="true">
           You

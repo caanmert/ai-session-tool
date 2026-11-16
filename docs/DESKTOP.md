@@ -319,7 +319,7 @@ or committed and pushed are lost.
    not bypass permissions. Unsupported requests fail closed and may require the CLI.
 
 Switch conversations in the sidebar or return to **History** while an agent works.
-**⌘K** opens the command palette, **⌘N** opens New task, and **Esc** closes
+**⌘K** opens the command palette (it also searches the text of conversations and opens one at the matching message), **⌘N** opens New task, and **Esc** closes
 dialogs. History refreshes when a response finishes; the refresh button rescans
 manually. **⌘1**–**⌘9** switch to an open conversation by its place in the
 sidebar, **⌘F** finds text in the open conversation, and **⌘,** opens Settings,

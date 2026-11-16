@@ -284,6 +284,18 @@ export type GitHubOverview = {
   /** One of the two lists could not be read. */
   partial?: string;
 };
+/** A conversation whose text matches a search. */
+export type MessageHit = {
+  /** "chat" for a conversation in the app, "session" for a saved agent session. */
+  kind: "chat" | "session";
+  chatId?: string;
+  messageId?: string;
+  key?: string;
+  title?: string;
+  tool?: string;
+  /** The matching passage, with matches between "\u0002" and "\u0003". */
+  snippet: string;
+};
 export type Checkpoint = {
   id: string;
   /** The message it belongs to: the one that started a turn, or a restore's note. */
@@ -565,6 +577,8 @@ export interface Backend {
   /** A project's open issues and pull requests, read with the GitHub CLI. */
   GitHubOverview(project: string): Promise<GitHubOverview>;
   GitHubIssue(project: string, number: number): Promise<GitHubIssueDetail>;
+  /** Conversations whose text matches, with the passage. Only reads. */
+  SearchMessages(query: string): Promise<MessageHit[]>;
   /** The files restoring a checkpoint would change. Changes nothing. */
   RestorePlan(chatId: string, checkpointId: string): Promise<RestoreChange[]>;
   /** Puts files back as they were at a checkpoint, after the user confirmed. */
@@ -666,6 +680,7 @@ export const api: Backend = {
   GitHubIssue: async (project, number) =>
     backend().GitHubIssue(project, number),
   GitHubPull: async (project, number) => backend().GitHubPull(project, number),
+  SearchMessages: async (query) => backend().SearchMessages(query),
   RestorePlan: async (chatId, checkpointId) =>
     backend().RestorePlan(chatId, checkpointId),
   RestoreCheckpoint: async (chatId, checkpointId) =>

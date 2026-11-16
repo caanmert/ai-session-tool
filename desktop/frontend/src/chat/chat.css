@@ -1052,3 +1052,11 @@
   align-items: center;
   gap: 6px;
 }
+
+/* A message found by search is marked for a moment. */
+.chat-message.found,
+.tool-step.found {
+  border-radius: var(--radius-control);
+  box-shadow: 0 0 0 2px var(--warning);
+  transition: box-shadow 0.3s;
+}

@@ -21,6 +21,7 @@ import FindBar from "./chat/FindBar";
 import { useQueuedMessage } from "./chat/queuedMessage";
 import ContextMeter from "./chat/ContextMeter";
 import Popover from "./ui/Popover";
+import { revealAround } from "./ui/Foldable";
 import CompareDialog from "./chat/CompareDialog";
 import ModePicker from "./chat/ModePicker";
 import WebSearchPicker from "./chat/WebSearchPicker";
@@ -95,6 +96,8 @@ type Props = {
   onState: (chat: ChatState) => void;
   /** Conversations that were closed from here, such as by removing a comparison. */
   onClosed?: (ids: string[]) => void;
+  /** A message to show, for example one found by search. */
+  focusMessage?: { id: string; at: number };
   /** The details panel is hidden on wide windows (a remembered choice). */
   detailsHidden?: boolean;
   onDetailsHidden?: (hidden: boolean) => void;
@@ -110,6 +113,7 @@ export default function ChatWorkspace({
   onClosed,
   detailsHidden = false,
   onDetailsHidden,
+  focusMessage,
 }: Props) {
   const [state, setState] = useState(chat);
   const { prompt, updatePrompt, draftError, restored } = useChatDraft(chat.id);
@@ -369,6 +373,30 @@ export default function ChatWorkspace({
     el.scrollTop += el.scrollHeight - heightBefore.current;
     heightBefore.current = 0;
   }, [shown]);
+  // Show a message found by search: draw it if it is among the earlier ones,
+  // open whatever folds it, scroll to it and mark it for a moment.
+  useEffect(() => {
+    if (!focusMessage || !active) return;
+    const at = listed.findIndex((m) => m.id === focusMessage.id);
+    if (at < 0) return;
+    if (at < listed.length - shown) {
+      setShown(listed.length - at);
+      return;
+    }
+    const frame = requestAnimationFrame(() => {
+      const box = messages.current;
+      const el = box?.querySelector<HTMLElement>(
+        `[data-message-id="${CSS.escape(focusMessage.id)}"]`,
+      );
+      if (!box || !el) return;
+      following.current = false;
+      revealAround(el, box);
+      el.scrollIntoView?.({ block: "center" });
+      el.classList.add("found");
+      setTimeout(() => el.classList.remove("found"), 1600);
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [focusMessage, active, listed, shown]);
   // Cmd+F searches this conversation; the window has no page search of its own.
   const [finding, setFinding] = useState(false);
   useEffect(() => {

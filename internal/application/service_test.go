@@ -10,6 +10,7 @@ import (
 	"testing"
 	"unicode/utf8"
 
+	"github.com/caanmert/ai-session-tool/internal/index"
 	"github.com/caanmert/ai-session-tool/internal/meta"
 	"github.com/caanmert/ai-session-tool/internal/model"
 	"github.com/caanmert/ai-session-tool/internal/provider"
@@ -63,6 +64,14 @@ func TestServiceSearchPreviewAndFreshResume(t *testing.T) {
 	keys, err := s.Search(ctx, "jitter")
 	if err != nil || len(keys) != 1 || keys[0] != session.Key() {
 		t.Fatalf("body search: %v %v", keys, err)
+	}
+	// The passage that matched comes with the session, marked.
+	hits, err := s.SearchText(ctx, "jitter", 10)
+	if err != nil || len(hits) != 1 || hits[0].Key != session.Key() || !strings.Contains(hits[0].Snippet, index.MarkStart) {
+		t.Fatalf("text search: %+v %v", hits, err)
+	}
+	if hits, _ := s.SearchText(ctx, "   ", 10); len(hits) != 0 {
+		t.Fatalf("empty search: %+v", hits)
 	}
 	preview, err := s.Transcript(ctx, session.Key())
 	if err != nil || len(preview.Messages) != 2 {
