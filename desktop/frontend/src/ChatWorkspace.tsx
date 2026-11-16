@@ -20,6 +20,7 @@ import { conversationStatus, requestSummary } from "./chat/conversation";
 import FindBar from "./chat/FindBar";
 import { useQueuedMessage } from "./chat/queuedMessage";
 import ContextMeter from "./chat/ContextMeter";
+import Popover from "./ui/Popover";
 import CompareDialog from "./chat/CompareDialog";
 import ModePicker from "./chat/ModePicker";
 import WebSearchPicker from "./chat/WebSearchPicker";
@@ -871,16 +872,46 @@ export default function ChatWorkspace({
           <div className="composer-footer">
             {!state.review && (
               <>
-                <button
-                  type="button"
-                  className="icon-button"
-                  aria-label="Attach images"
-                  title="Attach images. You can also paste a screenshot or drop image files here."
+                <Popover
+                  label="Add images or files"
+                  title="Attach images or mention project files. You can also paste or drop images."
+                  buttonClassName="pill-button icon-pill"
+                  panelLabel="Add to the message"
+                  role="menu"
                   disabled={working}
-                  onClick={() => imagePicker.current?.click()}
+                  button={<Icon name="plus" size={15} />}
                 >
-                  <Icon name="image" size={16} />
-                </button>
+                  {(close) => (
+                    <>
+                      <button
+                        type="button"
+                        role="menuitem"
+                        className="popover-item"
+                        onClick={() => {
+                          close();
+                          imagePicker.current?.click();
+                        }}
+                      >
+                        <Icon name="image" size={15} />
+                        <strong>Attach images…</strong>
+                        <small>or paste, or drop them here</small>
+                      </button>
+                      <button
+                        type="button"
+                        role="menuitem"
+                        className="popover-item"
+                        onClick={() => {
+                          close();
+                          void mentionFiles();
+                        }}
+                      >
+                        <Icon name="paperclip" size={15} />
+                        <strong>Mention files…</strong>
+                        <small>adds their paths; or type @</small>
+                      </button>
+                    </>
+                  )}
+                </Popover>
                 <input
                   ref={imagePicker}
                   type="file"
@@ -894,18 +925,6 @@ export default function ChatWorkspace({
                   }}
                 />
               </>
-            )}
-            {!state.review && (
-              <button
-                type="button"
-                className="icon-button"
-                aria-label="Mention files"
-                title="Mention files: adds their paths to your message"
-                disabled={working}
-                onClick={() => void mentionFiles()}
-              >
-                <Icon name="paperclip" size={16} />
-              </button>
             )}
             {!state.review && (
               <ModePicker
@@ -927,6 +946,7 @@ export default function ChatWorkspace({
               <ModelPicker
                 id={state.id}
                 settings={state.settings}
+                compact
                 active={active}
                 disabled={busy || actionWorking}
                 onPending={settingsPending}
