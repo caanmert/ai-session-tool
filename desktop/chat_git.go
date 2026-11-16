@@ -42,6 +42,11 @@ func (b *boundedBuffer) Write(p []byte) (int, error) {
 // gitRun runs git for a change the user asked for. It never prompts for
 // credentials, and an error carries git's own message (including hook output).
 func gitRun(ctx context.Context, dir string, args ...string) (string, error) {
+	return gitRunWith(ctx, dir, nil, args...)
+}
+
+// gitRunWith is gitRun with extra environment, such as a private index.
+func gitRunWith(ctx context.Context, dir string, env []string, args ...string) (string, error) {
 	cmd := exec.CommandContext(ctx, "git", append([]string{"--no-pager", "--literal-pathspecs", "-c", "core.fsmonitor=false", "-C", dir}, args...)...)
 	for _, entry := range os.Environ() {
 		name, _, _ := strings.Cut(entry, "=")
@@ -49,7 +54,7 @@ func gitRun(ctx context.Context, dir string, args ...string) (string, error) {
 			cmd.Env = append(cmd.Env, entry)
 		}
 	}
-	cmd.Env = append(cmd.Env, "GIT_TERMINAL_PROMPT=0")
+	cmd.Env = append(append(cmd.Env, "GIT_TERMINAL_PROMPT=0"), env...)
 	stdout, stderr := &boundedBuffer{limit: 1 << 20}, &boundedBuffer{limit: 64 << 10}
 	cmd.Stdout, cmd.Stderr = stdout, stderr
 	if err := cmd.Run(); err != nil {

@@ -146,6 +146,27 @@ They demonstrate the layout, not output from a live model run.
   instead. Pushes are never forced, and nothing is merged. Without `gh`, on the
   default branch, or with nothing to propose, the dialog explains why.
 
+## Compare two agents
+
+With both agents installed, choose **Both, compared** in New task and describe the
+task. Each agent gets the same text in its own Git worktree and branch
+(`ais-compare/<id>/<agent>`), started from the project's last commit, under
+`worktrees/` in the ais data directory. Uncommitted changes in your project are not
+included, and the agents cannot touch each other's files or your working tree.
+
+Both conversations open side by side in the sidebar and work like any other
+conversation: answer approvals, send follow-ups, commit, or open a pull request from
+their branch. **Compare** in either header shows both sides: status, the files each
+changed with line counts measured from the starting commit (including commits an
+agent made), and both diffs of a file next to each other.
+
+**Use this version…** copies one side's changes into your project's working tree
+after a confirmation. Nothing is committed. If your project has its own uncommitted
+changes in any of those files, or the changes no longer apply, nothing is copied
+and the dialog says why. **Remove comparison…** deletes both worktrees and branches
+and closes both conversations after a confirmation; changes that were not copied
+or committed and pushed are lost.
+
 ## Start or continue a conversation
 
 1. Open **History** and, if you like, pick a project in the top bar. Filter by

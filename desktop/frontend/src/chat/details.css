@@ -367,3 +367,161 @@
   padding-left: 18px;
   color: var(--text);
 }
+
+/* Compare two agents */
+.compare-dialog .compare-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 16px 20px;
+}
+.compare-sides {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+.compare-side {
+  display: grid;
+  gap: 8px;
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  background: var(--surface);
+}
+.compare-side header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.compare-side header strong {
+  flex: 1;
+  font-size: var(--text-base);
+}
+.compare-totals {
+  font-size: var(--text-md);
+  color: var(--muted);
+}
+.compare-branch {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+.compare-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.compare-files {
+  width: 100%;
+  margin-bottom: 16px;
+  border-collapse: collapse;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  font-size: var(--text-sm);
+}
+.compare-files th,
+.compare-files td {
+  padding: 0 12px;
+  height: 32px;
+  text-align: left;
+  border-top: 1px solid var(--border-subtle);
+  white-space: nowrap;
+}
+.compare-files thead th {
+  border-top: 0;
+  background: var(--sidebar);
+  font-weight: 600;
+  color: var(--muted);
+}
+.compare-files th[scope="row"] {
+  width: 60%;
+  font-weight: 400;
+}
+.compare-files th[scope="row"] button {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  text-align: left;
+}
+.compare-files tr.selected th,
+.compare-files tr.selected td {
+  background: var(--surface-hover);
+}
+.compare-files .muted {
+  color: var(--muted);
+}
+.compare-files .added {
+  color: var(--success-text);
+}
+.compare-files .removed {
+  color: var(--danger-text);
+}
+.compare-diffs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+.compare-diffs section {
+  min-width: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  overflow: hidden;
+}
+.compare-diffs h3 {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border-subtle);
+  font-size: var(--text-sm);
+}
+.compare-diffs .details-empty {
+  padding: 12px;
+}
+.compare-done {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 12px 20px 0;
+  font-size: var(--text-md);
+  color: var(--success-text);
+}
+.compare-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 12px 20px;
+  border-top: 1px solid var(--border);
+}
+.compare-footer p {
+  font-size: var(--text-sm);
+  color: var(--muted);
+}
+.button.danger-text {
+  color: var(--danger-text);
+}
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+.agent-option.compare .compare-marks {
+  display: inline-flex;
+  gap: 3px;
+  padding: 0 4px;
+}
+@media (max-width: 1150px) {
+  .compare-sides,
+  .compare-diffs {
+    grid-template-columns: 1fr;
+  }
+}

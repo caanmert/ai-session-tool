@@ -237,6 +237,37 @@ export type GitHubIssueDetail = {
   body: string;
   url: string;
 };
+export type ComparisonSide = {
+  tool: ToolName;
+  chatId: string;
+  worktree: string;
+  branch: string;
+};
+export type Comparison = {
+  id: string;
+  project: string;
+  base: string;
+  prompt: string;
+  createdAt: string;
+  sides: ComparisonSide[];
+};
+export type ComparisonStart = {
+  comparison: Comparison;
+  chats: ChatState[];
+  /** A side could not start; its conversation is open to try again. */
+  problem?: string;
+};
+export type ComparisonSideView = ComparisonSide & {
+  status: string;
+  changes: ChangeSummary;
+};
+export type ComparisonView = {
+  id: string;
+  project: string;
+  base: string;
+  prompt: string;
+  sides: ComparisonSideView[];
+};
 export type ChangeSummary = {
   available: boolean;
   reason?: string;
@@ -270,6 +301,8 @@ export type ReviewDraft = {
   created: string;
 };
 export type ChatState = {
+  /** Set on both conversations of a comparison. */
+  comparison?: string;
   /** Permission mode for the next message; "" is the agent's normal asking. */
   mode?: string;
   settings?: ModelSettings;
@@ -410,6 +443,14 @@ export interface Backend {
   ): Promise<PullRequestResult>;
   /** Opens an https link in the default browser. */
   OpenURL(link: string): Promise<void>;
+  /** The same task for both agents, each in its own worktree and branch. */
+  StartComparison(project: string, text: string): Promise<ComparisonStart>;
+  ComparisonOverview(id: string): Promise<ComparisonView>;
+  ComparisonDiff(id: string, tool: string): Promise<ReviewSnapshot>;
+  /** Copies one side's changes into the project. Nothing is committed. */
+  UseComparisonSide(id: string, tool: string): Promise<string[]>;
+  /** Deletes both worktrees and branches, and closes both conversations. */
+  RemoveComparison(id: string): Promise<void>;
   /** A project's open issues and pull requests, read with the GitHub CLI. */
   GitHubOverview(project: string): Promise<GitHubOverview>;
   GitHubIssue(project: string, number: number): Promise<GitHubIssueDetail>;
@@ -486,6 +527,12 @@ export const api: Backend = {
   CreatePullRequest: async (id, request) =>
     backend().CreatePullRequest(id, request),
   OpenURL: async (link) => backend().OpenURL(link),
+  StartComparison: async (project, text) =>
+    backend().StartComparison(project, text),
+  ComparisonOverview: async (id) => backend().ComparisonOverview(id),
+  ComparisonDiff: async (id, tool) => backend().ComparisonDiff(id, tool),
+  UseComparisonSide: async (id, tool) => backend().UseComparisonSide(id, tool),
+  RemoveComparison: async (id) => backend().RemoveComparison(id),
   GitHubOverview: async (project) => backend().GitHubOverview(project),
   GitHubIssue: async (project, number) =>
     backend().GitHubIssue(project, number),

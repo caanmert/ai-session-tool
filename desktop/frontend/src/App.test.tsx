@@ -134,6 +134,11 @@ beforeEach(() => {
     PullRequestPlan: vi.fn(),
     CreatePullRequest: vi.fn(),
     OpenURL: vi.fn(),
+    StartComparison: vi.fn(),
+    ComparisonOverview: vi.fn(),
+    ComparisonDiff: vi.fn(),
+    UseComparisonSide: vi.fn(),
+    RemoveComparison: vi.fn(),
     GitHubOverview: vi.fn(),
     GitHubIssue: vi.fn(),
     ChatModes: vi.fn().mockResolvedValue([]),
@@ -756,6 +761,69 @@ describe("desktop workflows", () => {
     expect(within(dialog).getByLabelText("Project")).toHaveValue("/demo/docs");
     expect(backend.NewChat).not.toHaveBeenCalled();
     expect(backend.SendChat).not.toHaveBeenCalled();
+  });
+  it("starts a comparison of both agents from New task", async () => {
+    const side = (id: string, tool: "claude" | "codex") => ({
+      ...live,
+      id,
+      tool,
+      title: "Add a greeting",
+      comparison: "cmp-1",
+      project: `/data/worktrees/cmp-1/docs-${tool}`,
+    });
+    backend.StartComparison = vi.fn().mockResolvedValue({
+      comparison: { id: "cmp-1", sides: [] },
+      chats: [side("claude-side", "claude"), side("codex-side", "codex")],
+      problem: "Codex could not start: eight agents are already running.",
+    });
+    backend.ReadChat = vi.fn(async (id: string, version: number) => ({
+      version: 1,
+      state:
+        version === 1
+          ? null
+          : side(id, id === "claude-side" ? "claude" : "codex"),
+    }));
+    render(<App />);
+    await screen.findByRole("heading", { name: "Retry webhook delivery" });
+    fireEvent.keyDown(document, { key: "n", metaKey: true });
+    const dialog = await screen.findByRole("dialog");
+    await userEvent.selectOptions(
+      within(dialog).getByLabelText("Project"),
+      "/demo/docs",
+    );
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: /Both, compared/ }),
+    );
+    // A comparison needs the task text.
+    expect(
+      within(dialog).getByRole("button", { name: /Start comparison/ }),
+    ).toBeDisabled();
+    await userEvent.type(
+      within(dialog).getByLabelText("Task"),
+      "Add a greeting",
+    );
+    expect(
+      within(dialog).getByText(/each in its own Git worktree/),
+    ).toBeVisible();
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: /Start comparison/ }),
+    );
+    expect(backend.StartComparison).toHaveBeenCalledWith(
+      "/demo/docs",
+      "Add a greeting",
+    );
+    expect(backend.NewChat).not.toHaveBeenCalled();
+    // Both conversations open; a side that could not start is explained.
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "eight agents are already running",
+    );
+    const sidebar = screen.getByRole("navigation", {
+      name: "Open conversations",
+    });
+    expect(within(sidebar).getAllByText("Add a greeting")).toHaveLength(2);
+    expect(
+      screen.getByRole("region", { name: "Chat conversation" }),
+    ).toBeVisible();
   });
   it("opens saved desktop work without starting or resuming a provider", async () => {
     backend.ListSavedChats = vi.fn().mockResolvedValue([

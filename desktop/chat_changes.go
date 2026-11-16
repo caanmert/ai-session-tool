@@ -39,6 +39,12 @@ const (
 )
 
 func summarizeChanges(ctx context.Context, dir string) ChangeSummary {
+	return summarizeChangesFrom(ctx, dir, "HEAD")
+}
+
+// summarizeChangesFrom lists the working tree's changes against a commit,
+// including commits made on top of it.
+func summarizeChangesFrom(ctx context.Context, dir, base string) ChangeSummary {
 	unavailable := func(reason string) ChangeSummary {
 		return ChangeSummary{Reason: reason, Files: []ChangedFile{}}
 	}
@@ -47,14 +53,14 @@ func summarizeChanges(ctx context.Context, dir string) ChangeSummary {
 		return unavailable("This project is not a Git repository.")
 	}
 	root := strings.TrimSuffix(string(raw), "\n")
-	if _, err := reviewGit(ctx, root, "rev-parse", "--verify", "HEAD"); err != nil {
+	if _, err := reviewGit(ctx, root, "rev-parse", "--verify", base+"^{commit}"); err != nil {
 		return unavailable("Changes appear after the project's first commit.")
 	}
-	statuses, err := reviewGit(ctx, root, "diff", "--no-ext-diff", "--no-textconv", "--no-renames", "--name-status", "-z", "HEAD", "--")
+	statuses, err := reviewGit(ctx, root, "diff", "--no-ext-diff", "--no-textconv", "--no-renames", "--name-status", "-z", base, "--")
 	if err != nil {
 		return unavailable("Changes could not be read: " + err.Error())
 	}
-	counts, err := reviewGit(ctx, root, "diff", "--no-ext-diff", "--no-textconv", "--no-renames", "--numstat", "-z", "HEAD", "--")
+	counts, err := reviewGit(ctx, root, "diff", "--no-ext-diff", "--no-textconv", "--no-renames", "--numstat", "-z", base, "--")
 	if err != nil {
 		return unavailable("Changes could not be read: " + err.Error())
 	}
