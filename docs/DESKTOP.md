@@ -172,7 +172,10 @@ They demonstrate the layout, not output from a live model run.
   you type. It runs in the project folder in your login shell, only when you
   press **Run**, one at a time per conversation, and **Stop** ends it with
   everything it started. The newest 256 KB of output and the exit status are
-  shown; runs stop when the app quits. Reviews have no run panel.
+  shown; runs stop when the app quits. Reviews have no run panel. After a run,
+  **Send output to agent** puts the command, how it ended and the end of its
+  output (last 120 lines, at most 8,000 characters) in the message box, after
+  anything already there; nothing is sent until you send it.
 - **Project instructions…** (in Session) lists the instruction files each agent
   reads for the project: `CLAUDE.md`, `.claude/CLAUDE.md` and `CLAUDE.local.md`
   for Claude Code and `AGENTS.md` for Codex, at the repository root, plus your

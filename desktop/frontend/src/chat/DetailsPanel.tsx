@@ -424,7 +424,7 @@ export default function DetailsPanel({
             </p>
           </section>
         )}
-        {!chat.review && <RunPanel chatId={chat.id} />}
+        {!chat.review && <RunPanel chatId={chat.id} onDraft={onDraft} />}
         <h3 className="details-section">Session</h3>
         <dl className="details-facts">
           <div>

@@ -838,3 +838,10 @@
   font: inherit;
   resize: vertical;
 }
+
+.run-send {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 6px;
+}
