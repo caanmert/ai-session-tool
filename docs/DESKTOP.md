@@ -222,7 +222,18 @@ or committed and pushed are lost.
    Consecutive tool calls are grouped into one block with a row per step. A row
    says what was done and to what, for example "Read `src/checkout.ts`" or "Run
    `npm test`"; expand it for the output. Edits show how many lines changed and
-   expand to the removed and added lines.
+   expand to the removed and added lines; the latest edit in a block starts
+   expanded. Once a turn is done, a block of more than three steps folds to one
+   line such as "7 steps · 2 edits · 3 commands · 1 failed"; the turn still
+   running stays open.
+
+   Your messages longer than about twelve lines and code blocks longer than 30
+   lines are folded with **Show more** / **Show all N lines**. **⌘F** still finds
+   text in folded parts and opens them at the match; the output of closed steps
+   stays out of the search, as before. Each message shows when it arrived (older
+   saved messages may have no time), and **Reuse this message** (the pencil on
+   your messages) puts its text in the message box after anything you have
+   already written there, without sending it.
 5. Answer questions or choose **Allow once** / **Deny** on approval cards. While
    focus is inside a card, **Enter** allows a simple request and **Esc** denies it.
    A command request shows the command and the agent's reason. When the agent

@@ -62,7 +62,11 @@ func (a *App) ResumeChat(key string) (ChatState, error) {
 		if string(message.Kind) == "text" {
 			kind = "text"
 		}
-		messages = append(messages, ChatMessage{ID: uuid.NewString(), Role: string(message.Role), Kind: kind, Text: message.Text, Name: message.ToolName})
+		at := ""
+		if !message.Time.IsZero() {
+			at = message.Time.UTC().Format(time.RFC3339)
+		}
+		messages = append(messages, ChatMessage{ID: uuid.NewString(), Role: string(message.Role), Kind: kind, Text: message.Text, Name: message.ToolName, At: at})
 	}
 	state, err := a.chats.create(cmd.Dir, tool, id, key, messages)
 	if err != nil {

@@ -225,6 +225,18 @@ export default function ChatWorkspace({
     if (el.scrollHeight) el.style.height = `${el.scrollHeight}px`;
   }, [prompt, active]);
   const busy = chatBusy(state.status);
+  // Put one of your messages back in the message box, after any text you
+  // have already written there. Nothing is sent.
+  const promptNow = useRef(prompt);
+  promptNow.current = prompt;
+  const reuse = useCallback(
+    (text: string) => {
+      const current = promptNow.current.trimEnd();
+      updatePrompt(current ? `${current}\n\n${text}` : text);
+      input.current?.focus();
+    },
+    [updatePrompt],
+  );
   // Details sit beside the conversation on wide windows and in a drawer below
   // 1200px. Reviews have their own fixed snapshot instead.
   const narrow = useNarrow();
@@ -525,6 +537,8 @@ export default function ChatWorkspace({
           <MessageList
             tool={state.tool}
             project={state.project}
+            busy={busy}
+            onReuse={reuse}
             messages={earlier > 0 ? listed.slice(earlier) : listed}
           />
           {state.review?.complete && (

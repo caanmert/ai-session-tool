@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type RefObject } from "react";
 import Icon from "../Icon";
+import { revealAround } from "../ui/Foldable";
 
 type HighlightRegistry = {
   set(name: string, highlight: unknown): void;
@@ -79,12 +80,17 @@ export default function FindBar({
     if (!range) return;
     const here = makeHighlight([range]);
     if (here) registry()?.set("find-current", here);
-    range.startContainer.parentElement?.scrollIntoView?.({
-      block: "center",
-      behavior: "auto",
-    });
-    return () => registry()?.delete("find-current");
-  }, [current, count, query, version]);
+    // Open what folds the match, then scroll once it has room.
+    const parent = range.startContainer.parentElement;
+    revealAround(parent, container.current);
+    const frame = requestAnimationFrame(() =>
+      parent?.scrollIntoView?.({ block: "center", behavior: "auto" }),
+    );
+    return () => {
+      cancelAnimationFrame(frame);
+      registry()?.delete("find-current");
+    };
+  }, [container, current, count, query, version]);
 
   const step = (by: number) =>
     count && setCurrent((index) => (index + by + count) % count);
