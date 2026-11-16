@@ -304,6 +304,45 @@ try {
               ],
             };
           },
+          AgentSkills: async (tool) => ({
+            tool,
+            skills:
+              tool === "codex"
+                ? [
+                    {
+                      name: "pdf:pdf",
+                      description: "Read, create and check PDF files",
+                      scope: "user",
+                      path: "/s/pdf",
+                    },
+                    {
+                      name: "review-agent",
+                      description:
+                        "Perform a read-only, defect-first review of a change",
+                      scope: "system",
+                      path: "/s/review",
+                    },
+                    {
+                      name: "release-notes",
+                      description:
+                        "Draft release notes from the merged pull requests",
+                      scope: "repo",
+                      path: "/s/notes",
+                    },
+                  ]
+                : [
+                    {
+                      name: "engineering:code-review",
+                      description:
+                        "Review code changes for security, performance and correctness",
+                      hint: "[pr]",
+                    },
+                    {
+                      name: "engineering:debug",
+                      description: "Structured debugging session",
+                    },
+                  ],
+          }),
           GitHubIssueForm: async () => ({
             repository: "acme/checkout",
             url: "https://github.com/acme/checkout",
@@ -877,6 +916,17 @@ try {
   });
   if (toolbar.height > 48 || !toolbar.meter)
     throw Error(`Message box toolbar: ${JSON.stringify(toolbar)}`);
+  // Typing / lists the agent's skills; choosing one only adds it to the text.
+  const box = page.getByRole("textbox", { name: "Message agent" }).first();
+  await box.click();
+  await page.keyboard.type("/re");
+  const skillList = page.getByRole("listbox", { name: "Skills" });
+  await skillList.waitFor();
+  await checkContrast();
+  await page.screenshot({ path: `${screenshots}/desktop-skills${suffix}.png` });
+  await page.keyboard.press("Escape");
+  await skillList.waitFor({ state: "detached" });
+  await box.fill("");
   // The details panel can be hidden on a wide window too.
   const details = page.getByRole("complementary", {
     name: "Conversation details",

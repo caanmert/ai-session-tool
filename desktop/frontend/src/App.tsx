@@ -1011,6 +1011,8 @@ export default function App() {
             tools={snapshot?.tools || []}
             health={health}
             checking={loading}
+            projects={snapshot?.projects || []}
+            project={project}
             onCheck={() => {
               void refresh();
               checkHealth();

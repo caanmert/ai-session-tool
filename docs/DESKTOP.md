@@ -224,7 +224,12 @@ or committed and pushed are lost.
    A new provider process starts when you send the first message. Responses stream
    into the conversation, with tables, task lists and highlighted code blocks
    (each with a copy button). Type **@** to find a file in the project and insert
-   its path; the paperclip opens the system file picker instead. **↑** in an
+   its path; the paperclip opens the system file picker instead. Type **/** to
+   find one of the agent's skills: Claude Code's skills and plugin commands, or
+   Codex's skills for the project, user and system. Choosing one adds `/name`
+   (Claude Code) or `$name` (Codex) to the message; it runs when you send.
+   Listing skills starts no model turn. **Settings › Skills** lists every skill
+   each agent has for a project. **↑** in an
    empty message box recalls your earlier messages.
 
    Next to the send button, a small ring shows how full the conversation's

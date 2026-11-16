@@ -118,6 +118,9 @@ func TestAgentProcess(t *testing.T) {
 			require(len(input) == 2 && str(object(input[0])["type"]) == "text" && str(object(input[1])["type"]) == "localImage", "expected text and one local image")
 			data, err := os.ReadFile(str(object(input[1])["path"]))
 			require(err == nil && len(data) > 8 && string(data[1:4]) == "PNG", "the image file must exist and be the PNG that was attached")
+		} else if mode == "skill" {
+			input := array(object(turnRequest["params"])["input"])
+			require(len(input) == 2 && str(object(input[1])["type"]) == "skill" && str(object(input[1])["name"]) == "probe" && str(object(input[1])["path"]) == "/skills/probe/SKILL.md", "expected the text and one skill item")
 		} else {
 			require(len(array(object(turnRequest["params"])["input"])) == 1, "a plain message has only text")
 		}

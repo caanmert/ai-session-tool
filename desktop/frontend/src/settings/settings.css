@@ -122,3 +122,53 @@
   line-height: 1.5;
   color: var(--muted);
 }
+
+/* Skills */
+.skills-tools {
+  display: flex;
+  gap: 8px;
+}
+.skills-tools select {
+  max-width: 220px;
+}
+.skills-group header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.skills-group header small {
+  margin-left: auto;
+  font-size: var(--text-sm);
+  color: var(--muted);
+}
+.skills-list {
+  max-height: 260px;
+  margin: 10px 0 0;
+  padding: 0;
+  overflow-y: auto;
+  list-style: none;
+  border-top: 1px solid var(--border-subtle);
+}
+.skills-list li {
+  display: grid;
+  grid-template-columns: minmax(120px, 34%) minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: baseline;
+  padding: 7px 0;
+  border-bottom: 1px solid var(--border-subtle);
+  font-size: var(--text-sm);
+}
+.skills-list code {
+  font-family: var(--font-mono);
+  overflow-wrap: anywhere;
+}
+.skills-list span {
+  color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.skills-list small {
+  color: var(--muted);
+  font-size: var(--text-xs);
+}

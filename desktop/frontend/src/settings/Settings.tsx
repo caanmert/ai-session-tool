@@ -6,7 +6,8 @@ import {
 } from "../shell/attention";
 import { AppearanceSetting, type AppearanceControl } from "../Appearance";
 import Icon from "../Icon";
-import { toolLabel, type AgentHealth, type Tool } from "../api";
+import SkillsSection from "./SkillsSection";
+import { type Project, toolLabel, type AgentHealth, type Tool } from "../api";
 
 const install: Record<string, string> = {
   claude: "npm install -g @anthropic-ai/claude-code",
@@ -35,12 +36,17 @@ export default function Settings({
   health,
   checking,
   onCheck,
+  projects = [],
+  project = "",
 }: {
   appearance: AppearanceControl;
   tools: Tool[];
   health: AgentHealth[];
   checking: boolean;
   onCheck: () => void;
+  /** For the Skills section: which project's skills to list. */
+  projects?: Project[];
+  project?: string;
 }) {
   const [notify, setNotify] = useState(notificationsEnabled);
   const [notifyError, setNotifyError] = useState("");
@@ -154,6 +160,8 @@ export default function Settings({
           contact a model.
         </p>
       </section>
+
+      <SkillsSection tools={tools} projects={projects} project={project} />
 
       <section aria-labelledby="settings-shortcuts">
         <h2 id="settings-shortcuts">Keyboard shortcuts</h2>

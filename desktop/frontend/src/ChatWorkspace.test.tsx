@@ -228,6 +228,44 @@ describe("graphical conversations", () => {
     ).toBeNull();
     expect(backend.SendChat).not.toHaveBeenCalled();
   });
+  it("adds a skill from the / list without sending anything", async () => {
+    backend.AgentSkills = vi.fn().mockResolvedValue({
+      tool: "codex",
+      skills: [
+        { name: "probe", description: "Say banana", scope: "repo", path: "/s" },
+        {
+          name: "pdf:pdf",
+          description: "Read PDFs",
+          scope: "user",
+          path: "/p",
+        },
+      ],
+    });
+    show();
+    const box = screen.getByRole("textbox", { name: /Message/ });
+    await userEvent.type(box, "/pro");
+    const list = await screen.findByRole("listbox", { name: "Skills" });
+    expect(backend.AgentSkills).toHaveBeenCalledWith(
+      "codex",
+      "/project",
+      false,
+    );
+    expect(within(list).getAllByRole("option")).toHaveLength(1);
+    expect(within(list).getByRole("option")).toHaveTextContent("$probe");
+    await userEvent.keyboard("{Enter}");
+    // Codex names a skill with $; the backend adds it to the turn.
+    expect(box).toHaveValue("$probe ");
+    expect(screen.queryByRole("listbox", { name: "Skills" })).toBeNull();
+    await userEvent.type(box, "then /zzz");
+    expect(await screen.findByText("No skill matches “zzz”.")).toBeVisible();
+    await userEvent.keyboard("{Escape}");
+    expect(screen.queryByText("No skill matches “zzz”.")).toBeNull();
+    expect(backend.SendChat).not.toHaveBeenCalled();
+    // A path is not a skill.
+    await userEvent.clear(box);
+    await userEvent.type(box, "see src/app");
+    expect(screen.queryByRole("listbox", { name: "Skills" })).toBeNull();
+  });
   it("hides and shows the details panel on a wide window", async () => {
     const hidden = vi.fn();
     const view = render(

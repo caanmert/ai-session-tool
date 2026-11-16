@@ -134,6 +134,7 @@ type chatManager struct {
 	gh              func(ctx context.Context, dir string, args ...string) (string, error)
 	catalogs        map[string]*modelCache
 	usage           map[string]*usageCache
+	skillLists      map[string]*skillCache
 	discoveryCtx    context.Context
 	cancelDiscovery context.CancelFunc
 }

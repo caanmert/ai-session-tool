@@ -933,3 +933,12 @@
     margin-left: 0;
   }
 }
+
+/* The skill list shares the file list's look; descriptions are prose. */
+.skill-picker li small {
+  font-family: var(--font-sans);
+}
+.skill-picker li em {
+  font-style: normal;
+  color: var(--muted);
+}

@@ -15,6 +15,7 @@ import { SafeMarkdown } from "./ui/SafeMarkdown";
 import DetailsPanel, { useChanges } from "./chat/DetailsPanel";
 import ConfirmDialog from "./ui/ConfirmDialog";
 import { useFileMentions } from "./chat/FileMentions";
+import { useSkillPicker } from "./chat/SkillPicker";
 import { conversationStatus, requestSummary } from "./chat/conversation";
 import FindBar from "./chat/FindBar";
 import { useQueuedMessage } from "./chat/queuedMessage";
@@ -201,6 +202,18 @@ export default function ChatWorkspace({
     updatePrompt,
     input,
   });
+  const skills = useSkillPicker({
+    chatId: state.id,
+    tool: state.tool,
+    project: state.project,
+    prompt,
+    updatePrompt,
+    input,
+  });
+  const trackCaret = () => {
+    mentions.trackCaret();
+    skills.trackCaret();
+  };
   // Up and Down in an empty message box step through your earlier messages
   // in this conversation, newest first.
   const [recalled, setRecalled] = useState(-1);
@@ -710,7 +723,7 @@ export default function ChatWorkspace({
             void attachments.add(dropped);
           }}
         >
-          {!state.review && mentions.popup}
+          {!state.review && (skills.popup || mentions.popup)}
           {!state.review && queue.queued && (
             <div
               className={`queued-message ${queue.queued.held ? "held" : ""}`}
@@ -787,15 +800,17 @@ export default function ChatWorkspace({
             <textarea
               ref={input}
               aria-label="Message agent"
-              aria-controls={mentions.listId}
-              aria-activedescendant={mentions.activeOption}
-              placeholder={`Message ${toolLabel(state.tool)} — @ to mention a file`}
+              aria-controls={skills.listId || mentions.listId}
+              aria-activedescendant={
+                skills.activeOption || mentions.activeOption
+              }
+              placeholder={`Message ${toolLabel(state.tool)} — @ for a file, / for a skill`}
               value={prompt}
               disabled={working}
               onChange={(e) => {
                 updatePrompt(e.target.value);
                 setRecalled(-1);
-                mentions.trackCaret();
+                trackCaret();
               }}
               onPaste={(e) => {
                 // A pasted screenshot is attached; pasted text goes in as text.
@@ -804,9 +819,10 @@ export default function ChatWorkspace({
                 e.preventDefault();
                 void attachments.add(pasted);
               }}
-              onKeyUp={mentions.trackCaret}
-              onClick={mentions.trackCaret}
+              onKeyUp={trackCaret}
+              onClick={trackCaret}
               onKeyDown={(e) => {
+                if (skills.onKeyDown(e)) return;
                 if (mentions.onKeyDown(e)) return;
                 if (recall(e)) return;
                 if (
