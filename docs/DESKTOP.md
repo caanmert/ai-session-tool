@@ -232,6 +232,11 @@ or committed and pushed are lost.
    each agent has for a project. **↑** in an
    empty message box recalls your earlier messages.
 
+   The toolbar under the message keeps to a few controls: **+** attaches
+   images or mentions project files, the permission mode, the globe for Codex's
+   web search, and a model pill such as "Codex demo model · High" that opens
+   the model and reasoning choices. They apply from your next message.
+
    **Web search.** Claude Code searches and fetches pages when it needs to,
    asking first like for any other tool. Codex's web search is off unless its
    own setting turns it on; the globe button in a Codex conversation chooses,

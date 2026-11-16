@@ -1,6 +1,7 @@
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import Icon from "../Icon";
 import { api, errorText } from "../api";
+import Popover from "../ui/Popover";
 
 export const webSearchChoices = [
   { id: "", label: "Codex's own setting", detail: "As set in Codex" },
@@ -24,36 +25,13 @@ export default function WebSearchPicker({
   disabled: boolean;
   onSaved: () => void;
 }) {
-  const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
-  const button = useRef<HTMLButtonElement>(null);
-  const menu = useRef<HTMLDivElement>(null);
   const current =
     webSearchChoices.find((choice) => choice.id === mode) ||
     webSearchChoices[0];
   const on = mode === "cached" || mode === "live";
-  useEffect(() => {
-    if (!open) return;
-    menu.current
-      ?.querySelector<HTMLButtonElement>('[aria-checked="true"]')
-      ?.focus();
-    const away = (e: MouseEvent) => {
-      if (
-        !menu.current?.contains(e.target as Node) &&
-        e.target !== button.current
-      )
-        setOpen(false);
-    };
-    document.addEventListener("mousedown", away);
-    return () => document.removeEventListener("mousedown", away);
-  }, [open]);
-  function close() {
-    setOpen(false);
-    button.current?.focus();
-  }
   async function choose(next: string) {
-    close();
     if (next === mode) return;
     setSaving(true);
     setError("");
@@ -68,61 +46,43 @@ export default function WebSearchPicker({
   }
   return (
     <span className="web-search-picker">
-      <button
-        ref={button}
-        type="button"
-        className={`icon-button ${on ? "on" : ""}`}
-        aria-label={`Web search: ${current.label}`}
-        aria-haspopup="menu"
-        aria-expanded={open}
+      <Popover
+        label={`Web search: ${current.label}`}
         title={`Web search: ${current.label}. ${current.detail}.`}
+        buttonClassName={`pill-button icon-pill ${on ? "on" : ""}`}
+        panelLabel="Web search"
+        role="menu"
         disabled={disabled || saving}
-        onClick={() => setOpen((value) => !value)}
+        button={
+          <>
+            <Icon name="globe" size={15} />
+            {on && <span>{current.label}</span>}
+          </>
+        }
       >
-        <Icon name="globe" size={16} />
-      </button>
-      {open && (
-        <div
-          ref={menu}
-          className="web-search-menu"
-          role="menu"
-          aria-label="Web search"
-          tabIndex={-1}
-          onKeyDown={(e) => {
-            const items = [
-              ...(menu.current?.querySelectorAll<HTMLButtonElement>(
-                '[role="menuitemradio"]',
-              ) || []),
-            ];
-            const at = items.indexOf(
-              document.activeElement as HTMLButtonElement,
-            );
-            if (e.key === "Escape") {
-              e.preventDefault();
-              close();
-            } else if (e.key === "ArrowDown" || e.key === "ArrowUp") {
-              e.preventDefault();
-              const step = e.key === "ArrowDown" ? 1 : -1;
-              items[(at + step + items.length) % items.length]?.focus();
-            }
-          }}
-        >
-          <p>Web search · from the next message</p>
-          {webSearchChoices.map((choice) => (
-            <button
-              key={choice.id}
-              type="button"
-              role="menuitemradio"
-              aria-checked={choice.id === mode}
-              onClick={() => void choose(choice.id)}
-            >
-              <span className="radio-dot" aria-hidden="true" />
-              <strong>{choice.label}</strong>
-              <small>{choice.detail}</small>
-            </button>
-          ))}
-        </div>
-      )}
+        {(close) => (
+          <>
+            <p className="popover-title">Web search · from the next message</p>
+            {webSearchChoices.map((choice) => (
+              <button
+                key={choice.id}
+                type="button"
+                role="menuitemradio"
+                aria-checked={choice.id === mode}
+                className="popover-item"
+                onClick={() => {
+                  close();
+                  void choose(choice.id);
+                }}
+              >
+                <span className="radio-dot" aria-hidden="true" />
+                <strong>{choice.label}</strong>
+                <small>{choice.detail}</small>
+              </button>
+            ))}
+          </>
+        )}
+      </Popover>
       {error && (
         <span className="mode-error" role="alert">
           {error}

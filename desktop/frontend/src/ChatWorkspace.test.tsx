@@ -305,6 +305,56 @@ describe("graphical conversations", () => {
     await screen.findByRole("textbox", { name: /Message/ });
     expect(screen.queryByRole("button", { name: /Web search/ })).toBeNull();
   });
+  it("keeps the toolbar short: a + menu and one model pill", async () => {
+    backend.ChatModels = vi.fn().mockResolvedValue({
+      models: [
+        {
+          id: "model-a",
+          name: "Model A",
+          description: "",
+          efforts: ["low", "high"],
+        },
+      ],
+      defaultModel: "model-a",
+      defaultEffort: "",
+    });
+    state.settings = { model: "model-a", effort: "high", configured: true };
+    render(
+      <ChatWorkspace
+        chat={{ ...initial, settings: state.settings }}
+        active
+        reviewerAvailable
+        {...handlers}
+      />,
+    );
+    const pill = await screen.findByRole("button", {
+      name: "Model: Model A · High",
+    });
+    // The + menu holds images and files; arrows move, Escape goes back.
+    const add = screen.getByRole("button", { name: "Add images or files" });
+    await userEvent.click(add);
+    const menu = screen.getByRole("menu", { name: "Add to the message" });
+    expect(
+      within(menu).getByRole("menuitem", { name: /Attach images/ }),
+    ).toHaveFocus();
+    await userEvent.keyboard("{ArrowDown}");
+    expect(
+      within(menu).getByRole("menuitem", { name: /Mention files/ }),
+    ).toHaveFocus();
+    await userEvent.keyboard("{Escape}");
+    expect(screen.queryByRole("menu")).toBeNull();
+    expect(add).toHaveFocus();
+    // The pill opens the model and reasoning choices.
+    await userEvent.click(pill);
+    const panel = screen.getByRole("dialog", { name: "Model and reasoning" });
+    expect(within(panel).getByLabelText("Model")).toHaveValue("model-a");
+    expect(within(panel).getByLabelText("Reasoning effort")).toHaveValue(
+      "high",
+    );
+    await userEvent.keyboard("{Escape}");
+    expect(pill).toHaveFocus();
+    expect(pill).toHaveAttribute("aria-expanded", "false");
+  });
   it("hides and shows the details panel on a wide window", async () => {
     const hidden = vi.fn();
     const view = render(
@@ -735,7 +785,10 @@ describe("graphical conversations", () => {
     const message = screen.getByLabelText("Message agent");
     await userEvent.type(message, "Compare");
     await userEvent.click(
-      screen.getByRole("button", { name: "Mention files" }),
+      screen.getByRole("button", { name: "Add images or files" }),
+    );
+    await userEvent.click(
+      screen.getByRole("menuitem", { name: /Mention files/ }),
     );
     await waitFor(() =>
       expect(message).toHaveValue(
@@ -745,7 +798,10 @@ describe("graphical conversations", () => {
     expect(message).toHaveFocus();
     // Canceling the picker changes nothing.
     await userEvent.click(
-      screen.getByRole("button", { name: "Mention files" }),
+      screen.getByRole("button", { name: "Add images or files" }),
+    );
+    await userEvent.click(
+      screen.getByRole("menuitem", { name: /Mention files/ }),
     );
     expect(backend.PickFiles).toHaveBeenCalledTimes(2);
     expect(message).toHaveValue('Compare src/app.ts "docs/release notes.md" ');
@@ -889,11 +945,13 @@ it("does not send a message until model preferences finish saving", async () => 
       }),
   );
   show();
-  await screen.findByRole("option", { name: "Model A" });
   await userEvent.type(
     screen.getByLabelText("Message agent"),
     "Use my selected model",
   );
+  // The model choices are in the model pill's panel.
+  await userEvent.click(await screen.findByRole("button", { name: /^Model:/ }));
+  await screen.findByRole("option", { name: "Model A" });
   fireEvent.change(screen.getByLabelText("Model"), {
     target: { value: "model-a" },
   });

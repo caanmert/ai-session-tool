@@ -703,23 +703,22 @@
 .model-settings .icon-button.spinning svg {
   animation: spin 0.9s linear infinite;
 }
-/* In the composer the dropdowns are compact pills and their labels are for
-   assistive technology only. */
-.chat-composer .model-settings {
-  min-width: 0;
+/* In the message box the model choices sit in a small panel. */
+.popover-panel .model-settings-fields {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 10px;
 }
-.chat-composer .model-settings label > span {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  overflow: hidden;
-  clip-path: inset(50%);
-  white-space: nowrap;
+.popover-panel .model-settings label {
+  justify-content: space-between;
+  gap: 16px;
 }
-.chat-composer .model-settings select {
-  height: 28px;
-  border-radius: var(--radius-pill);
-  font-size: var(--text-sm);
+.popover-panel .model-settings select {
+  width: 190px;
+  max-width: none;
+}
+.popover-panel .model-settings .icon-button {
+  align-self: flex-end;
 }
 .review-dialog > .model-settings {
   padding: 0 24px 18px;
@@ -942,63 +941,114 @@
   font-style: normal;
   color: var(--muted);
 }
-/* Codex web search: a globe button with a short menu */
-.web-search-picker {
-  position: relative;
+
+/* Pills and popovers in the message box toolbar */
+.pill-button {
   display: inline-flex;
   align-items: center;
+  gap: 6px;
+  height: 28px;
+  max-width: 260px;
+  padding: 0 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-pill);
+  background: transparent;
+  color: var(--text);
+  font-size: var(--text-sm);
+  white-space: nowrap;
 }
-.web-search-picker .icon-button {
-  color: var(--muted);
+.pill-button > span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
-.web-search-picker .icon-button.on {
-  color: var(--accent-text);
+.pill-button:hover:not(:disabled),
+.pill-button[aria-expanded="true"] {
   background: var(--surface-hover);
 }
-.web-search-menu {
+.pill-button svg {
+  flex-shrink: 0;
+  color: var(--muted);
+}
+.pill-button.icon-pill {
+  justify-content: center;
+  min-width: 28px;
+  padding: 0 7px;
+}
+.pill-button.on {
+  border-color: var(--accent);
+  color: var(--accent-text);
+}
+.pill-button.on svg {
+  color: inherit;
+}
+.model-pill .pill-button svg {
+  transform: rotate(90deg);
+}
+.chat-composer .mode-picker select {
+  border-color: var(--border);
+  background-color: transparent;
+}
+.popover {
+  position: relative;
+  display: inline-flex;
+  min-width: 0;
+}
+.popover-panel {
   position: absolute;
   bottom: calc(100% + 8px);
-  left: -8px;
+  left: -6px;
   z-index: 5;
   display: grid;
   gap: 2px;
-  width: 260px;
-  padding: 6px;
+  min-width: 250px;
+  padding: 8px;
   border: 1px solid var(--border-strong);
   border-radius: var(--radius-card);
   background: var(--surface);
   box-shadow: 0 12px 28px var(--shadow-color);
 }
-.web-search-menu p {
-  padding: 4px 8px 6px;
+.popover-panel:focus {
+  outline: none;
+}
+.popover-title {
+  padding: 2px 6px 6px;
   font-size: var(--text-xs);
   color: var(--muted);
 }
-.web-search-menu button {
+.popover-item {
   display: grid;
   grid-template-columns: auto auto 1fr;
   align-items: center;
   gap: 8px;
-  padding: 6px 8px;
+  padding: 7px 8px;
   border: 0;
   border-radius: var(--radius-control);
   background: none;
   color: var(--text);
   text-align: left;
   font-size: var(--text-sm);
+  white-space: nowrap;
 }
-.web-search-menu button:hover,
-.web-search-menu button:focus-visible {
+.popover-item:hover,
+.popover-item:focus-visible {
   background: var(--surface-hover);
 }
-.web-search-menu small {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+.popover-item svg {
   color: var(--muted);
 }
-.web-search-menu [aria-checked="true"] .radio-dot {
+.popover-item small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--muted);
+}
+.popover-item[aria-checked="true"] .radio-dot {
   background: var(--brand);
   box-shadow: inset 0 0 0 3px var(--surface);
   border-color: var(--brand);
+}
+.web-search-picker {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
 }

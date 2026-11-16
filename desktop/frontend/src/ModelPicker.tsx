@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import Icon from "./Icon";
+import Popover from "./ui/Popover";
 import { api, errorText, type ModelCatalog, type ModelSettings } from "./api";
 
 export const defaultModelSettings: ModelSettings = {
@@ -11,6 +12,8 @@ type Props = {
   id: string;
   settings?: ModelSettings;
   reviewer?: boolean;
+  /** In the message box: one pill that opens the choices in a small panel. */
+  compact?: boolean;
   active?: boolean;
   disabled: boolean;
   onPending: (pending: boolean) => void;
@@ -20,6 +23,7 @@ export default function ModelPicker({
   id,
   settings = defaultModelSettings,
   reviewer = false,
+  compact = false,
   active = true,
   disabled,
   onPending,
@@ -84,7 +88,7 @@ export default function ModelPicker({
     }
   }
   const prefix = reviewer ? "Reviewer " : "";
-  return (
+  const fields = (
     <div
       className="model-settings"
       title={
@@ -184,5 +188,38 @@ export default function ModelPicker({
         </p>
       )}
     </div>
+  );
+  if (!compact) return fields;
+  const modelName = choice.model
+    ? selected?.name || choice.model
+    : selected?.name || catalog?.defaultModel || "Agent default";
+  const effortName = choice.effort
+    ? choice.effort[0].toUpperCase() + choice.effort.slice(1)
+    : "";
+  const summary =
+    loading && !catalog
+      ? "Loading models…"
+      : effortName
+        ? `${modelName} · ${effortName}`
+        : modelName;
+  return (
+    <Popover
+      className="model-pill"
+      label={`Model: ${summary}`}
+      title={
+        disabled
+          ? "The model can be changed after this response"
+          : "Model and reasoning, from the next message"
+      }
+      panelLabel="Model and reasoning"
+      button={
+        <>
+          <span>{summary}</span>
+          <Icon name="chevron" size={11} />
+        </>
+      }
+    >
+      {() => fields}
+    </Popover>
   );
 }

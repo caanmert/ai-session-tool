@@ -895,10 +895,13 @@ try {
     .getByRole("region", { name: "Codex conversation" })
     .getByText("The focused tests pass.", { exact: false })
     .waitFor();
-  await page.waitForFunction(
-    () =>
-      document.querySelector('select[aria-label="Model"]')?.disabled === false,
-  );
+  // The model pill names the model once the catalog is read.
+  await page.waitForFunction(() => {
+    const pill = document.querySelector(
+      '[aria-label="Codex conversation"] button[aria-label^="Model:"]',
+    );
+    return pill && !pill.getAttribute("aria-label").includes("Loading");
+  });
   // The finished turn's activity is folded to a summary. Open it: the latest
   // edit shows its removed and added lines, so they are checked too.
   await page.getByRole("button", { name: /^4 steps · 1 edit/ }).click();
@@ -928,6 +931,19 @@ try {
   await page.keyboard.press("Escape");
   await skillList.waitFor({ state: "detached" });
   await box.fill("");
+  // The model pill opens the model and reasoning choices.
+  await page
+    .getByRole("region", { name: "Codex conversation" })
+    .getByRole("button", { name: /^Model:/ })
+    .click();
+  const modelPanel = page.getByRole("dialog", { name: "Model and reasoning" });
+  await modelPanel.waitFor();
+  await checkContrast();
+  await page.screenshot({
+    path: `${screenshots}/desktop-model-panel${suffix}.png`,
+  });
+  await page.keyboard.press("Escape");
+  await modelPanel.waitFor({ state: "detached" });
   // Codex's web search is chosen from a globe button's short menu.
   await page.getByRole("button", { name: /^Web search:/ }).click();
   const searchMenu = page.getByRole("menu", { name: "Web search" });
