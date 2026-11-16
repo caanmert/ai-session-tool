@@ -47,6 +47,98 @@ function boardSummary(chats: ChatState[]) {
   return `${count("running", "stopping")} working · ${count("waiting")} need you · ${chats.length} open`;
 }
 
+type AgentChoice = ToolName | "both";
+
+/**
+ * The agent for a new task, as a radio group: one row per choice, arrow keys
+ * move the choice, and an agent that isn't installed can't be chosen.
+ */
+function AgentChoices({
+  tools,
+  chosen,
+  both,
+  disabled,
+  onChoose,
+}: {
+  tools: Snapshot["tools"];
+  chosen: AgentChoice;
+  both: boolean;
+  disabled: boolean;
+  onChoose: (choice: AgentChoice) => void;
+}) {
+  const choices: { id: AgentChoice; enabled: boolean }[] = [
+    ...(["codex", "claude"] as ToolName[]).map((name) => ({
+      id: name as AgentChoice,
+      enabled: tools.some((t) => t.name === name && t.available),
+    })),
+    ...(both ? [{ id: "both" as AgentChoice, enabled: true }] : []),
+  ];
+  const group = useRef<HTMLDivElement>(null);
+  function move(by: number) {
+    const usable = choices.filter((choice) => choice.enabled);
+    if (!usable.length) return;
+    const at = usable.findIndex((choice) => choice.id === chosen);
+    const next = usable[(at + by + usable.length) % usable.length];
+    onChoose(next.id);
+    group.current
+      ?.querySelector<HTMLButtonElement>(`[data-choice="${next.id}"]`)
+      ?.focus();
+  }
+  return (
+    <div
+      ref={group}
+      className="agent-options"
+      role="radiogroup"
+      aria-labelledby="new-task-agent"
+    >
+      {choices.map(({ id, enabled }) => {
+        const checked = chosen === id;
+        return (
+          <button
+            key={id}
+            type="button"
+            role="radio"
+            data-choice={id}
+            aria-checked={checked}
+            tabIndex={checked ? 0 : -1}
+            className={`agent-option ${id === "both" ? "compare" : ""} ${checked ? "selected" : ""}`}
+            disabled={!enabled || disabled}
+            onClick={() => onChoose(id)}
+            onKeyDown={(e) => {
+              if (e.key === "ArrowDown" || e.key === "ArrowRight") move(1);
+              else if (e.key === "ArrowUp" || e.key === "ArrowLeft") move(-1);
+              else return;
+              e.preventDefault();
+            }}
+          >
+            {id === "both" ? (
+              <span className="compare-marks" aria-hidden="true">
+                <AgentMark tool="claude" dot />
+                <AgentMark tool="codex" dot />
+              </span>
+            ) : (
+              <AgentMark tool={id} small />
+            )}
+            <span className="agent-option-text">
+              <strong>
+                {id === "both" ? "Both, compared" : toolLabel(id)}
+              </strong>
+              <small>
+                {id === "both"
+                  ? "Each in its own worktree"
+                  : enabled
+                    ? "Ready"
+                    : "Not installed"}
+              </small>
+            </span>
+            <span className="radio-dot" aria-hidden="true" />
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
 export default function App() {
   const [snapshot, setSnapshot] = useState<Snapshot>();
   const [chats, setChats] = useState<ChatState[]>([]);
@@ -1035,53 +1127,22 @@ export default function App() {
                 Browse…
               </button>
             </div>
-            <span className="field-label">Agent</span>
-            <div className="agent-options">
-              {(["codex", "claude"] as ToolName[]).map((name) => {
-                const available = snapshot?.tools.some(
-                  (t) => t.name === name && t.available,
-                );
-                return (
-                  <button
-                    key={name}
-                    className={`agent-option ${!newCompare && newTool === name ? "selected" : ""}`}
-                    disabled={!available || busy}
-                    aria-pressed={!newCompare && newTool === name}
-                    onClick={() => {
-                      setNewTool(name);
-                      setNewCompare(false);
-                    }}
-                  >
-                    <AgentMark tool={name} />
-                    <span>
-                      <strong>{toolLabel(name)}</strong>
-                      <small>
-                        {available ? "Ready on this machine" : "Not installed"}
-                      </small>
-                    </span>
-                    <span className="radio-dot" />
-                  </button>
-                );
-              })}
-              {bothAgents && (
-                <button
-                  className={`agent-option compare ${newCompare ? "selected" : ""}`}
-                  disabled={busy}
-                  aria-pressed={newCompare}
-                  onClick={() => setNewCompare(true)}
-                >
-                  <span className="compare-marks" aria-hidden="true">
-                    <AgentMark tool="claude" dot />
-                    <AgentMark tool="codex" dot />
-                  </span>
-                  <span>
-                    <strong>Both, compared</strong>
-                    <small>Each in its own worktree</small>
-                  </span>
-                  <span className="radio-dot" />
-                </button>
-              )}
-            </div>
+            <span className="field-label" id="new-task-agent">
+              Agent
+            </span>
+            <AgentChoices
+              tools={snapshot?.tools || []}
+              chosen={newCompare ? "both" : newTool}
+              both={bothAgents}
+              disabled={busy}
+              onChoose={(choice) => {
+                if (choice === "both") setNewCompare(true);
+                else {
+                  setNewTool(choice);
+                  setNewCompare(false);
+                }
+              }}
+            />
             {snapshot?.tools.every((t) => !t.available) && (
               <p className="preview-note">
                 Install Codex or Claude Code, then reopen ais. Run{" "}

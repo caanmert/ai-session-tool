@@ -857,19 +857,26 @@ h1 {
   flex: 1;
 }
 .agent-options {
-  display: flex;
-  gap: 10px;
+  display: grid;
+  gap: 6px;
 }
 .agent-option {
   display: flex;
   align-items: center;
   gap: 10px;
-  flex: 1;
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 7px;
-  padding: 14px 11px;
+  padding: 9px 12px;
   text-align: left;
+  min-width: 0;
+}
+/* Name and state on one line; the state gives way first. */
+.agent-option-text {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  flex: 1;
   min-width: 0;
 }
 .agent-option.selected {
@@ -878,16 +885,18 @@ h1 {
   box-shadow: 0 0 0 1px var(--shadow-color);
 }
 .agent-option strong {
-  display: block;
-  font-size: 12px;
+  flex-shrink: 0;
+  font-size: var(--text-base);
   font-weight: 550;
   color: var(--text);
 }
 .agent-option small {
-  font-size: 12px;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--text-sm);
   color: var(--muted);
-  display: block;
-  margin-top: 4px;
 }
 .radio-dot {
   height: 11px;
@@ -944,9 +953,6 @@ h1 {
   }
   .conversation-footer > span:last-child {
     display: none;
-  }
-  .agent-options {
-    flex-direction: column;
   }
   .tool-filter button {
     padding: 6px 7px;
