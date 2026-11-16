@@ -50,6 +50,20 @@ export type AnnotationChange = {
   removeTags?: string[];
 };
 export type Tool = { name: ToolName; available: boolean; path: string };
+export type AgentSkill = {
+  name: string;
+  description: string;
+  /** The arguments it takes, when the agent says. */
+  hint?: string;
+  /** Where it comes from: repo, user, system (Codex). */
+  scope?: string;
+  path?: string;
+};
+export type SkillList = {
+  tool: ToolName;
+  skills: AgentSkill[];
+  reason?: string;
+};
 export type GitHubLabel = { name: string; color: string; description: string };
 /** Where a new issue would go. When reason is set, none can be created. */
 export type GitHubIssueForm = {
@@ -492,6 +506,12 @@ export interface Backend {
   RemoveComparison(id: string): Promise<void>;
   /** Each agent's plan limits. A read from the last minute is reused unless refresh is set. */
   UsageLimits(refresh: boolean): Promise<UsageOverview>;
+  /** An agent's skills in a project. Starts no model turn. */
+  AgentSkills(
+    tool: string,
+    project: string,
+    refresh: boolean,
+  ): Promise<SkillList>;
   /** Reads where a new issue would go and its labels. Only reads. */
   GitHubIssueForm(project: string): Promise<GitHubIssueForm>;
   /** Creates an issue through the GitHub CLI, after the user confirms. */
@@ -585,6 +605,8 @@ export const api: Backend = {
   RemoveComparison: async (id) => backend().RemoveComparison(id),
   UsageLimits: async (refresh) => backend().UsageLimits(refresh),
   GitHubIssueForm: async (project) => backend().GitHubIssueForm(project),
+  AgentSkills: async (tool, project, refresh) =>
+    backend().AgentSkills(tool, project, refresh),
   CreateGitHubIssue: async (project, title, body, labels) =>
     backend().CreateGitHubIssue(project, title, body, labels),
   GitHubOverview: async (project) => backend().GitHubOverview(project),

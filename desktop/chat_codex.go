@@ -114,6 +114,8 @@ func (m *chatManager) runCodex(ctx context.Context, c *chatSession, state ChatSt
 					for _, image := range images {
 						input = append(input, map[string]any{"type": "localImage", "path": image.Path})
 					}
+					// "$name" of one of the project's skills uses that skill.
+					input = append(input, m.codexSkillInputs(ctx, state.Project, text)...)
 					params := map[string]any{"threadId": thread, "input": input}
 					if settings.Configured {
 						params["model"] = settings.Model

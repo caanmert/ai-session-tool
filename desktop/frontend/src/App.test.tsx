@@ -141,6 +141,7 @@ beforeEach(() => {
     RemoveComparison: vi.fn(),
     UsageLimits: vi.fn().mockResolvedValue({ agents: [] }),
     GitHubIssueForm: vi.fn(),
+    AgentSkills: vi.fn().mockResolvedValue({ tool: "codex", skills: [] }),
     CreateGitHubIssue: vi.fn(),
     GitHubOverview: vi.fn(),
     GitHubIssue: vi.fn(),
