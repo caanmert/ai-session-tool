@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import ModelPicker from "./ModelPicker";
 import DiffViewer from "./DiffViewer";
 import AgentMark from "./AgentMark";
@@ -48,6 +48,9 @@ function Elapsed() {
     </span>
   );
 }
+
+/** How many messages a conversation draws at first, and adds per request. */
+export const MESSAGE_WINDOW = 150;
 
 // True below the width where the details panel leaves the layout.
 function useNarrow() {
@@ -218,6 +221,32 @@ export default function ChatWorkspace({
     setDetailsOpen(false);
     detailsToggle.current?.focus();
   }
+  // A long conversation draws only its latest messages; earlier ones are added
+  // on request, a screenful at a time, keeping the reading position.
+  const listed = useMemo(
+    () =>
+      state.review?.complete
+        ? state.messages.filter(
+            (m) => !(m.role === "assistant" && m.kind === "text"),
+          )
+        : state.messages,
+    [state.messages, state.review?.complete],
+  );
+  const [shown, setShown] = useState(MESSAGE_WINDOW);
+  const earlier = Math.max(0, listed.length - shown);
+  const heightBefore = useRef(0);
+  function showEarlier() {
+    heightBefore.current = messages.current?.scrollHeight || 0;
+    following.current = false;
+    setShown((count) => count + MESSAGE_WINDOW);
+  }
+  useLayoutEffect(() => {
+    const el = messages.current;
+    if (!el || !heightBefore.current) return;
+    // Messages were added above: move down by their height so the view stays put.
+    el.scrollTop += el.scrollHeight - heightBefore.current;
+    heightBefore.current = 0;
+  }, [shown]);
   // Cmd+F searches this conversation; the window has no page search of its own.
   const [finding, setFinding] = useState(false);
   useEffect(() => {
@@ -456,16 +485,16 @@ export default function ChatWorkspace({
               </div>
             </div>
           )}
+          {earlier > 0 && (
+            <button className="show-earlier" onClick={showEarlier}>
+              Show {Math.min(earlier, MESSAGE_WINDOW)} earlier messages
+              <small>{earlier} not shown</small>
+            </button>
+          )}
           <MessageList
             tool={state.tool}
             project={state.project}
-            messages={
-              state.review?.complete
-                ? state.messages.filter(
-                    (m) => !(m.role === "assistant" && m.kind === "text"),
-                  )
-                : state.messages
-            }
+            messages={earlier > 0 ? listed.slice(earlier) : listed}
           />
           {state.review?.complete && (
             <div className="review-findings">

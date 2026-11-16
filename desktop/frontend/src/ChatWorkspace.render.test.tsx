@@ -1,4 +1,5 @@
 import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { expect, test, vi } from "vitest";
 import ChatWorkspace from "./ChatWorkspace";
 import type { Backend, ChatState, ChatUpdate } from "./api";
@@ -83,14 +84,29 @@ test(
     // Drawing 300 messages can take longer than the default wait on a busy
     // machine; the assertions below are about what rendered, not how fast.
     await screen.findByText("Working on it", {}, { timeout: 10000 });
-    // Each of the 300 saved messages is drawn once; the reply once per update.
-    expect(rendered.filter((text) => text.startsWith("Message "))).toHaveLength(
-      300,
-    );
+    // Only the latest 150 messages are drawn, each exactly once; the reply
+    // once per update. The first 150 are never drawn.
+    const saved = rendered.filter((text) => text.startsWith("Message "));
+    expect(saved).toHaveLength(150);
+    expect(new Set(saved).size).toBe(150);
+    expect(saved).toContain("Message 299");
+    expect(saved).not.toContain("Message 149");
     // React may batch updates that arrive together, so the reply renders at
     // most once per update and ends on the latest text.
     const reply = rendered.filter((text) => text.startsWith("Work"));
     expect(reply.length).toBeLessThanOrEqual(3);
     expect(reply.at(-1)).toBe("Working on it");
+    // Earlier messages are added on request, without redrawing the others.
+    rendered.length = 0;
+    await userEvent.click(
+      screen.getByRole("button", { name: /Show 150 earlier messages/ }),
+    );
+    await screen.findByText("Message 1", {}, { timeout: 10000 });
+    const added = rendered.filter((text) => text.startsWith("Message "));
+    expect(added).toHaveLength(150);
+    expect(added).not.toContain("Message 299");
+    expect(
+      screen.getByRole("button", { name: /Show 1 earlier messages/ }),
+    ).toBeVisible();
   },
 );
