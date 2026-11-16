@@ -21,12 +21,14 @@ const githubListLimit = 50
 
 // GitHubIssue is an open issue as the page lists it.
 type GitHubIssue struct {
-	Number    int      `json:"number"`
-	Title     string   `json:"title"`
-	URL       string   `json:"url"`
-	Author    string   `json:"author"`
-	Labels    []string `json:"labels"`
-	UpdatedAt string   `json:"updatedAt"`
+	Number int      `json:"number"`
+	Title  string   `json:"title"`
+	URL    string   `json:"url"`
+	Author string   `json:"author"`
+	Labels []string `json:"labels"`
+	// LabelColors maps a label to its GitHub colour.
+	LabelColors map[string]string `json:"labelColors,omitempty"`
+	UpdatedAt   string            `json:"updatedAt"`
 }
 
 // GitHubPull is an open pull request as the page lists it.
@@ -56,12 +58,137 @@ type GitHubOverview struct {
 	Partial string `json:"partial,omitempty"`
 }
 
-// GitHubIssueDetail is an issue with its description, for starting a task.
+// GitHubLabelRef is a label on an issue or pull request, with its colour.
+type GitHubLabelRef struct {
+	Name  string `json:"name"`
+	Color string `json:"color"`
+}
+
+// GitHubComment is one comment, newest last.
+type GitHubComment struct {
+	Author    string `json:"author"`
+	Body      string `json:"body"`
+	CreatedAt string `json:"createdAt"`
+}
+
+// GitHubIssueDetail is an issue to read in full, or to start a task from.
 type GitHubIssueDetail struct {
-	Number int    `json:"number"`
-	Title  string `json:"title"`
-	Body   string `json:"body"`
-	URL    string `json:"url"`
+	Number    int              `json:"number"`
+	Title     string           `json:"title"`
+	Body      string           `json:"body"`
+	URL       string           `json:"url"`
+	State     string           `json:"state"`
+	Author    string           `json:"author"`
+	Labels    []GitHubLabelRef `json:"labels"`
+	CreatedAt string           `json:"createdAt"`
+	UpdatedAt string           `json:"updatedAt"`
+	// Comments are the latest ones; CommentCount says how many there are.
+	Comments     []GitHubComment `json:"comments"`
+	CommentCount int             `json:"commentCount"`
+	// Shortened is set when the description was cut to fit.
+	Shortened bool `json:"shortened,omitempty"`
+}
+
+// GitHubCheck is one check on a pull request, in words.
+type GitHubCheck struct {
+	Name string `json:"name"`
+	// State is passing, failing, running or skipped.
+	State string `json:"state"`
+}
+
+// GitHubPullDetail is a pull request to read in full.
+type GitHubPullDetail struct {
+	GitHubIssueDetail
+	Branch       string        `json:"branch"`
+	Base         string        `json:"base"`
+	IsDraft      bool          `json:"isDraft"`
+	Review       string        `json:"review"`
+	Checks       []GitHubCheck `json:"checks"`
+	Additions    int           `json:"additions"`
+	Deletions    int           `json:"deletions"`
+	ChangedFiles int           `json:"changedFiles"`
+}
+
+// Limits on what a detail view reads.
+const (
+	detailBodyLimit    = 20000
+	detailCommentLimit = 30
+	commentBodyLimit   = 8000
+)
+
+type ghComment struct {
+	Author    ghAuthor `json:"author"`
+	Body      string   `json:"body"`
+	CreatedAt string   `json:"createdAt"`
+}
+
+// ghDetail is what gh issue view and gh pr view share.
+type ghDetail struct {
+	Number    int      `json:"number"`
+	Title     string   `json:"title"`
+	Body      string   `json:"body"`
+	URL       string   `json:"url"`
+	State     string   `json:"state"`
+	Author    ghAuthor `json:"author"`
+	CreatedAt string   `json:"createdAt"`
+	UpdatedAt string   `json:"updatedAt"`
+	Labels    []struct {
+		Name  string `json:"name"`
+		Color string `json:"color"`
+	} `json:"labels"`
+	Comments []ghComment `json:"comments"`
+}
+
+func (d ghDetail) detail() GitHubIssueDetail {
+	out := GitHubIssueDetail{Number: d.Number, Title: d.Title, URL: d.URL, State: d.State, Author: d.Author.Login, CreatedAt: d.CreatedAt, UpdatedAt: d.UpdatedAt, Labels: []GitHubLabelRef{}, Comments: []GitHubComment{}, CommentCount: len(d.Comments)}
+	out.Body = shorten(d.Body, detailBodyLimit)
+	out.Shortened = out.Body != d.Body
+	for _, label := range d.Labels {
+		out.Labels = append(out.Labels, GitHubLabelRef{Name: label.Name, Color: label.Color})
+	}
+	comments := d.Comments
+	if len(comments) > detailCommentLimit {
+		comments = comments[len(comments)-detailCommentLimit:]
+	}
+	for _, comment := range comments {
+		out.Comments = append(out.Comments, GitHubComment{Author: comment.Author.Login, Body: shorten(comment.Body, commentBodyLimit), CreatedAt: comment.CreatedAt})
+	}
+	return out
+}
+
+// checkList puts each check in words, by the same rules as checkSummary.
+func checkList(raw json.RawMessage) []GitHubCheck {
+	var checks []struct {
+		Name       string `json:"name"`
+		Context    string `json:"context"`
+		Conclusion string `json:"conclusion"`
+		State      string `json:"state"`
+	}
+	out := []GitHubCheck{}
+	if json.Unmarshal(raw, &checks) != nil {
+		return out
+	}
+	for _, check := range checks {
+		name := check.Name
+		if name == "" {
+			name = check.Context
+		}
+		result := strings.ToUpper(check.Conclusion)
+		if result == "" {
+			result = strings.ToUpper(check.State)
+		}
+		state := "running"
+		switch result {
+		case "FAILURE", "ERROR", "CANCELLED", "TIMED_OUT", "ACTION_REQUIRED", "STARTUP_FAILURE":
+			state = "failing"
+		case "SUCCESS", "NEUTRAL":
+			state = "passing"
+		case "SKIPPED":
+			state = "skipped"
+		}
+		out = append(out, GitHubCheck{Name: name, State: state})
+	}
+	return out
 }
 
 type ghAuthor struct {
@@ -159,16 +286,19 @@ func (m *chatManager) githubOverview(ctx context.Context, project string) (GitHu
 			Author    ghAuthor `json:"author"`
 			UpdatedAt string   `json:"updatedAt"`
 			Labels    []struct {
-				Name string `json:"name"`
+				Name  string `json:"name"`
+				Color string `json:"color"`
 			} `json:"labels"`
 		}
 		if err = json.Unmarshal([]byte(issues), &listed); err == nil {
 			for _, item := range listed {
 				labels := []string{}
+				colors := map[string]string{}
 				for _, label := range item.Labels {
 					labels = append(labels, label.Name)
+					colors[label.Name] = label.Color
 				}
-				overview.Issues = append(overview.Issues, GitHubIssue{Number: item.Number, Title: item.Title, URL: item.URL, Author: item.Author.Login, Labels: labels, UpdatedAt: item.UpdatedAt})
+				overview.Issues = append(overview.Issues, GitHubIssue{Number: item.Number, Title: item.Title, URL: item.URL, Author: item.Author.Login, Labels: labels, LabelColors: colors, UpdatedAt: item.UpdatedAt})
 			}
 		}
 	}
@@ -213,16 +343,44 @@ func (m *chatManager) githubIssue(ctx context.Context, project string, number in
 	if number <= 0 {
 		return GitHubIssueDetail{}, errors.New("choose an issue")
 	}
-	out, err := m.gh(ctx, dir, "issue", "view", strconv.Itoa(number), "--json", "number,title,body,url")
+	out, err := m.gh(ctx, dir, "issue", "view", strconv.Itoa(number), "--json", "number,title,body,url,state,author,labels,createdAt,updatedAt,comments")
 	if err != nil {
 		return GitHubIssueDetail{}, errors.New("the issue could not be read: " + err.Error())
 	}
-	var detail GitHubIssueDetail
-	if json.Unmarshal([]byte(out), &detail) != nil || detail.Number != number {
+	var raw ghDetail
+	if json.Unmarshal([]byte(out), &raw) != nil || raw.Number != number {
 		return GitHubIssueDetail{}, errors.New("the GitHub CLI returned something unexpected for this issue")
 	}
-	detail.Body = shorten(detail.Body, 20000)
-	return detail, nil
+	return raw.detail(), nil
+}
+
+func (m *chatManager) githubPull(ctx context.Context, project string, number int) (GitHubPullDetail, error) {
+	dir, err := projectDirectory(project)
+	if err != nil {
+		return GitHubPullDetail{}, err
+	}
+	if number <= 0 {
+		return GitHubPullDetail{}, errors.New("choose a pull request")
+	}
+	out, err := m.gh(ctx, dir, "pr", "view", strconv.Itoa(number), "--json", "number,title,body,url,state,author,labels,createdAt,updatedAt,comments,headRefName,baseRefName,isDraft,reviewDecision,statusCheckRollup,additions,deletions,changedFiles")
+	if err != nil {
+		return GitHubPullDetail{}, errors.New("the pull request could not be read: " + err.Error())
+	}
+	var raw struct {
+		ghDetail
+		HeadRefName    string          `json:"headRefName"`
+		BaseRefName    string          `json:"baseRefName"`
+		IsDraft        bool            `json:"isDraft"`
+		ReviewDecision string          `json:"reviewDecision"`
+		Checks         json.RawMessage `json:"statusCheckRollup"`
+		Additions      int             `json:"additions"`
+		Deletions      int             `json:"deletions"`
+		ChangedFiles   int             `json:"changedFiles"`
+	}
+	if json.Unmarshal([]byte(out), &raw) != nil || raw.Number != number {
+		return GitHubPullDetail{}, errors.New("the GitHub CLI returned something unexpected for this pull request")
+	}
+	return GitHubPullDetail{GitHubIssueDetail: raw.detail(), Branch: raw.HeadRefName, Base: raw.BaseRefName, IsDraft: raw.IsDraft, Review: raw.ReviewDecision, Checks: checkList(raw.Checks), Additions: raw.Additions, Deletions: raw.Deletions, ChangedFiles: raw.ChangedFiles}, nil
 }
 
 // GitHubOverview lists a project's open issues and pull requests. It only
@@ -236,7 +394,17 @@ func (a *App) GitHubOverview(project string) (GitHubOverview, error) {
 	return a.chats.githubOverview(ctx, project)
 }
 
-// GitHubIssue reads one issue's title and description, for starting a task.
+// GitHubPull reads one pull request in full. It only reads.
+func (a *App) GitHubPull(project string, number int) (GitHubPullDetail, error) {
+	if err := a.chatReady(); err != nil {
+		return GitHubPullDetail{}, err
+	}
+	ctx, cancel := context.WithTimeout(a.ctx, 20*time.Second)
+	defer cancel()
+	return a.chats.githubPull(ctx, project, number)
+}
+
+// GitHubIssue reads one issue in full, for reading it or starting a task.
 func (a *App) GitHubIssue(project string, number int) (GitHubIssueDetail, error) {
 	if err := a.chatReady(); err != nil {
 		return GitHubIssueDetail{}, err

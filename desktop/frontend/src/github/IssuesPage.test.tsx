@@ -207,3 +207,80 @@ test("New issue creates an issue in the chosen project and reloads the list", as
     expect(backend.GitHubOverview.mock.calls.length).toBeGreaterThan(reads),
   );
 });
+
+test("choosing a title shows the issue or pull request in full beside the list", async () => {
+  backend.GitHubIssue = vi.fn().mockResolvedValue({
+    number: 12,
+    title: "Retry checkout",
+    body: "Timeouts **charge twice**.\n\n![tracker](https://example.invalid/t.png)",
+    url: "https://github.com/me/app/issues/12",
+    state: "OPEN",
+    author: "ana",
+    labels: [{ name: "bug", color: "d73a4a" }],
+    createdAt: "2026-11-10T09:00:00Z",
+    updatedAt: "2026-11-15T10:00:00Z",
+    comments: [
+      {
+        author: "bo",
+        body: "Seen in production.",
+        createdAt: "2026-11-11T09:00:00Z",
+      },
+    ],
+    commentCount: 34,
+  });
+  backend.GitHubPull = vi.fn().mockResolvedValue({
+    number: 7,
+    title: "Add retries",
+    body: "",
+    url: "https://github.com/me/app/pull/7",
+    state: "OPEN",
+    author: "bo",
+    labels: [],
+    comments: [],
+    commentCount: 0,
+    branch: "ais/retry",
+    base: "main",
+    isDraft: true,
+    review: "CHANGES_REQUESTED",
+    checks: [
+      { name: "test", state: "passing" },
+      { name: "lint", state: "failing" },
+    ],
+    additions: 40,
+    deletions: 2,
+    changedFiles: 3,
+  });
+  render(<IssuesPage projects={projects} project="" onStartTask={vi.fn()} />);
+  expect(
+    await screen.findByText(/Choose a title to read the issue here/),
+  ).toBeVisible();
+  const title = screen.getByRole("button", { name: "Retry checkout" });
+  await userEvent.click(title);
+  expect(title).toHaveAttribute("aria-pressed", "true");
+  const detail = await screen.findByRole("region", { name: "Issue #12" });
+  expect(backend.GitHubIssue).toHaveBeenCalledWith("/work/app", 12);
+  expect(within(detail).getByText("charge twice")).toBeVisible();
+  // Remote images are never loaded.
+  expect(detail.querySelector("img")).toBeNull();
+  expect(within(detail).getByText("Seen in production.")).toBeVisible();
+  expect(within(detail).getByText("Comments · 34")).toBeVisible();
+  expect(within(detail).getByText("Showing the latest 1.")).toBeVisible();
+  expect(
+    within(detail).getByRole("button", { name: "Start task" }),
+  ).toBeVisible();
+  // Down moves to the next issue.
+  await userEvent.keyboard("{ArrowDown}");
+  expect(
+    screen.getByRole("button", { name: "Document the API" }),
+  ).toHaveAttribute("aria-pressed", "true");
+
+  await userEvent.click(screen.getByRole("button", { name: /Pull requests/ }));
+  await userEvent.click(screen.getByRole("button", { name: "Add retries" }));
+  const pull = await screen.findByRole("region", { name: "Pull request #7" });
+  expect(within(pull).getByText("ais/retry")).toBeVisible();
+  expect(within(pull).getByText("Changes requested")).toBeVisible();
+  const checks = within(pull).getByRole("list", { name: "Checks" });
+  expect(within(checks).getByText("Failed")).toBeVisible();
+  expect(within(pull).getByText("No description.")).toBeVisible();
+  expect(within(pull).queryByRole("button", { name: "Start task" })).toBeNull();
+});

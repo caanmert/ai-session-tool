@@ -257,6 +257,8 @@ export type GitHubIssue = {
   url: string;
   author: string;
   labels: string[];
+  /** A label's GitHub colour, by name. */
+  labelColors?: Record<string, string>;
   updatedAt: string;
 };
 export type GitHubPull = {
@@ -282,11 +284,33 @@ export type GitHubOverview = {
   /** One of the two lists could not be read. */
   partial?: string;
 };
+export type GitHubComment = { author: string; body: string; createdAt: string };
 export type GitHubIssueDetail = {
   number: number;
   title: string;
   body: string;
   url: string;
+  state?: string;
+  author?: string;
+  labels?: { name: string; color: string }[];
+  createdAt?: string;
+  updatedAt?: string;
+  /** The latest comments; commentCount says how many there are. */
+  comments?: GitHubComment[];
+  commentCount?: number;
+  /** The description was cut to fit. */
+  shortened?: boolean;
+};
+export type GitHubPullDetail = GitHubIssueDetail & {
+  branch: string;
+  base: string;
+  isDraft: boolean;
+  review: string;
+  /** Each check, with state passing, failing, running or skipped. */
+  checks: { name: string; state: string }[];
+  additions: number;
+  deletions: number;
+  changedFiles: number;
 };
 export type ComparisonSide = {
   tool: ToolName;
@@ -528,6 +552,8 @@ export interface Backend {
   /** A project's open issues and pull requests, read with the GitHub CLI. */
   GitHubOverview(project: string): Promise<GitHubOverview>;
   GitHubIssue(project: string, number: number): Promise<GitHubIssueDetail>;
+  /** One pull request in full. Only reads. */
+  GitHubPull(project: string, number: number): Promise<GitHubPullDetail>;
   ChatDiff(id: string): Promise<ReviewSnapshot>;
   StartReview(id: string): Promise<ChatState>;
   SendReviewFindings(id: string, findings: string[]): Promise<string>;
@@ -617,6 +643,7 @@ export const api: Backend = {
   GitHubOverview: async (project) => backend().GitHubOverview(project),
   GitHubIssue: async (project, number) =>
     backend().GitHubIssue(project, number),
+  GitHubPull: async (project, number) => backend().GitHubPull(project, number),
   ChatDiff: async (id) => backend().ChatDiff(id),
   StartReview: async (id) => backend().StartReview(id),
   SendReviewFindings: async (id, findings) =>
