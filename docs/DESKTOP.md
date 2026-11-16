@@ -150,10 +150,13 @@ They demonstrate the layout, not output from a live model run.
   added and removed line counts. Click a file or **Review all changes** to read the
   diff. Nothing is reverted from here. A folder that is not a Git repository
   simply says so.
+- **Motion.** Dialogs, menus, the details drawer, pages and new messages ease
+  in over 200ms or less. With **Reduce motion** on in macOS Accessibility
+  settings, the app does not animate.
 - **Side by side.** On a window at least 1200px wide, an open conversation can
   open beside the current one: the columns button on its sidebar row, or
   "Open beside" in ⌘K. Each pane is a full conversation; clicking into one
-  focuses it (a line along its top), and ⌘F and ⌘\\ act on the focused pane.
+  focuses it (a line along its top), and **⌘F** and **⌘\\** act on the focused pane.
   Choosing another conversation replaces the focused pane, and the × in a
   pane's header closes the pane (the conversation stays open). Narrower
   windows show the focused pane; the split returns when the window widens.

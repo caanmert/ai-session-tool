@@ -13,6 +13,7 @@ import "./history/history.css";
 import "./board/board.css";
 import "./usage/usage.css";
 import "./github/github.css";
+import "./ui/motion.css";
 createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
     <App />
