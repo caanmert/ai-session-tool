@@ -1136,3 +1136,9 @@
 .chat-workspace.pane .chat-composer .model-settings select {
   max-width: 150px;
 }
+
+/* A saved prompt in the "/" list reads as words, not a command. */
+.skill-picker .prompt-name {
+  font-family: var(--font-sans);
+  font-weight: 600;
+}

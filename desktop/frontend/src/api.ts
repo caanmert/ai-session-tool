@@ -284,6 +284,8 @@ export type GitHubOverview = {
   /** One of the two lists could not be read. */
   partial?: string;
 };
+/** A reusable message; {project}, {branch} and {changed files} are filled in. */
+export type SavedPrompt = { id: string; name: string; text: string };
 /** A conversation continued with the other agent, and its drafted first message. */
 export type HandOff = { chat: ChatState; prompt: string };
 /** A command the project offers, such as a package script. */
@@ -411,6 +413,8 @@ export type ChangeSummary = {
   added: number;
   removed: number;
   truncated?: boolean;
+  /** The checked-out branch; absent when HEAD is detached. */
+  branch?: string;
 };
 export type ReviewFinding = {
   id: string;
@@ -619,6 +623,9 @@ export interface Backend {
   /** A project's open issues and pull requests, read with the GitHub CLI. */
   GitHubOverview(project: string): Promise<GitHubOverview>;
   GitHubIssue(project: string, number: number): Promise<GitHubIssueDetail>;
+  /** The saved prompts, or a few starters until the list is first saved. */
+  SavedPrompts(): Promise<SavedPrompt[]>;
+  SetSavedPrompts(prompts: SavedPrompt[]): Promise<void>;
   /** What changed since a checkpoint, such as a message's turn. Only reads. */
   TurnDiff(chatId: string, checkpointId: string): Promise<ReviewSnapshot>;
   /** Opens a conversation with the other agent in the same project and
@@ -749,6 +756,8 @@ export const api: Backend = {
   GitHubPull: async (project, number) => backend().GitHubPull(project, number),
   SearchMessages: async (query) => backend().SearchMessages(query),
   HandOffChat: async (chatId) => backend().HandOffChat(chatId),
+  SavedPrompts: async () => backend().SavedPrompts(),
+  SetSavedPrompts: async (prompts) => backend().SetSavedPrompts(prompts),
   TurnDiff: async (chatId, checkpointId) =>
     backend().TurnDiff(chatId, checkpointId),
   ProjectCommands: async (chatId) => backend().ProjectCommands(chatId),

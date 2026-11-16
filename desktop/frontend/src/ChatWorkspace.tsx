@@ -16,6 +16,7 @@ import DetailsPanel, { useChanges } from "./chat/DetailsPanel";
 import ConfirmDialog from "./ui/ConfirmDialog";
 import { useFileMentions } from "./chat/FileMentions";
 import { useSkillPicker } from "./chat/SkillPicker";
+import { fillPrompt } from "./chat/savedPrompts";
 import { conversationStatus, requestSummary } from "./chat/conversation";
 import FindBar from "./chat/FindBar";
 import { useQueuedMessage } from "./chat/queuedMessage";
@@ -217,6 +218,12 @@ export default function ChatWorkspace({
     prompt,
     updatePrompt,
     input,
+    fill: (text) =>
+      fillPrompt(text, {
+        project: state.project,
+        branch: changes.summary?.branch,
+        files: changes.summary?.files.map((f) => f.path),
+      }),
   });
   const trackCaret = () => {
     mentions.trackCaret();

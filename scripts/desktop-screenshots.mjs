@@ -827,6 +827,19 @@ try {
           }),
           ChatDiff: async () => snapshot,
           TurnDiff: async () => snapshot,
+          SavedPrompts: async () => [
+            {
+              id: "starter-review",
+              name: "Review for problems",
+              text: "Review the uncommitted changes in {project} for bugs, security problems and missing error handling.",
+            },
+            {
+              id: "starter-tests",
+              name: "Write tests for the changes",
+              text: "Write tests for the changes on {branch}: {changed files}.",
+            },
+          ],
+          SetSavedPrompts: async () => {},
           PrepareReview: async () => ({
             id: "draft",
             sourceId: "chat",
@@ -888,6 +901,18 @@ try {
     throw Error(`Settings contrast: ${JSON.stringify(settingsContrast)}`);
   await page.screenshot({
     path: `${screenshots}/desktop-settings${suffix}.png`,
+  });
+  // Saved prompts, further down Settings.
+  const savedPrompts = page.getByRole("region", { name: "Saved prompts" });
+  await savedPrompts
+    .getByText("Write tests for the changes", { exact: true })
+    .waitFor();
+  await savedPrompts.scrollIntoViewIfNeeded();
+  const promptsContrast = await page.evaluate(contrastFailures);
+  if (promptsContrast.length)
+    throw Error(`Saved prompts contrast: ${JSON.stringify(promptsContrast)}`);
+  await page.screenshot({
+    path: `${screenshots}/desktop-prompts${suffix}.png`,
   });
   await page.getByRole("button", { name: /^History/ }).click();
   await page
@@ -1130,7 +1155,9 @@ try {
   const box = page.getByRole("textbox", { name: "Message agent" }).first();
   await box.click();
   await page.keyboard.type("/re");
-  const skillList = page.getByRole("listbox", { name: "Skills" });
+  const skillList = page.getByRole("listbox", {
+    name: "Saved prompts and skills",
+  });
   await skillList.waitFor();
   await checkContrast();
   await page.screenshot({ path: `${screenshots}/desktop-skills${suffix}.png` });

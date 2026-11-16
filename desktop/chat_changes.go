@@ -31,6 +31,8 @@ type ChangeSummary struct {
 	Added     int           `json:"added"`
 	Removed   int           `json:"removed"`
 	Truncated bool          `json:"truncated,omitempty"`
+	// Branch is the checked-out branch; empty when HEAD is detached.
+	Branch string `json:"branch,omitempty"`
 }
 
 const (
@@ -65,6 +67,9 @@ func summarizeChangesFrom(ctx context.Context, dir, base string) ChangeSummary {
 		return unavailable("Changes could not be read: " + err.Error())
 	}
 	summary := ChangeSummary{Available: true, Files: []ChangedFile{}}
+	if branch, err := reviewGit(ctx, root, "symbolic-ref", "--short", "-q", "HEAD"); err == nil {
+		summary.Branch = strings.TrimSpace(string(branch))
+	}
 	byPath := map[string]int{}
 	add := func(file ChangedFile) bool {
 		if len(summary.Files) >= changedFileLimit {

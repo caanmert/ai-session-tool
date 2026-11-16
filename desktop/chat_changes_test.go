@@ -48,6 +48,10 @@ func TestSummarizeChanges(t *testing.T) {
 	if !summary.Available || summary.Truncated {
 		t.Fatalf("expected an available summary: %+v", summary)
 	}
+	// The checked-out branch, whatever the default name is here.
+	if summary.Branch == "" {
+		t.Fatal("the summary names the checked-out branch")
+	}
 	got := map[string]ChangedFile{}
 	for _, file := range summary.Files {
 		got[file.Path] = file

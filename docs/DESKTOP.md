@@ -184,6 +184,11 @@ They demonstrate the layout, not output from a live model run.
   save is refused if the file changed on disk since you opened it, and leaving
   with unsaved edits asks first. Your own files are shown and opened in Finder.
   Only these file names can be read or written here.
+- **Saved prompts.** Reusable messages, managed in Settings and kept with the
+  app's data. Type **/** in the message box to find one beside the agent's
+  skills; choosing it puts its text in the message box to edit, with
+  `{project}`, `{branch}` and `{changed files}` filled in. A few starters are
+  offered until you first change the list.
 - **Comment on changed lines.** In **Review all changes** (or a file's diff),
   click a line number to comment on it; shift-click another to include the
   lines between. Comments are listed under **Comments** in the details panel,
