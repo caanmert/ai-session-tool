@@ -200,6 +200,43 @@ export type PullRequestResult = {
   created: boolean;
   pushed: number;
 };
+export type GitHubIssue = {
+  number: number;
+  title: string;
+  url: string;
+  author: string;
+  labels: string[];
+  updatedAt: string;
+};
+export type GitHubPull = {
+  number: number;
+  title: string;
+  url: string;
+  author: string;
+  branch: string;
+  isDraft: boolean;
+  updatedAt: string;
+  /** APPROVED, CHANGES_REQUESTED, REVIEW_REQUIRED or "". */
+  review: string;
+  /** passing, failing, running or "". */
+  checks: string;
+};
+/** When `reason` is set nothing could be read, and it says why. */
+export type GitHubOverview = {
+  reason?: string;
+  repository?: string;
+  url?: string;
+  issues: GitHubIssue[];
+  pulls: GitHubPull[];
+  /** One of the two lists could not be read. */
+  partial?: string;
+};
+export type GitHubIssueDetail = {
+  number: number;
+  title: string;
+  body: string;
+  url: string;
+};
 export type ChangeSummary = {
   available: boolean;
   reason?: string;
@@ -373,6 +410,9 @@ export interface Backend {
   ): Promise<PullRequestResult>;
   /** Opens an https link in the default browser. */
   OpenURL(link: string): Promise<void>;
+  /** A project's open issues and pull requests, read with the GitHub CLI. */
+  GitHubOverview(project: string): Promise<GitHubOverview>;
+  GitHubIssue(project: string, number: number): Promise<GitHubIssueDetail>;
   ChatDiff(id: string): Promise<ReviewSnapshot>;
   StartReview(id: string): Promise<ChatState>;
   SendReviewFindings(id: string, findings: string[]): Promise<string>;
@@ -446,6 +486,9 @@ export const api: Backend = {
   CreatePullRequest: async (id, request) =>
     backend().CreatePullRequest(id, request),
   OpenURL: async (link) => backend().OpenURL(link),
+  GitHubOverview: async (project) => backend().GitHubOverview(project),
+  GitHubIssue: async (project, number) =>
+    backend().GitHubIssue(project, number),
   ChatDiff: async (id) => backend().ChatDiff(id),
   StartReview: async (id) => backend().StartReview(id),
   SendReviewFindings: async (id, findings) =>

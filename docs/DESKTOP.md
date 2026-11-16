@@ -107,6 +107,13 @@ They demonstrate the layout, not output from a live model run.
 - **Command palette** (**⌘K**): jump to an action, an open conversation, a project
   or any saved conversation. Choosing a saved conversation only shows it in
   History; it never starts an agent.
+- **Issues & PRs**: the open issues and pull requests of a project on GitHub, read
+  with the GitHub CLI (`gh`) you are signed in to. Filter by title, number, label or
+  author; pull requests show their branch, draft state, review decision and checks
+  in words. **Start task** on an issue opens New task with the issue's title, link
+  and description as the task, in that project; nothing is sent until you start
+  it. The page never changes anything on GitHub. The 50 most recent of each are
+  listed.
 - **Agents board**: every open conversation in three columns, **Needs you** first.
   A simple approval can be allowed once or denied on its card; requests with
   questions are answered in the conversation. Tasks of the four newest parallel

@@ -41,6 +41,18 @@ const paths = {
     </>
   ),
   arrow: <path d="M5 12h14m-5-5 5 5-5 5" />,
+  external: (
+    <>
+      <path d="M14 4h6v6M20 4l-9 9" />
+      <path d="M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5" />
+    </>
+  ),
+  issue: (
+    <>
+      <circle cx="12" cy="12" r="8" />
+      <circle cx="12" cy="12" r="1.6" fill="currentColor" />
+    </>
+  ),
   "arrow-up": <path d="M12 19V5m-6 6 6-6 6 6" />,
   close: <path d="m6 6 12 12M6 18 18 6" />,
   message: <path d="M21 11a8 8 0 0 1-8 8H5l-3 3V11a9 9 0 0 1 19 0Z" />,
