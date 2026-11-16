@@ -862,6 +862,39 @@ describe("desktop workflows", () => {
     await userEvent.click(screen.getByRole("button", { name: "Refresh" }));
     expect(backend.UsageLimits).toHaveBeenLastCalledWith(true);
   });
+  it("narrows the sidebar with Cmd+B and remembers the choice", async () => {
+    try {
+      render(<App />);
+      await screen.findByRole("heading", { name: "Retry webhook delivery" });
+      const sidebar = () =>
+        screen.getByRole("complementary", { name: "Workspace" });
+      expect(
+        within(sidebar()).getByRole("button", { name: /New task/ }),
+      ).toHaveTextContent("New task");
+      fireEvent.keyDown(document, { key: "b", metaKey: true });
+      const newTask = within(sidebar()).getByRole("button", {
+        name: "New task",
+      });
+      expect(newTask).not.toHaveTextContent("New task");
+      expect(window.localStorage.getItem("ais:sidebar-rail:v1")).toBe("true");
+      // Every page is still one click away.
+      await userEvent.click(
+        within(sidebar()).getByRole("button", { name: "Settings" }),
+      );
+      expect(
+        screen.getByRole("heading", { name: "Settings", level: 1 }),
+      ).toBeVisible();
+      await userEvent.click(
+        screen.getByRole("button", { name: "Expand sidebar" }),
+      );
+      expect(
+        within(sidebar()).getByRole("button", { name: /New task/ }),
+      ).toHaveTextContent("New task");
+      expect(window.localStorage.getItem("ais:sidebar-rail:v1")).toBe("false");
+    } finally {
+      window.localStorage.removeItem("ais:sidebar-rail:v1");
+    }
+  });
   it("opens saved desktop work without starting or resuming a provider", async () => {
     backend.ListSavedChats = vi.fn().mockResolvedValue([
       {

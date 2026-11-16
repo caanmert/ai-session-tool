@@ -10,6 +10,7 @@ import Board from "./board/Board";
 import IssuesPage from "./github/IssuesPage";
 import UsagePage from "./usage/UsagePage";
 import { useUsageLimits } from "./usage/limits";
+import { isBoolean, isStringList, useStored } from "./ui/stored";
 import { basename } from "./ui/format";
 import {
   HistoryBrowser,
@@ -55,6 +56,25 @@ export default function App() {
   const [page, setPage] = useState<
     "history" | "runs" | "settings" | "board" | "github" | "usage"
   >("history");
+  // Layout choices, remembered on this Mac.
+  const [rail, setRail] = useStored("ais:sidebar-rail:v1", false, isBoolean);
+  const [folded, setFolded] = useStored<string[]>(
+    "ais:sidebar-folded:v1",
+    [],
+    isStringList,
+  );
+  const fold = useCallback(
+    (key: string) =>
+      setFolded((keys) =>
+        keys.includes(key) ? keys.filter((k) => k !== key) : [...keys, key],
+      ),
+    [setFolded],
+  );
+  const [detailsHidden, setDetailsHidden] = useStored(
+    "ais:details-hidden:v1",
+    false,
+    isBoolean,
+  );
   const usage = useUsageLimits(
     !!snapshot?.tools.some((tool) => tool.available),
   );
@@ -390,6 +410,13 @@ export default function App() {
         },
       },
       {
+        id: "sidebar",
+        group: "Actions",
+        label: rail ? "Expand the sidebar" : "Narrow the sidebar",
+        icon: "sidebar",
+        run: () => setRail((on) => !on),
+      },
+      {
         id: "usage",
         group: "Actions",
         label: "Usage limits",
@@ -455,7 +482,7 @@ export default function App() {
         },
       })),
     ];
-  }, [chats, snapshot, openNew, showHistory, setShowRuns]);
+  }, [chats, snapshot, openNew, showHistory, setShowRuns, rail, setRail]);
   useEffect(() => {
     function key(event: KeyboardEvent) {
       if (showLibrary || document.querySelector("dialog[open]")) return;
@@ -481,6 +508,16 @@ export default function App() {
           setPage("history");
           setActiveChat(target.id);
         }
+      }
+      if (
+        (event.metaKey || event.ctrlKey) &&
+        event.key.toLowerCase() === "b" &&
+        !event.shiftKey &&
+        !event.altKey &&
+        !showNew
+      ) {
+        event.preventDefault();
+        setRail((on) => !on);
       }
       if ((event.metaKey || event.ctrlKey) && event.key === "," && !showNew) {
         event.preventDefault();
@@ -528,6 +565,7 @@ export default function App() {
     activeChat,
     showRuns,
     chats,
+    setRail,
   ]);
   useEffect(() => {
     if (showNew)
@@ -675,8 +713,10 @@ export default function App() {
   };
 
   return (
-    <div className="app-shell">
+    <div className={`app-shell ${rail ? "rail" : ""}`}>
       <TopBar
+        rail={rail}
+        onToggleSidebar={() => setRail((on) => !on)}
         snapshot={snapshot}
         project={project}
         busy={busy}
@@ -696,6 +736,9 @@ export default function App() {
         closingChat={closingChat}
         newButton={newButton}
         canStart={!!snapshot && !busy}
+        rail={rail}
+        folded={folded}
+        onFold={fold}
         onSettings={() => {
           setActiveChat("");
           setPage("settings");
@@ -829,6 +872,8 @@ export default function App() {
             reviewerAvailable={
               !!snapshot?.tools.some((t) => t.name !== live.tool && t.available)
             }
+            detailsHidden={detailsHidden}
+            onDetailsHidden={setDetailsHidden}
             onOpen={openChat}
             onSelect={(id) => {
               void api

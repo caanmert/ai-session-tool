@@ -130,7 +130,10 @@ render dead buttons.
 ### 1. Agent workspace (`workspace.html`)
 
 - **Columns.** Sidebar 240px, conversation flexible (content max-width 860px),
-  details panel 300px. Borders between columns, no gaps.
+  details panel 300px. Borders between columns, no gaps. The user can narrow the
+  sidebar to a 56px rail of icons (⌘B) and hide the details panel (⌘\\); both
+  choices are remembered. Sidebar sections fold; a folded project group keeps the
+  open conversation visible and flags conversations that need you.
 - **Header.** Mono breadcrumb `project / branch · worktree`; title; chips for
   agent and status; meta `Step n · elapsed · tokens`. Actions on the right:
   Open in editor and Stop (icon button, needs `aria-label` and a tooltip saying
@@ -190,7 +193,8 @@ render dead buttons.
 - **At 960×640** the session header compacts: title on one line with ellipsis,
   icon-only Open in editor and Stop, a shorter meta line, no Changes tab (the
   toggle replaces it). The approval card and composer stay fully visible
-  without scrolling. The sidebar stays 240px.
+  without scrolling. The sidebar stays 240px unless the user narrows it to the
+  rail.
 - **The board at 960** keeps columns at a fixed 250px and scrolls them sideways
   in one focusable region with a fade on the right edge. Capacity cards collapse
   into one compact line per agent (dot, name, slots, bar, %).

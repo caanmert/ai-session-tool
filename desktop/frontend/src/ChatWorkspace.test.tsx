@@ -127,6 +127,41 @@ describe("graphical conversations", () => {
     );
     expect(backend.RevealProject).toHaveBeenCalledWith("chat");
   });
+  it("hides and shows the details panel on a wide window", async () => {
+    const hidden = vi.fn();
+    const view = render(
+      <ChatWorkspace
+        chat={initial}
+        active
+        reviewerAvailable
+        {...handlers}
+        onDetailsHidden={hidden}
+      />,
+    );
+    await screen.findByRole("complementary", { name: "Conversation details" });
+    const toggle = screen.getByRole("button", { name: /^Changes/ });
+    expect(toggle).toHaveAttribute("aria-pressed", "true");
+    await userEvent.click(toggle);
+    expect(hidden).toHaveBeenLastCalledWith(true);
+    view.rerender(
+      <ChatWorkspace
+        chat={initial}
+        active
+        reviewerAvailable
+        {...handlers}
+        detailsHidden
+        onDetailsHidden={hidden}
+      />,
+    );
+    expect(
+      screen.queryByRole("complementary", { name: "Conversation details" }),
+    ).not.toBeInTheDocument();
+    expect(toggle).toHaveAttribute("aria-pressed", "false");
+    // The count of changed files stays visible while the panel is hidden.
+    await waitFor(() => expect(toggle).toHaveTextContent("2"));
+    fireEvent.keyDown(document, { key: "\\", metaKey: true });
+    expect(hidden).toHaveBeenLastCalledWith(false);
+  });
   it("opens details as a drawer in a narrow window and returns focus on Escape", async () => {
     Object.defineProperty(window, "matchMedia", {
       configurable: true,

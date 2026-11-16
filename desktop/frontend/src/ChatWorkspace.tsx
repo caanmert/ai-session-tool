@@ -1,4 +1,11 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import ModelPicker from "./ModelPicker";
 import DiffViewer from "./DiffViewer";
 import AgentMark from "./AgentMark";
@@ -81,6 +88,9 @@ type Props = {
   onState: (chat: ChatState) => void;
   /** Conversations that were closed from here, such as by removing a comparison. */
   onClosed?: (ids: string[]) => void;
+  /** The details panel is hidden on wide windows (a remembered choice). */
+  detailsHidden?: boolean;
+  onDetailsHidden?: (hidden: boolean) => void;
 };
 export default function ChatWorkspace({
   chat,
@@ -91,6 +101,8 @@ export default function ChatWorkspace({
   onSelect,
   onState,
   onClosed,
+  detailsHidden = false,
+  onDetailsHidden,
 }: Props) {
   const [state, setState] = useState(chat);
   const { prompt, updatePrompt, draftError, restored } = useChatDraft(chat.id);
@@ -220,7 +232,12 @@ export default function ChatWorkspace({
   const [confirmStop, setConfirmStop] = useState(false);
   const [comparing, setComparing] = useState(false);
   const detailsToggle = useRef<HTMLButtonElement>(null);
-  const showDetails = !state.review && (!narrow || detailsOpen);
+  const showDetails = !state.review && (narrow ? detailsOpen : !detailsHidden);
+  // Wide windows hide or show the panel; narrow ones open it as a drawer.
+  const toggleDetails = useCallback(() => {
+    if (narrow) setDetailsOpen((open) => !open);
+    else onDetailsHidden?.(!detailsHidden);
+  }, [narrow, detailsHidden, onDetailsHidden]);
   const changes = useChanges(state, active && !state.review);
   function closeDetails() {
     setDetailsOpen(false);
@@ -270,16 +287,16 @@ export default function ChatWorkspace({
     return () => document.removeEventListener("keydown", key);
   }, [active]);
   useEffect(() => {
-    if (!active || !narrow) return;
+    if (!active || state.review) return;
     const key = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === "\\") {
         e.preventDefault();
-        setDetailsOpen((open) => !open);
+        toggleDetails();
       }
     };
     document.addEventListener("keydown", key);
     return () => document.removeEventListener("keydown", key);
-  }, [active, narrow]);
+  }, [active, state.review, toggleDetails]);
   const other = state.tool === "codex" ? "claude" : "codex";
   // Add the paths of chosen files to the message. The agent opens them itself;
   // nothing is uploaded or copied.
@@ -359,13 +376,13 @@ export default function ChatWorkspace({
             </div>
           </div>
           <div className="chat-actions">
-            {!state.review && narrow && (
+            {!state.review && (
               <button
                 ref={detailsToggle}
                 className="button secondary"
-                aria-pressed={detailsOpen}
-                title="Show changed files (⌘\\)"
-                onClick={() => setDetailsOpen((open) => !open)}
+                aria-pressed={showDetails}
+                title={`${showDetails ? "Hide" : "Show"} changed files and session details (⌘\\)`}
+                onClick={toggleDetails}
               >
                 Changes
                 {!!changes.summary?.files.length && (
