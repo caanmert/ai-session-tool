@@ -125,6 +125,8 @@ export type ChatImage = { name: string; data: string };
 export type ChatMessage = {
   /** Names of images attached to a user message. */
   images?: string[];
+  /** When the message first arrived (RFC 3339); absent on older saved messages. */
+  at?: string;
   model?: string;
   id: string;
   role: string;

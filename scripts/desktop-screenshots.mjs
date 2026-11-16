@@ -66,6 +66,7 @@ try {
           role: "user",
           kind: "text",
           text: "Add safe retries to checkout requests. Keep the response clear when a payment fails.",
+          at: new Date(Date.now() - 26 * 60_000).toISOString(),
         },
         {
           id: "a",
@@ -73,6 +74,23 @@ try {
           kind: "text",
           model: "codex-demo",
           text: "I added bounded retries and an idempotency key for each checkout attempt. The request now uses the same key across retries, so a timeout will not create a second charge.",
+          at: new Date(Date.now() - 25 * 60_000).toISOString(),
+        },
+        {
+          id: "r",
+          role: "assistant",
+          kind: "tool",
+          name: "Read",
+          status: "completed",
+          text: '{\n  "file_path": "/projects/checkout/src/checkout.ts"\n}',
+        },
+        {
+          id: "s",
+          role: "assistant",
+          kind: "tool",
+          name: "Grep",
+          status: "completed",
+          text: '{\n  "pattern": "client.charge"\n}\n\nsrc/checkout.ts:2',
         },
         {
           id: "e",
@@ -95,6 +113,7 @@ try {
           role: "assistant",
           kind: "text",
           model: "codex-demo",
+          at: new Date(Date.now() - 22 * 60_000).toISOString(),
           text: "The focused tests pass. The changes are ready for a second review.\n\n- Reuse one request key across retries\n- Retry transient failures up to three times\n- Return the last response to the caller\n\n```ts\n// Retry transient failures only\nexport async function charge(order: Order) {\n  const key = crypto.randomUUID();\n  return retry(() => client.charge(order, { key }), 3);\n}\n```\n\n| Case | Result |\n| --- | --- |\n| Timeout | Retried with the same key |\n| Declined card | Returned at once |",
         },
       ],
@@ -755,8 +774,9 @@ try {
     () =>
       document.querySelector('select[aria-label="Model"]')?.disabled === false,
   );
-  // Open the edit step so its removed and added lines are checked too.
-  await page.getByText("src/checkout.ts", { exact: true }).first().click();
+  // The finished turn's activity is folded to a summary. Open it: the latest
+  // edit shows its removed and added lines, so they are checked too.
+  await page.getByRole("button", { name: /^4 steps · 1 edit/ }).click();
   await page.getByRole("group", { name: "Changed lines" }).waitFor();
   await checkContrast();
   await page.screenshot({ path: `${screenshots}/desktop-chat${suffix}.png` });

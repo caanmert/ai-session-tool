@@ -127,6 +127,26 @@ describe("graphical conversations", () => {
     );
     expect(backend.RevealProject).toHaveBeenCalledWith("chat");
   });
+  it("reuses one of your messages without losing what you have written", async () => {
+    state.version = 2;
+    state.messages = [
+      { id: "u", role: "user", kind: "text", text: "Run the checkout tests" },
+    ];
+    show();
+    const box = screen.getByRole("textbox", { name: /Message/ });
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Reuse this message" }),
+    );
+    expect(box).toHaveValue("Run the checkout tests");
+    expect(box).toHaveFocus();
+    await userEvent.clear(box);
+    await userEvent.type(box, "Also lint");
+    await userEvent.click(
+      screen.getByRole("button", { name: "Reuse this message" }),
+    );
+    expect(box).toHaveValue("Also lint\n\nRun the checkout tests");
+    expect(backend.SendChat).not.toHaveBeenCalled();
+  });
   it("hides and shows the details panel on a wide window", async () => {
     const hidden = vi.fn();
     const view = render(

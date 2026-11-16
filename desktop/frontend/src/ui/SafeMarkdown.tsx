@@ -9,6 +9,7 @@ import Markdown from "react-markdown";
 import rehypeHighlight from "rehype-highlight";
 import remarkGfm from "remark-gfm";
 import Icon from "../Icon";
+import Foldable from "./Foldable";
 
 // Plain text of a rendered code block, for copying.
 function textOf(node: ReactNode): string {
@@ -32,6 +33,7 @@ function CodeBlock({ children }: { children?: ReactNode }) {
     return () => clearTimeout(timer);
   }, [copied]);
   const language = languageOf(Array.isArray(children) ? children[0] : children);
+  const lines = textOf(children).replace(/\n$/, "").split("\n").length;
   return (
     <div className="code-block">
       <div className="code-block-bar">
@@ -49,7 +51,15 @@ function CodeBlock({ children }: { children?: ReactNode }) {
           <span role="status">{copied || "Copy"}</span>
         </button>
       </div>
-      <pre>{children}</pre>
+      <Foldable
+        lines={lines}
+        limit={30}
+        keep={20}
+        more={`Show all ${lines} lines`}
+        less="Show fewer lines"
+      >
+        <pre>{children}</pre>
+      </Foldable>
     </div>
   );
 }

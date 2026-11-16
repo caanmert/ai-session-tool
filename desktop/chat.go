@@ -28,6 +28,9 @@ type ChatMessage struct {
 	Model  string `json:"model,omitempty"`
 	// Images names the images attached to a user message.
 	Images []string `json:"images,omitempty"`
+	// At is when the message first arrived, in RFC 3339. Empty for messages
+	// saved before times were kept.
+	At string `json:"at,omitempty"`
 	// rev is the conversation version that last changed this message. It lets
 	// a reader that is already up to version N receive only newer messages.
 	rev int64
@@ -390,6 +393,10 @@ func shorten(text string, limit int) string {
 	}
 	return text + "\n[Display shortened]"
 }
+
+// chatNow is the clock messages are stamped with; tests replace it.
+var chatNow = time.Now
+
 func (c *chatSession) message(item ChatMessage, appendText bool) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -420,6 +427,9 @@ func (c *chatSession) message(item ChatMessage, appendText bool) {
 		}
 	}
 	item.Text = shorten(item.Text, 100000)
+	if item.At == "" {
+		item.At = chatNow().UTC().Format(time.RFC3339)
+	}
 	item.rev = c.state.Version + 1
 	c.state.Messages = append(c.state.Messages, item)
 	c.boundMessages()
