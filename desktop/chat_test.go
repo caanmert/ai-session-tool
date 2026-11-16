@@ -167,6 +167,11 @@ func TestAgentProcess(t *testing.T) {
 		}
 		emit(map[string]any{"method": "item/agentMessage/delta", "params": map[string]any{"itemId": messageID, "delta": "Hello "}})
 		emit(map[string]any{"method": "item/completed", "params": map[string]any{"item": map[string]any{"id": messageID, "type": "agentMessage", "text": result}}})
+		if mode == "context" {
+			emit(map[string]any{"method": "thread/tokenUsage/updated", "params": map[string]any{"threadId": "native-thread", "turnId": "turn", "tokenUsage": map[string]any{
+				"last":  map[string]any{"totalTokens": 52000, "inputTokens": 48000, "cachedInputTokens": 30000, "outputTokens": 4000, "reasoningOutputTokens": 2000},
+				"total": map[string]any{"totalTokens": 90000, "inputTokens": 80000, "cachedInputTokens": 50000, "outputTokens": 10000, "reasoningOutputTokens": 5000}, "modelContextWindow": 272000}}})
+		}
 		emit(map[string]any{"method": "turn/completed", "params": map[string]any{"turn": map[string]any{"id": "turn", "status": "completed"}}})
 	} else {
 		init := read()
@@ -256,8 +261,15 @@ func TestAgentProcess(t *testing.T) {
 		}
 		emit(map[string]any{"type": "stream_event", "event": map[string]any{"type": "message_start", "message": map[string]any{"id": messageID}}})
 		emit(map[string]any{"type": "stream_event", "event": map[string]any{"type": "content_block_delta", "index": 0, "delta": map[string]any{"type": "text_delta", "text": "Hello "}}})
-		emit(map[string]any{"type": "assistant", "message": map[string]any{"id": messageID, "model": model, "content": []any{map[string]any{"type": "text", "text": result}}}})
-		emit(map[string]any{"type": "result", "is_error": false, "result": result})
+		assistant := map[string]any{"id": messageID, "model": model, "content": []any{map[string]any{"type": "text", "text": result}}}
+		final := map[string]any{"type": "result", "is_error": false, "result": result}
+		if mode == "context" {
+			assistant["usage"] = map[string]any{"input_tokens": 1200, "cache_creation_input_tokens": 3000, "cache_read_input_tokens": 40000, "output_tokens": 800}
+			// A sub-agent's smaller model is listed too; the answering model's window counts.
+			final["modelUsage"] = map[string]any{model: map[string]any{"contextWindow": 200000}, "small-helper": map[string]any{"contextWindow": 100000}}
+		}
+		emit(map[string]any{"type": "assistant", "message": assistant})
+		emit(final)
 	}
 	// CLI connections are persistent; the bridge must reap them after a turn.
 	for {

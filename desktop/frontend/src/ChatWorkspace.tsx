@@ -18,6 +18,7 @@ import { useFileMentions } from "./chat/FileMentions";
 import { conversationStatus, requestSummary } from "./chat/conversation";
 import FindBar from "./chat/FindBar";
 import { useQueuedMessage } from "./chat/queuedMessage";
+import ContextMeter from "./chat/ContextMeter";
 import CompareDialog from "./chat/CompareDialog";
 import ModePicker from "./chat/ModePicker";
 import {
@@ -907,16 +908,23 @@ export default function ChatWorkspace({
                 onSaved={() => setRetry((n) => n + 1)}
               />
             )}
-            <span className="composer-hint">
+            <span
+              className="composer-hint"
+              title={
+                state.review
+                  ? undefined
+                  : `Enter ${busy ? "queues" : "sends"} the message; Shift+Enter adds a line.`
+              }
+            >
               {state.review ? (
                 "Reviewing a fixed snapshot of your uncommitted changes."
               ) : (
                 <>
-                  <kbd>⏎</kbd> {busy ? "queue" : "send"} · <kbd>⇧⏎</kbd> new
-                  line
+                  <kbd>⏎</kbd> {busy ? "queue" : "send"}
                 </>
               )}
             </span>
+            {!state.review && <ContextMeter context={state.context} />}
             {busy && !state.review && !!prompt.trim() && (
               <button
                 type="submit"

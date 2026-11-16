@@ -144,6 +144,8 @@ func (m *chatManager) runCodex(ctx context.Context, c *chatSession, state ChatSt
 			switch method {
 			case "model/rerouted":
 				c.reportModel(str(params["toModel"]))
+			case "thread/tokenUsage/updated":
+				c.reportContext(codexContextUsage(params))
 			case "turn/started":
 				turn = str(object(params["turn"])["id"])
 				timer.Stop()

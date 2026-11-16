@@ -338,6 +338,8 @@ export type ReviewDraft = {
   created: string;
 };
 export type ChatState = {
+  /** How full the context is after the latest response, as the agent reported it. */
+  context?: { used: number; window?: number };
   /** Set on both conversations of a comparison. */
   comparison?: string;
   /** Permission mode for the next message; "" is the agent's normal asking. */

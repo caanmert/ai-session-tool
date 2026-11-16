@@ -89,6 +89,8 @@ func (m *chatManager) runClaude(ctx context.Context, c *chatSession, state ChatS
 	defer timer.Stop()
 	messageID := ""
 	final := ""
+	// The model of the latest main response, for its context window.
+	contextModel := ""
 	visibleText := false
 	resultReceived := false
 	sessionState := ""
@@ -184,6 +186,8 @@ func (m *chatManager) runClaude(ctx context.Context, c *chatSession, state ChatS
 				message := object(v["message"])
 				if str(v["parent_tool_use_id"]) == "" {
 					c.reportModel(str(message["model"]))
+					contextModel = str(message["model"])
+					c.reportContext(claudeContextUsed(object(message["usage"])), 0)
 				}
 				id := str(message["id"])
 				if id == "" {
@@ -226,6 +230,7 @@ func (m *chatManager) runClaude(ctx context.Context, c *chatSession, state ChatS
 					return "", fmt.Errorf("Claude: %s %s", str(v["result"]), pretty(v["errors"]))
 				}
 				markSessionStarted()
+				c.reportContext(0, claudeContextWindow(object(v["modelUsage"]), contextModel))
 				if raw := v["structured_output"]; len(raw) > 0 && string(raw) != "null" {
 					final = string(raw)
 				} else if body := str(v["result"]); body != "" {

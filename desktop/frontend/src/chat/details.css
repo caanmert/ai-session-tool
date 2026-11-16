@@ -528,3 +528,26 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* Context in the Session facts */
+.context-fact {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.context-fact .usage-meter {
+  width: 56px;
+  height: 4px;
+}
+.context-fact.high {
+  color: var(--warning-text);
+}
+.context-fact.high .usage-meter i {
+  background: var(--warning);
+}
+.context-fact.full {
+  color: var(--danger-text);
+}
+.context-fact.full .usage-meter i {
+  background: var(--danger);
+}
