@@ -532,10 +532,43 @@ try {
             warnings: [],
           }),
           Search: async () => ["codex/demo"],
-          Transcript: async () => ({
-            messages: source.messages,
-            truncated: false,
-          }),
+          // A saved transcript, in the shape the CLI's reader produces.
+          Transcript: async () => {
+            const said = source.messages.filter((m) => m.kind === "text");
+            const text = (m) => ({
+              role: m.role,
+              kind: "text",
+              text: m.text,
+              time: m.at,
+            });
+            const call = (toolName, value) => ({
+              role: "assistant",
+              kind: "tool_use",
+              toolName,
+              text: value,
+            });
+            const result = (value) => ({
+              role: "user",
+              kind: "tool_result",
+              text: value,
+            });
+            return {
+              messages: [
+                text(said[0]),
+                text(said[1]),
+                call("Read", `${project}/src/checkout.ts`),
+                call("Grep", "client.charge"),
+                result("export async function checkout(order) {"),
+                result("src/checkout.ts:2"),
+                call("Edit", `${project}/src/checkout.ts`),
+                result("The file was updated."),
+                call("Bash", "npm test -- checkout"),
+                result("3 tests passed"),
+                text(said[2]),
+              ],
+              truncated: false,
+            };
+          },
           ListChats: async () => [source],
           ListSavedChats: async () =>
             Object.values(chats).map((chat) => ({

@@ -208,7 +208,9 @@ or committed and pushed are lost.
 1. Open **History** and, if you like, pick a project in the top bar. Filter by
    titles, project paths, branches, tags and conversation contents; use the agent
    filters to narrow results.
-2. Select a saved conversation to preview it. **Continue in app** opens that
+2. Select a saved conversation to preview it. The preview reads like an open
+   conversation: tool calls as steps such as "Run `npm test`" with their results,
+   long runs of steps folded to a summary, and the time of each message. **Continue in app** opens that
    provider's saved session in its recorded directory.
 3. For a fresh conversation, choose **New task** (**⌘N**). Describe the task,
    select a project and agent, then **Start task** (**⌘⏎**): the conversation is

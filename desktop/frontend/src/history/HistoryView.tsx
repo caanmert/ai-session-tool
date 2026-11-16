@@ -9,9 +9,10 @@ import {
   type Snapshot,
 } from "../api";
 import AgentsMissing from "../shell/AgentsMissing";
-import { SafeMarkdown } from "../ui/SafeMarkdown";
 import { age, basename, sessionCost, sessionTokens } from "../ui/format";
 import { SessionTags, SessionTitle } from "./SessionAnnotations";
+import MessageList from "../chat/MessageList";
+import { previewMessages } from "./previewMessages";
 
 /**
  * Everything the History view shows and can do. The state lives in App,
@@ -423,51 +424,13 @@ export function HistoryBrowser(props: HistoryProps) {
                       This session has no previewable messages yet.
                     </p>
                   )}
-                  {preview.messages.map((message, i) =>
-                    message.kind === "text" ? (
-                      <article key={i} className={`message ${message.role}`}>
-                        <div className="message-heading">
-                          <span className={`avatar ${message.role}`}>
-                            {message.role === "user" ? (
-                              "Y"
-                            ) : (
-                              <AgentMark tool={selected.tool} small />
-                            )}
-                          </span>
-                          <strong>
-                            {message.role === "user"
-                              ? "You"
-                              : toolLabel(selected.tool)}
-                          </strong>
-                          {message.time && (
-                            <time>
-                              {new Date(message.time).toLocaleTimeString([], {
-                                hour: "2-digit",
-                                minute: "2-digit",
-                              })}
-                            </time>
-                          )}
-                        </div>
-                        <div className="markdown">
-                          <SafeMarkdown
-                            text={message.text || ""}
-                            imageNote="[Image omitted from preview]"
-                          />
-                        </div>
-                      </article>
-                    ) : (
-                      <details className="tool-message" key={i}>
-                        <summary>
-                          <Icon name="terminal" size={13} />
-                          {message.toolName ||
-                            (message.kind === "thinking"
-                              ? "Reasoning"
-                              : "Tool output")}
-                        </summary>
-                        <pre>{message.text}</pre>
-                      </details>
-                    ),
-                  )}
+                  {/* Drawn like an open conversation, from the saved transcript. */}
+                  <MessageList
+                    tool={selected.tool}
+                    project={selected.cwd || selected.project}
+                    messages={previewMessages(preview.messages)}
+                    imageNote="[Image omitted from preview]"
+                  />
                 </>
               )}
             </div>

@@ -241,17 +241,19 @@ const TextMessage = memo(function TextMessage({
   message,
   tool,
   onReuse,
+  imageNote,
 }: {
   message: ChatMessage;
   tool: string;
   onReuse?: (text: string) => void;
+  imageNote?: string;
 }) {
   const user = message.role === "user";
   const system = message.role === "system";
   const when = message.at ? messageTime(message.at) : "";
   const body = (
     <div className="markdown">
-      <SafeMarkdown text={message.text} />
+      <SafeMarkdown text={message.text} imageNote={imageNote} />
     </div>
   );
   return (
@@ -328,6 +330,7 @@ export default function MessageList({
   project = "",
   busy = false,
   onReuse,
+  imageNote,
 }: {
   messages: ChatMessage[];
   tool: string;
@@ -337,6 +340,8 @@ export default function MessageList({
   busy?: boolean;
   /** Puts one of your messages back in the message box. */
   onReuse?: (text: string) => void;
+  /** What stands in for an image, which is never loaded. */
+  imageNote?: string;
 }) {
   const items: (ChatMessage | ChatMessage[])[] = [];
   for (const message of messages) {
@@ -359,7 +364,13 @@ export default function MessageList({
         live={busy && index > lastUser}
       />
     ) : (
-      <TextMessage key={item.id} message={item} tool={tool} onReuse={onReuse} />
+      <TextMessage
+        key={item.id}
+        message={item}
+        tool={tool}
+        onReuse={onReuse}
+        imageNote={imageNote}
+      />
     ),
   );
 }
