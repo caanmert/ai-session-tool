@@ -284,6 +284,24 @@ export type GitHubOverview = {
   /** One of the two lists could not be read. */
   partial?: string;
 };
+/** A command the project offers, such as a package script. */
+export type ProjectCommand = {
+  label: string;
+  command: string;
+  /** Where it was found, such as package.json or Makefile. */
+  source: string;
+};
+/** The latest command run beside a conversation. */
+export type ProjectRunState = {
+  command: string;
+  running: boolean;
+  exitCode: number;
+  output: string;
+  shortened?: boolean;
+  startedAt: string;
+  endedAt?: string;
+  stopped?: boolean;
+};
 /** An instructions file an agent reads for a project. */
 export type InstructionFile = {
   agent: string;
@@ -595,6 +613,15 @@ export interface Backend {
   /** A project's open issues and pull requests, read with the GitHub CLI. */
   GitHubOverview(project: string): Promise<GitHubOverview>;
   GitHubIssue(project: string, number: number): Promise<GitHubIssueDetail>;
+  /** The commands the conversation's project offers. Only reads. */
+  ProjectCommands(chatId: string): Promise<ProjectCommand[]>;
+  /** Runs a command the user chose in the project folder. */
+  StartProjectCommand(
+    chatId: string,
+    command: string,
+  ): Promise<ProjectRunState>;
+  ProjectRun(chatId: string): Promise<ProjectRunState>;
+  StopProjectCommand(chatId: string): Promise<void>;
   /** The instructions files each agent reads for a project. */
   ProjectInstructions(project: string): Promise<InstructionFile[]>;
   ReadInstruction(project: string, name: string): Promise<InstructionText>;
@@ -710,6 +737,11 @@ export const api: Backend = {
     backend().GitHubIssue(project, number),
   GitHubPull: async (project, number) => backend().GitHubPull(project, number),
   SearchMessages: async (query) => backend().SearchMessages(query),
+  ProjectCommands: async (chatId) => backend().ProjectCommands(chatId),
+  StartProjectCommand: async (chatId, command) =>
+    backend().StartProjectCommand(chatId, command),
+  ProjectRun: async (chatId) => backend().ProjectRun(chatId),
+  StopProjectCommand: async (chatId) => backend().StopProjectCommand(chatId),
   ProjectInstructions: async (project) =>
     backend().ProjectInstructions(project),
   ReadInstruction: async (project, name) =>

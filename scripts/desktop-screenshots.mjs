@@ -405,6 +405,32 @@ try {
                 "…an idempotency key for each \u0002checkout\u0003 attempt. The request now uses the same key…",
             },
           ],
+          ProjectCommands: async () => [
+            { label: "test", command: "npm run test", source: "package.json" },
+            {
+              label: "build",
+              command: "npm run build",
+              source: "package.json",
+            },
+            { label: "lint", command: "npm run lint", source: "package.json" },
+          ],
+          ProjectRun: async () => ({
+            command: "npm run test",
+            running: false,
+            exitCode: 0,
+            output:
+              "> checkout@1.0.0 test\n> vitest run\n\n ✓ test/checkout.test.ts (6 tests) 41ms\n ✓ test/retry.test.ts (4 tests) 12ms\n\n Test Files  2 passed (2)\n      Tests  10 passed (10)\n",
+            startedAt: "2026-11-17T10:00:00Z",
+            endedAt: "2026-11-17T10:00:03Z",
+          }),
+          StartProjectCommand: async (_id, command) => ({
+            command,
+            running: true,
+            exitCode: 0,
+            output: "",
+            startedAt: "2026-11-17T10:00:00Z",
+          }),
+          StopProjectCommand: async () => {},
           ProjectInstructions: async () => [
             {
               agent: "claude",
@@ -1121,6 +1147,12 @@ try {
   });
   await page.keyboard.press("Escape");
   await restoreDialog.waitFor({ state: "detached" });
+  // The run panel shows the project's commands and the latest run.
+  const runPanel = page.getByRole("region", { name: "Run a command" });
+  await runPanel.getByText("Tests  10 passed").waitFor();
+  await runPanel.scrollIntoViewIfNeeded();
+  await checkContrast();
+  await page.screenshot({ path: `${screenshots}/desktop-run${suffix}.png` });
   // Project instructions: each agent's files, editable in the project.
   await page.getByRole("button", { name: /Project instructions/ }).click();
   const instructions = page.getByRole("dialog", {

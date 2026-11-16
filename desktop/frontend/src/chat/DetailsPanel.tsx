@@ -16,6 +16,7 @@ import { CommitDialog, PullRequestDialog } from "./GitDialogs";
 import { busyChat } from "../shell/OpenSessions";
 import NewIssueDialog from "../github/NewIssueDialog";
 import InstructionsDialog from "./InstructionsDialog";
+import RunPanel from "./RunPanel";
 import { contextFill } from "./ContextMeter";
 
 const usageBreakdown = (session: Session) =>
@@ -368,6 +369,7 @@ export default function DetailsPanel({
             {done}
           </p>
         )}
+        {!chat.review && <RunPanel chatId={chat.id} />}
         <h3 className="details-section">Session</h3>
         <dl className="details-facts">
           <div>

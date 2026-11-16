@@ -141,6 +141,7 @@ type chatManager struct {
 	catalogs        map[string]*modelCache
 	usage           map[string]*usageCache
 	skillLists      map[string]*skillCache
+	projectRuns     map[string]*projectRun
 	discoveryCtx    context.Context
 	cancelDiscovery context.CancelFunc
 }
@@ -731,6 +732,7 @@ func (m *chatManager) close() {
 		items = append(items, c)
 	}
 	m.mu.Unlock()
+	m.stopAllProjectRuns()
 	for _, c := range items {
 		c.mu.Lock()
 		if c.cancel != nil {

@@ -82,6 +82,7 @@ const paths = {
       <path d="M12 10v4m0 3v.01" />
     </>
   ),
+  play: <path d="M7 5v14l11-7L7 5Z" />,
   stop: (
     <rect
       x="6"

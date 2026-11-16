@@ -150,6 +150,13 @@ They demonstrate the layout, not output from a live model run.
   added and removed line counts. Click a file or **Review all changes** to read the
   diff. Nothing is reverted from here. A folder that is not a Git repository
   simply says so.
+- **Run** (in the details panel) runs a project command beside the
+  conversation: the scripts in `package.json` (with the project's package
+  manager), `Makefile` targets, `go test ./...` or `cargo test`, or a command
+  you type. It runs in the project folder in your login shell, only when you
+  press **Run**, one at a time per conversation, and **Stop** ends it with
+  everything it started. The newest 256 KB of output and the exit status are
+  shown; runs stop when the app quits. Reviews have no run panel.
 - **Project instructions…** (in Session) lists the instruction files each agent
   reads for the project: `CLAUDE.md`, `.claude/CLAUDE.md` and `CLAUDE.local.md`
   for Claude Code and `AGENTS.md` for Codex, at the repository root, plus your
