@@ -172,6 +172,10 @@ beforeEach(() => {
     ProjectCommands: vi.fn().mockResolvedValue([]),
     HandOffChat: vi.fn(),
     SavedPrompts: vi.fn().mockResolvedValue([]),
+    NewChatInCopy: vi.fn(),
+    CopyChanges: vi.fn(),
+    BringBackCopy: vi.fn(),
+    RemoveCopy: vi.fn(),
     SetSavedPrompts: vi.fn(),
     TurnDiff: vi.fn(),
     StartProjectCommand: vi.fn(),
@@ -369,6 +373,36 @@ describe("desktop workflows", () => {
     expect(
       await screen.findByRole("region", { name: "Chat conversation" }),
     ).toBeVisible();
+  });
+  it("starts a task in its own copy of the project on request", async () => {
+    backend.SendChat = vi.fn().mockResolvedValue(undefined);
+    backend.NewChatInCopy = vi.fn().mockResolvedValue({
+      ...live,
+      copy: {
+        project: "/demo/docs",
+        base: "abc123",
+        branch: "ais/1a2b",
+        worktree: "/data/copies/1a2b/docs",
+      },
+    });
+    render(<App />);
+    await screen.findByRole("heading", { name: "Retry webhook delivery" });
+    fireEvent.keyDown(document, { key: "n", metaKey: true });
+    const dialog = await screen.findByRole("dialog");
+    await userEvent.type(within(dialog).getByLabelText("Task"), "Refactor");
+    const copy = within(dialog).getByRole("checkbox", {
+      name: /Work in a separate copy/,
+    });
+    expect(copy).not.toBeChecked();
+    await userEvent.click(copy);
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: /Start task/ }),
+    );
+    await waitFor(() =>
+      expect(backend.SendChat).toHaveBeenCalledWith("live-one", "Refactor"),
+    );
+    expect(backend.NewChatInCopy).toHaveBeenCalledWith("/demo/api", "codex");
+    expect(backend.NewChat).not.toHaveBeenCalled();
   });
   it("preselects the agent last started in a project", async () => {
     render(<App />);

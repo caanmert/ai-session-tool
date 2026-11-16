@@ -265,6 +265,8 @@ export default function App() {
   const [newMessage, setNewMessage] = useState("");
   // Give the task to both agents, each in its own worktree, and compare.
   const [newCompare, setNewCompare] = useState(false);
+  // Start the conversation in its own copy (Git worktree) of the project.
+  const [newCopy, setNewCopy] = useState(false);
   const searchInput = useRef<HTMLInputElement>(null);
   const [showPalette, setShowPalette] = useState(false);
   const sessionRows = useRef<HTMLDivElement>(null);
@@ -914,7 +916,9 @@ export default function App() {
         return;
       }
       const live = fresh
-        ? await api.NewChat(newProject, newTool)
+        ? newCopy
+          ? await api.NewChatInCopy(newProject, newTool)
+          : await api.NewChat(newProject, newTool)
         : await api.ResumeChat(selected!.key);
       // A task typed in the dialog is sent before the conversation opens. If
       // sending fails, the text is kept as that conversation's draft.
@@ -1370,6 +1374,24 @@ export default function App() {
                 }
               }}
             />
+            {!newCompare && (
+              <label className="new-task-copy">
+                <input
+                  type="checkbox"
+                  checked={newCopy}
+                  disabled={busy}
+                  onChange={(e) => setNewCopy(e.target.checked)}
+                />
+                <span>
+                  Work in a separate copy
+                  <small>
+                    A Git worktree on a new branch from the last commit, so
+                    other agents can work in the project at the same time. Bring
+                    the changes back when you are ready.
+                  </small>
+                </span>
+              </label>
+            )}
             {snapshot?.tools.every((t) => !t.available) && (
               <p className="preview-note">
                 Install Codex or Claude Code, then reopen ais. Run{" "}

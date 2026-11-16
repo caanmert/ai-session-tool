@@ -845,3 +845,20 @@
   gap: 5px;
   margin-top: 6px;
 }
+
+/* Separate copy */
+.copy-panel .details-note code {
+  font-family: var(--font-mono);
+  overflow-wrap: anywhere;
+}
+.copy-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+.copy-actions .button {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
