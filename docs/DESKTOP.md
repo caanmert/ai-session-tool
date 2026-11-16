@@ -146,6 +146,22 @@ They demonstrate the layout, not output from a live model run.
    expand to the removed and added lines.
 5. Answer questions or choose **Allow once** / **Deny** on approval cards. While
    focus is inside a card, **Enter** allows a simple request and **Esc** denies it.
+   A command request shows the command and the agent's reason. When the agent
+   itself offers a wider grant, the card has a third button and says exactly what
+   it does: Claude Code's **Always allow in this project** makes Claude Code add
+   the rule to the project's `.claude/settings.local.json`; Codex's **Always allow
+   this command** makes Codex add a rule to its own settings. ais passes the
+   agent's offer back unchanged and keeps no approval rules of its own; a request
+   that offers nothing wider has only the one-time buttons.
+6. Choose a **permission mode** in the message box before sending. **Plan** lets
+   the agent read and propose but change nothing (Claude Code's plan mode; a
+   read-only sandbox for Codex). Claude Code also has **Ask** (the default) and
+   **Auto-edit**, which stops asking about file edits but still asks before
+   commands. Codex's **Default** already edits inside the project and asks for
+   anything beyond it. When Claude Code presents a plan, the card shows it and
+   approving it returns the conversation to Ask. The mode applies from the next
+   message and cannot be changed during a response. Modes that skip all
+   permission checks are not offered.
    Approvals retain the installed agent's normal permission behavior; ais does
    not bypass permissions. Unsupported requests fail closed and may require the CLI.
 
@@ -427,11 +443,14 @@ accepted by Claude Code 2.1.325 on 2026-11-14.
 
 Each response starts a provider process, resumes its native conversation ID where
 available, and reaps the process on completion or stop. CLI compatibility is
-version-sensitive. On October 12, 2026, authenticated backend smoke checks passed
-with Codex 0.162.1 and Claude Code 2.1.296: new/resumed conversations, explicit
+version-sensitive. On November 15, 2026, the authenticated checks passed with
+Codex 0.167.1 and Claude Code 2.1.325: new/resumed conversations, explicit
 model selection, saved settings and conversation recovery after restart,
-stop/continue, command approval denial and acceptance, and both directions of the
-review-to-fix loop. Each fix was checked independently in a temporary repository.
+stop/continue, command approval denial and acceptance, both directions of the
+review-to-fix loop, Claude Code writing an "always allow" rule into a temporary
+project's settings and then not asking again, and plan mode writing nothing with
+either agent. Codex's "always allow this command" was not exercised live, because
+it would add a rule to the real Codex settings on the machine running the check. Each fix was checked independently in a temporary repository.
 The checks also caught and fixed an early-stop bug: a new Claude conversation no
 longer retains an unusable session ID when stopped before its first model activity.
 

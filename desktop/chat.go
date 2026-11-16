@@ -36,31 +36,47 @@ type ChatQuestion struct {
 	Options []string `json:"options"`
 	Secret  bool     `json:"secret,omitempty"`
 }
+
+// ApprovalOption is a wider grant the agent itself offered for a request,
+// such as allowing a command for the rest of the session or adding a rule to
+// its own settings. ais never invents one.
+type ApprovalOption struct {
+	ID     string `json:"id"`
+	Label  string `json:"label"`
+	Detail string `json:"detail,omitempty"`
+}
 type ChatApproval struct {
 	ID        string         `json:"id"`
 	Title     string         `json:"title"`
 	Detail    string         `json:"detail"`
 	Questions []ChatQuestion `json:"questions"`
+	// Options are offered next to "Allow once". Empty when the agent offers
+	// nothing wider for this request.
+	Options []ApprovalOption `json:"options,omitempty"`
+	// Plan holds the proposed plan when the agent asks to leave plan mode.
+	Plan string `json:"plan,omitempty"`
 }
 type ChatState struct {
-	Settings         ModelSettings  `json:"settings"`
-	ReviewerSettings ModelSettings  `json:"reviewerSettings"`
-	ActiveModel      string         `json:"activeModel"`
-	ID               string         `json:"id"`
-	Tool             string         `json:"tool"`
-	Project          string         `json:"project"`
-	SessionID        string         `json:"sessionId"`
-	SourceKey        string         `json:"sourceKey"`
-	Title            string         `json:"title"`
-	Status           string         `json:"status"`
-	Error            string         `json:"error"`
-	Messages         []ChatMessage  `json:"messages"`
-	Approvals        []ChatApproval `json:"approvals"`
-	Review           *ReviewState   `json:"review,omitempty"`
-	UpdatedAt        time.Time      `json:"updatedAt"`
-	Shortened        bool           `json:"shortened"`
-	Version          int64          `json:"version"`
-	Closed           bool           `json:"closed"`
+	Settings         ModelSettings `json:"settings"`
+	ReviewerSettings ModelSettings `json:"reviewerSettings"`
+	ActiveModel      string        `json:"activeModel"`
+	// Mode is the permission mode for the next message; see chat_modes.go.
+	Mode      string         `json:"mode"`
+	ID        string         `json:"id"`
+	Tool      string         `json:"tool"`
+	Project   string         `json:"project"`
+	SessionID string         `json:"sessionId"`
+	SourceKey string         `json:"sourceKey"`
+	Title     string         `json:"title"`
+	Status    string         `json:"status"`
+	Error     string         `json:"error"`
+	Messages  []ChatMessage  `json:"messages"`
+	Approvals []ChatApproval `json:"approvals"`
+	Review    *ReviewState   `json:"review,omitempty"`
+	UpdatedAt time.Time      `json:"updatedAt"`
+	Shortened bool           `json:"shortened"`
+	Version   int64          `json:"version"`
+	Closed    bool           `json:"closed"`
 }
 
 // ChatUpdate answers a read. State is nil when nothing changed. When Partial
@@ -77,6 +93,8 @@ type ChatUpdate struct {
 type approvalReply struct {
 	Allow   bool
 	Answers map[string]string
+	// Option is the ID of the ApprovalOption chosen, or "" for a one-time answer.
+	Option string
 }
 type pendingApproval struct {
 	View     ChatApproval

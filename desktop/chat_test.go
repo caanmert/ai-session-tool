@@ -94,6 +94,11 @@ func TestAgentProcess(t *testing.T) {
 		if mode == "resume" {
 			require(str(thread["method"]) == "thread/resume" && str(params["threadId"]) == "native-thread", "expected saved thread")
 		}
+		if mode == "plan" {
+			require(str(params["sandbox"]) == "read-only" && str(params["approvalPolicy"]) == "on-request", "plan mode must be read-only")
+		} else if mode != "review" {
+			require(str(params["sandbox"]) == "workspace-write", "default sandbox")
+		}
 		model := "model-a"
 		if str(params["model"]) != "" {
 			model = str(params["model"])
@@ -134,6 +139,23 @@ func TestAgentProcess(t *testing.T) {
 				want = "decline"
 			}
 			require(number(response["id"]) == 99 && str(object(response["result"])["decision"]) == want, "wrong approval reply")
+		}
+		if mode == "wide" || mode == "narrow" {
+			// The shape real Codex sends: plain decisions plus one that carries
+			// the rule it would add. An unknown decision must be ignored.
+			decisions := []any{"accept", "cancel"}
+			if mode == "wide" {
+				decisions = []any{"accept", map[string]any{"acceptWithExecpolicyAmendment": map[string]any{"execpolicy_amendment": []string{"npm", "test"}}}, map[string]any{"somethingNew": true}, "cancel"}
+			}
+			emit(map[string]any{"id": 98, "method": "item/commandExecution/requestApproval", "params": map[string]any{"command": "npm test", "availableDecisions": decisions}})
+			response := read()
+			decision := object(response["result"])["decision"]
+			if mode == "wide" {
+				words := array(object(object(decision)["acceptWithExecpolicyAmendment"])["execpolicy_amendment"])
+				require(number(response["id"]) == 98 && len(words) == 2 && str(words[0]) == "npm", "the offered rule must be sent back unchanged")
+			} else {
+				require(number(response["id"]) == 98 && str(decision) == "accept", "wrong one-time approval reply")
+			}
 		}
 		emit(map[string]any{"method": "item/agentMessage/delta", "params": map[string]any{"itemId": messageID, "delta": "Hello "}})
 		emit(map[string]any{"method": "item/completed", "params": map[string]any{"item": map[string]any{"id": messageID, "type": "agentMessage", "text": result}}})
@@ -185,6 +207,33 @@ func TestAgentProcess(t *testing.T) {
 			require(str(response["behavior"]) == want, "wrong Claude approval reply")
 			if mode == "approve" {
 				require(str(object(response["updatedInput"])["content"]) == "example", "must preserve tool input")
+			}
+		}
+		if mode == "plan" {
+			require(strings.Contains(cliArgs, "--permission-mode plan"), "missing plan mode")
+			emit(map[string]any{"type": "control_request", "request_id": "plan", "request": map[string]any{"subtype": "can_use_tool", "tool_name": "ExitPlanMode", "input": map[string]any{"plan": "1. Add retries"},
+				"permission_suggestions": []any{map[string]any{"type": "setMode", "mode": "acceptEdits", "destination": "session"}}}})
+			response := object(object(read()["response"])["response"])
+			_, widened := response["updatedPermissions"]
+			require(str(response["behavior"]) == "allow" && !widened, "plan approval must not change permissions")
+		} else if mode == "autoedit" {
+			require(strings.Contains(cliArgs, "--permission-mode acceptEdits"), "missing auto-edit mode")
+		} else if mode != "review" {
+			require(strings.Contains(cliArgs, "--permission-mode default"), "missing default mode")
+		}
+		if mode == "wide" || mode == "narrow" {
+			suggestions := []any{map[string]any{"type": "addRules", "behavior": "allow", "destination": "localSettings", "rules": []any{map[string]any{"toolName": "Bash", "ruleContent": "npm test:*"}}}}
+			if mode == "narrow" {
+				// A suggestion that is not a plain allow rule must not be offered.
+				suggestions = []any{map[string]any{"type": "setMode", "mode": "bypassPermissions", "destination": "session"}}
+			}
+			emit(map[string]any{"type": "control_request", "request_id": "scoped", "request": map[string]any{"subtype": "can_use_tool", "tool_name": "Bash", "input": map[string]any{"command": "npm test"}, "permission_suggestions": suggestions}})
+			response := object(object(read()["response"])["response"])
+			updated := array(response["updatedPermissions"])
+			if mode == "wide" {
+				require(str(response["behavior"]) == "allow" && len(updated) == 1 && str(object(updated[0])["destination"]) == "localSettings", "suggested rule must be returned")
+			} else {
+				require(str(response["behavior"]) == "allow" && len(updated) == 0, "one-time approval must not add rules")
 			}
 		}
 		emit(map[string]any{"type": "stream_event", "event": map[string]any{"type": "message_start", "message": map[string]any{"id": messageID}}})

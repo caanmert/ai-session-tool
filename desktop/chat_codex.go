@@ -82,7 +82,7 @@ func (m *chatManager) runCodex(ctx context.Context, c *chatSession, state ChatSt
 					if err = p.send(map[string]any{"method": "initialized", "params": map[string]any{}}); err != nil {
 						return "", err
 					}
-					params := map[string]any{"cwd": state.Project, "approvalPolicy": "on-request", "approvalsReviewer": "user", "sandbox": "workspace-write"}
+					params := map[string]any{"cwd": state.Project, "approvalPolicy": "on-request", "approvalsReviewer": "user", "sandbox": codexSandbox(state.Mode)}
 					if state.Review != nil {
 						params["sandbox"] = "read-only"
 						params["approvalPolicy"] = "never"
@@ -201,7 +201,17 @@ func codexRequest(ctx context.Context, c *chatSession, p *jsonProcess, id json.R
 			p.close()
 		}
 	}
+	if observeApproval != nil {
+		observeApproval("codex", params)
+	}
 	view := ChatApproval{ID: string(id), Title: "Agent approval", Detail: pretty(mustJSON(params)), Questions: []ChatQuestion{}}
+	// Codex lists the decisions it accepts for this request. Offer the wider
+	// ones it lists, and remember each exactly as given so the chosen one can
+	// be sent back unchanged.
+	wider := map[string]any{}
+	if method != "item/tool/requestUserInput" {
+		view.Options, wider = codexOptions(params["availableDecisions"])
+	}
 	switch method {
 	case "item/commandExecution/requestApproval":
 		view.Title = "Run command?"
@@ -250,6 +260,10 @@ func codexRequest(ctx context.Context, c *chatSession, p *jsonProcess, id json.R
 	if reply.Allow {
 		decision = "accept"
 	}
+	if chosen, ok := wider[reply.Option]; reply.Allow && ok {
+		send(map[string]any{"decision": chosen})
+		return
+	}
 	// Only one-time decisions are supported. Never silently broaden a rule or session.
 	if choices := array(params["availableDecisions"]); len(choices) > 0 {
 		found := false
@@ -263,6 +277,43 @@ func codexRequest(ctx context.Context, c *chatSession, p *jsonProcess, id json.R
 	}
 	send(map[string]any{"decision": decision})
 }
+
+const (
+	codexSessionOption = "acceptForSession"
+	codexCommandOption = "acceptWithExecpolicyAmendment"
+)
+
+// codexOptions turns the decisions Codex lists into the wider choices ais
+// shows, with the value to send back for each. Unknown decisions are ignored,
+// so nothing is offered that ais cannot describe.
+func codexOptions(raw json.RawMessage) ([]ApprovalOption, map[string]any) {
+	options, values := []ApprovalOption{}, map[string]any{}
+	for _, choice := range array(raw) {
+		if str(choice) == codexSessionOption {
+			options = append(options, ApprovalOption{ID: codexSessionOption, Label: "Allow for this session", Detail: "Codex will not ask again for this in the current session."})
+			values[codexSessionOption] = codexSessionOption
+			continue
+		}
+		amendment, ok := object(choice)[codexCommandOption]
+		if !ok {
+			continue
+		}
+		words := []string{}
+		for _, word := range array(object(amendment)["execpolicy_amendment"]) {
+			words = append(words, str(word))
+		}
+		if len(words) == 0 || strings.TrimSpace(strings.Join(words, "")) == "" {
+			continue
+		}
+		options = append(options, ApprovalOption{ID: codexCommandOption, Label: "Always allow this command", Detail: "Codex will add a rule to its own settings and stop asking for commands that start with: " + strings.Join(words, " ")})
+		values[codexCommandOption] = choice
+	}
+	if len(options) == 0 {
+		return nil, values
+	}
+	return options, values
+}
+
 func mustJSON(value any) json.RawMessage { data, _ := json.Marshal(value); return data }
 func (c *chatSession) dismissApproval(id string) {
 	c.mu.Lock()

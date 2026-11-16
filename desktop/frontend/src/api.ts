@@ -111,12 +111,20 @@ export type ChatQuestion = {
   options: string[];
   secret?: boolean;
 };
+/** A wider grant the agent itself offered for a request. */
+export type ApprovalOption = { id: string; label: string; detail?: string };
 export type ChatApproval = {
   id: string;
   title: string;
   detail: string;
   questions: ChatQuestion[];
+  /** Offered next to "Allow once"; absent when the agent offers nothing wider. */
+  options?: ApprovalOption[];
+  /** The proposed plan, when the agent asks to leave plan mode. */
+  plan?: string;
 };
+/** A permission mode the conversation's agent supports. */
+export type ModeOption = { id: string; label: string; detail: string };
 export type ReviewFile = { path: string; patch: string };
 export type ReviewSnapshot = {
   root: string;
@@ -167,6 +175,8 @@ export type ReviewDraft = {
   created: string;
 };
 export type ChatState = {
+  /** Permission mode for the next message; "" is the agent's normal asking. */
+  mode?: string;
   settings?: ModelSettings;
   reviewerSettings?: ModelSettings;
   activeModel?: string;
@@ -282,6 +292,10 @@ export interface Backend {
   PickFiles(id: string): Promise<string[]>;
   /** Files in the conversation's project matching a query, best first. */
   ProjectFiles(id: string, query: string): Promise<string[]>;
+  ChatModes(id: string): Promise<ModeOption[]>;
+  SetChatMode(id: string, mode: string): Promise<void>;
+  /** Allow a request using a wider grant the agent offered for it. */
+  AnswerChatOption(id: string, request: string, option: string): Promise<void>;
   PrepareReview(id: string): Promise<ReviewDraft>;
   ChatChanges(id: string): Promise<ChangeSummary>;
   ChatDiff(id: string): Promise<ReviewSnapshot>;
@@ -342,6 +356,10 @@ export const api: Backend = {
     backend().AnswerChat(id, request, allow, answers),
   PickFiles: async (id) => backend().PickFiles(id),
   ProjectFiles: async (id, query) => backend().ProjectFiles(id, query),
+  ChatModes: async (id) => backend().ChatModes(id),
+  SetChatMode: async (id, mode) => backend().SetChatMode(id, mode),
+  AnswerChatOption: async (id, request, option) =>
+    backend().AnswerChatOption(id, request, option),
   PrepareReview: async (id) => backend().PrepareReview(id),
   ChatChanges: async (id) => backend().ChatChanges(id),
   ChatDiff: async (id) => backend().ChatDiff(id),

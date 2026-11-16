@@ -8,8 +8,9 @@ import { SafeMarkdown } from "./ui/SafeMarkdown";
 import DetailsPanel, { useChanges } from "./chat/DetailsPanel";
 import ConfirmDialog from "./ui/ConfirmDialog";
 import { useFileMentions } from "./chat/FileMentions";
-import { conversationStatus } from "./chat/conversation";
+import { conversationStatus, requestSummary } from "./chat/conversation";
 import FindBar from "./chat/FindBar";
+import ModePicker from "./chat/ModePicker";
 import { applyChatUpdate } from "./chatUpdates";
 import { useChatDraft } from "./useChatDraft";
 import {
@@ -564,6 +565,9 @@ export default function ChatWorkspace({
                 onAnswer={(allow, answers) =>
                   api.AnswerChat(state.id, approval.id, allow, answers)
                 }
+                onOption={(option) =>
+                  api.AnswerChatOption(state.id, approval.id, option)
+                }
               />
             ))}
           </div>
@@ -641,6 +645,14 @@ export default function ChatWorkspace({
               >
                 <Icon name="paperclip" size={16} />
               </button>
+            )}
+            {!state.review && (
+              <ModePicker
+                chatId={state.id}
+                mode={state.mode || ""}
+                disabled={busy || working}
+                onSaved={() => setRetry((n) => n + 1)}
+              />
             )}
             {!state.review && (
               <ModelPicker
@@ -749,9 +761,11 @@ export default function ChatWorkspace({
 function ApprovalCard({
   approval,
   onAnswer,
+  onOption,
 }: {
   approval: ChatApproval;
   onAnswer: (allow: boolean, answers: Record<string, string>) => Promise<void>;
+  onOption: (option: string) => Promise<void>;
 }) {
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [error, setError] = useState("");
@@ -770,6 +784,20 @@ function ApprovalCard({
       setBusy(false);
     }
   }
+  async function choose(option: string) {
+    if (operation.current) return;
+    operation.current = true;
+    setBusy(true);
+    setError("");
+    try {
+      await onOption(option);
+    } catch (e) {
+      setError(errorText(e));
+      operation.current = false;
+      setBusy(false);
+    }
+  }
+  const request = requestSummary(approval.detail);
   return (
     <section
       className="approval-card"
@@ -799,13 +827,23 @@ function ApprovalCard({
         <Icon name="alert" size={17} />
         {approval.title}
       </h3>
-      {approval.detail && (
-        // Focusable so a long command can be scrolled from the keyboard, and
-        // so the card's shortcuts can be used without the pointer.
+      {approval.plan ? (
         // eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex
-        <pre tabIndex={0} aria-label="Action details">
-          {approval.detail}
-        </pre>
+        <div className="approval-plan markdown" tabIndex={0} aria-label="Plan">
+          <SafeMarkdown text={approval.plan} />
+        </div>
+      ) : (
+        approval.detail && (
+          <>
+            {request.note && <p className="approval-note">{request.note}</p>}
+            {/* Focusable so a long command can be scrolled from the keyboard,
+                and so the card's shortcuts can be used without the pointer. */}
+            {/* eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex */}
+            <pre tabIndex={0} aria-label="Action details">
+              {request.text}
+            </pre>
+          </>
+        )
       )}
       {approval.questions.map((question) => (
         <label className="approval-question" key={question.id}>
@@ -851,16 +889,37 @@ function ApprovalCard({
             ? "Sending…"
             : approval.questions.length
               ? "Send answers"
-              : "Allow once"}
+              : approval.plan
+                ? "Approve plan"
+                : "Allow once"}
         </button>
+        {approval.options?.map((option) => (
+          <button
+            key={option.id}
+            className="button secondary"
+            disabled={busy}
+            title={option.detail}
+            onClick={() => void choose(option.id)}
+          >
+            {option.label}
+          </button>
+        ))}
         <button
           className="button secondary"
           disabled={busy}
           onClick={() => void answer(false)}
         >
-          Deny <kbd>Esc</kbd>
+          {approval.plan ? "Keep planning" : "Deny"} <kbd>Esc</kbd>
         </button>
       </div>
+      {approval.options?.map(
+        (option) =>
+          option.detail && (
+            <p className="approval-option-note" key={option.id}>
+              <strong>{option.label}:</strong> {option.detail}
+            </p>
+          ),
+      )}
     </section>
   );
 }

@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -14,6 +15,11 @@ import (
 
 func (m *chatManager) runClaude(ctx context.Context, c *chatSession, state ChatState, text string) (string, error) {
 	args := append([]string{}, claudeBaseArgs...)
+	mode := state.Mode
+	if state.Review != nil {
+		mode = modeDefault
+	}
+	args = append(args, "--permission-mode", claudeMode(mode))
 	if state.Settings.Configured {
 		project := state.Project
 		if state.Review != nil {
@@ -244,9 +250,21 @@ func claudeRequest(ctx context.Context, c *chatSession, p *jsonProcess, v jsonOb
 		respond(map[string]any{"behavior": "deny", "message": "This action is not available in this ais session."})
 		return
 	}
+	if observeApproval != nil {
+		observeApproval("claude", request)
+	}
 	name := str(request["tool_name"])
 	input := object(request["input"])
 	view := ChatApproval{ID: id, Title: "Allow " + name + "?", Detail: pretty(request["input"]), Questions: []ChatQuestion{}}
+	suggestions := request["permission_suggestions"]
+	if option, ok := claudeSuggestionOption(suggestions); ok {
+		view.Options = []ApprovalOption{option}
+	}
+	if name == "ExitPlanMode" {
+		view.Title = "Approve this plan?"
+		view.Plan = str(input["plan"])
+		view.Options = nil
+	}
 	if len(view.Detail) > 50000 {
 		respond(map[string]any{"behavior": "deny", "message": "Approval details exceed the display limit; no permission granted."})
 		return
@@ -278,5 +296,73 @@ func claudeRequest(ctx context.Context, c *chatSession, p *jsonProcess, v jsonOb
 		}
 		input["answers"] = mustJSON(answers)
 	}
-	respond(map[string]any{"behavior": "allow", "updatedInput": input})
+	result := map[string]any{"behavior": "allow", "updatedInput": input}
+	if reply.Option == claudeRuleOption {
+		// Hand the agent back its own suggestion; it writes its own settings.
+		result["updatedPermissions"] = suggestions
+	}
+	respond(result)
+	if name == "ExitPlanMode" {
+		// The agent leaves plan mode once its plan is approved; follow it so
+		// the next message is not sent in plan mode again.
+		c.mu.Lock()
+		if c.state.Mode == modePlan {
+			c.state.Mode = modeDefault
+			c.change()
+		}
+		c.mu.Unlock()
+	}
+}
+
+// observeApproval lets tests see raw approval requests. Nil outside tests.
+var observeApproval func(provider string, request jsonObject)
+
+const claudeRuleOption = "claude-rules"
+
+// claudeSuggestionOption turns the permission updates Claude Code suggests
+// for a request into one option. It is offered only when every suggestion
+// adds allow rules, so accepting it can never switch modes, add folders or
+// deny anything. The label says where Claude Code will keep the rule.
+func claudeSuggestionOption(raw json.RawMessage) (ApprovalOption, bool) {
+	suggestions := array(raw)
+	if len(suggestions) == 0 {
+		return ApprovalOption{}, false
+	}
+	rules := []string{}
+	destination := ""
+	for _, item := range suggestions {
+		suggestion := object(item)
+		if str(suggestion["type"]) != "addRules" || str(suggestion["behavior"]) != "allow" {
+			return ApprovalOption{}, false
+		}
+		where := str(suggestion["destination"])
+		if destination != "" && where != destination {
+			return ApprovalOption{}, false
+		}
+		destination = where
+		for _, entry := range array(suggestion["rules"]) {
+			rule := object(entry)
+			text := str(rule["toolName"])
+			if content := str(rule["ruleContent"]); content != "" {
+				text += "(" + content + ")"
+			}
+			if text == "" {
+				return ApprovalOption{}, false
+			}
+			rules = append(rules, text)
+		}
+	}
+	if len(rules) == 0 {
+		return ApprovalOption{}, false
+	}
+	label, ok := map[string]string{
+		"session":         "Allow for this conversation",
+		"localSettings":   "Always allow in this project",
+		"projectSettings": "Always allow in this project (shared settings)",
+		"userSettings":    "Always allow in every project",
+	}[destination]
+	if !ok {
+		return ApprovalOption{}, false
+	}
+	return ApprovalOption{ID: claudeRuleOption, Label: label, Detail: "Claude Code will allow: " + strings.Join(rules, ", ")}, true
 }

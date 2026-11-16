@@ -65,3 +65,28 @@ export function conversationMarkdown(chat: ChatState) {
   flush();
   return parts.join("\n\n") + "\n";
 }
+
+// What a request asks for, in a readable form. Agents send the details as
+// JSON; a command is shown as the command, with the agent's own description
+// of it above. Anything else is shown as it was sent.
+export function requestSummary(detail: string): { text: string; note: string } {
+  try {
+    const parsed: unknown = JSON.parse(detail);
+    if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+      const input = parsed as Record<string, unknown>;
+      if (typeof input.command === "string" && input.command)
+        return {
+          text: input.command,
+          note:
+            typeof input.description === "string"
+              ? input.description
+              : typeof input.reason === "string"
+                ? input.reason
+                : "",
+        };
+    }
+  } catch {
+    // Not JSON: show it as sent.
+  }
+  return { text: detail, note: "" };
+}

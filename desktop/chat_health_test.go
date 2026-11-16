@@ -21,13 +21,13 @@ func fakeTool(t *testing.T, script string) *chatManager {
 func TestAgentHealth(t *testing.T) {
 	ctx := context.Background()
 
-	ok := fakeTool(t, `echo "2.1.325 (Claude Code)"`).health(ctx, "claude")
-	if ok.Version != "2.1.325" || ok.Tested != "2.1.296" || ok.Problem != "" {
+	ok := fakeTool(t, `echo "2.1.400 (Claude Code)"`).health(ctx, "claude")
+	if ok.Version != "2.1.400" || ok.Tested != "2.1.325" || ok.Problem != "" {
 		t.Fatalf("a newer version that still works is simply reported: %+v", ok)
 	}
 
-	same := fakeTool(t, `echo "codex-cli 0.162.1"`).health(ctx, "codex")
-	if same.Version != "0.162.1" || same.Problem != "" {
+	same := fakeTool(t, `echo "codex-cli 0.167.1"`).health(ctx, "codex")
+	if same.Version != "0.167.1" || same.Problem != "" {
 		t.Fatalf("the tested version: %+v", same)
 	}
 
@@ -48,7 +48,7 @@ func TestAgentHealth(t *testing.T) {
 	t.Cleanup(m.close)
 	m.command = func(_ string, args ...string) *exec.Cmd {
 		seen = args
-		return exec.Command("sh", "-c", "echo 2.1.296")
+		return exec.Command("sh", "-c", "echo 2.1.325")
 	}
 	m.health(ctx, "claude")
 	joined := strings.Join(seen, " ")

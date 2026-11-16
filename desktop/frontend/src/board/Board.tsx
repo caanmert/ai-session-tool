@@ -1,6 +1,7 @@
 import { useState } from "react";
 import AgentMark from "../AgentMark";
 import Icon, { type IconName } from "../Icon";
+import { requestSummary } from "../chat/conversation";
 import {
   api,
   errorText,
@@ -49,16 +50,23 @@ function InlineApproval({
     <div className="board-approval">
       <p className="attention">
         <Icon name="alert" size={13} />
-        {approval.questions.length ? "Has a question" : "Needs approval"}
+        {approval.questions.length
+          ? "Has a question"
+          : approval.plan
+            ? "Plan to approve"
+            : "Needs approval"}
       </p>
       <p className="board-approval-title">{approval.title}</p>
-      {approval.detail && !approval.questions.length && (
-        <code title={approval.detail}>{approval.detail}</code>
+      {approval.plan && <p className="task-note">A plan is ready to review.</p>}
+      {approval.detail && !approval.questions.length && !approval.plan && (
+        <code title={requestSummary(approval.detail).text}>
+          {requestSummary(approval.detail).text}
+        </code>
       )}
       {error && <p role="alert">{error}</p>}
-      {approval.questions.length ? (
+      {approval.questions.length || approval.plan ? (
         <button className="button secondary" onClick={onOpen}>
-          Reply in conversation
+          {approval.plan ? "Review in conversation" : "Reply in conversation"}
         </button>
       ) : (
         <div className="board-actions">

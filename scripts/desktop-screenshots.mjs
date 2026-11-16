@@ -155,6 +155,20 @@ try {
       main: {
         App: {
           SetAppearance: async () => {},
+          ChatModes: async () => [
+            {
+              id: "plan",
+              label: "Plan",
+              detail: "Reads and proposes a plan. Changes nothing.",
+            },
+            {
+              id: "",
+              label: "Default",
+              detail:
+                "Edits files in the project. Asks before commands that need more access.",
+            },
+          ],
+          SetChatMode: async () => {},
           AgentHealth: async () => [
             {
               tool: "codex",
@@ -441,9 +455,20 @@ try {
     source.approvals = [
       {
         id: "fixture-approval",
-        title: "Run checkout tests",
-        detail: "npm test -- checkout",
+        title: "Run command?",
+        detail: JSON.stringify({
+          command: "npm test -- checkout",
+          reason: "Run the checkout tests outside the sandbox",
+        }),
         questions: [],
+        options: [
+          {
+            id: "acceptWithExecpolicyAmendment",
+            label: "Always allow this command",
+            detail:
+              "Codex will add a rule to its own settings and stop asking for commands that start with: npm test",
+          },
+        ],
       },
     ];
     source.status = "waiting";

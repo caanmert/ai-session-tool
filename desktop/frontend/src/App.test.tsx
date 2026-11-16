@@ -127,6 +127,9 @@ beforeEach(() => {
     AnswerChat: vi.fn(),
     PrepareReview: vi.fn(),
     PickFiles: vi.fn(),
+    ChatModes: vi.fn().mockResolvedValue([]),
+    SetChatMode: vi.fn(),
+    AnswerChatOption: vi.fn(),
     ProjectFiles: vi.fn(),
     ChatChanges: vi
       .fn()
@@ -280,7 +283,7 @@ describe("desktop workflows", () => {
     render(<App />);
     await screen.findByRole("heading", { name: "Retry webhook delivery" });
     fireEvent.keyDown(document, { key: "n", metaKey: true });
-    const dialog = screen.getByRole("dialog");
+    const dialog = await screen.findByRole("dialog");
     const task = within(dialog).getByLabelText("Task");
     expect(task).toHaveFocus();
     // Without a task the button only opens the conversation.
@@ -314,7 +317,7 @@ describe("desktop workflows", () => {
     render(<App />);
     await screen.findByRole("heading", { name: "Retry webhook delivery" });
     fireEvent.keyDown(document, { key: "n", metaKey: true });
-    let dialog = screen.getByRole("dialog");
+    let dialog = await screen.findByRole("dialog");
     await userEvent.selectOptions(
       within(dialog).getByLabelText("Project"),
       "/demo/docs",
@@ -332,7 +335,7 @@ describe("desktop workflows", () => {
     // Next time, choosing that project selects Claude Code again; another
     // project keeps the usual default.
     fireEvent.keyDown(document, { key: "n", metaKey: true });
-    dialog = screen.getByRole("dialog");
+    dialog = await screen.findByRole("dialog");
     await userEvent.selectOptions(
       within(dialog).getByLabelText("Project"),
       "/demo/api",
@@ -355,7 +358,7 @@ describe("desktop workflows", () => {
     render(<App />);
     await screen.findByRole("heading", { name: "Retry webhook delivery" });
     fireEvent.keyDown(document, { key: "n", metaKey: true });
-    const dialog = screen.getByRole("dialog");
+    const dialog = await screen.findByRole("dialog");
     await userEvent.type(within(dialog).getByLabelText("Task"), "Add retries");
     fireEvent.keyDown(within(dialog).getByLabelText("Task"), {
       key: "Enter",
