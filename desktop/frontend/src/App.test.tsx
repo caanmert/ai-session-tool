@@ -134,6 +134,8 @@ beforeEach(() => {
     PullRequestPlan: vi.fn(),
     CreatePullRequest: vi.fn(),
     OpenURL: vi.fn(),
+    GitHubOverview: vi.fn(),
+    GitHubIssue: vi.fn(),
     ChatModes: vi.fn().mockResolvedValue([]),
     SetChatMode: vi.fn(),
     AnswerChatOption: vi.fn(),
@@ -712,6 +714,48 @@ describe("desktop workflows", () => {
     expect(
       await screen.findByRole("region", { name: "Chat conversation" }),
     ).toBeVisible();
+  });
+  it("starts a task from a GitHub issue through New task, without sending anything", async () => {
+    backend.GitHubOverview = vi.fn().mockResolvedValue({
+      repository: "me/docs",
+      url: "https://github.com/me/docs",
+      issues: [
+        {
+          number: 4,
+          title: "Explain installation",
+          url: "https://github.com/me/docs/issues/4",
+          author: "ana",
+          labels: [],
+          updatedAt: "2026-11-15T10:00:00Z",
+        },
+      ],
+      pulls: [],
+    });
+    backend.GitHubIssue = vi.fn().mockResolvedValue({
+      number: 4,
+      title: "Explain installation",
+      url: "https://github.com/me/docs/issues/4",
+      body: "Cover Homebrew.",
+    });
+    render(<App />);
+    await screen.findByRole("heading", { name: "Retry webhook delivery" });
+    await userEvent.selectOptions(
+      screen.getByRole("combobox", { name: "Project" }),
+      "/demo/docs",
+    );
+    await userEvent.click(screen.getByRole("button", { name: "Issues & PRs" }));
+    const list = await screen.findByRole("list", { name: "Open issues" });
+    expect(backend.GitHubOverview).toHaveBeenLastCalledWith("/demo/docs");
+    await userEvent.click(
+      within(list).getByRole("button", { name: "Start task" }),
+    );
+    const dialog = await screen.findByRole("dialog");
+    expect(within(dialog).getByLabelText("Task")).toHaveValue(
+      "Work on issue #4: Explain installation\n\nhttps://github.com/me/docs/issues/4\n\nCover Homebrew.",
+    );
+    expect(within(dialog).getByLabelText("Project")).toHaveValue("/demo/docs");
+    expect(backend.NewChat).not.toHaveBeenCalled();
+    expect(backend.SendChat).not.toHaveBeenCalled();
   });
   it("opens saved desktop work without starting or resuming a provider", async () => {
     backend.ListSavedChats = vi.fn().mockResolvedValue([

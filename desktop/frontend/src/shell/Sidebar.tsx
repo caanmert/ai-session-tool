@@ -49,10 +49,11 @@ export default function Sidebar({
   onSaved,
   onSettings,
   onBoard,
+  onIssues,
   onSelectChat,
   onCloseChat,
 }: {
-  view: "history" | "runs" | "settings" | "board" | "chat";
+  view: "history" | "runs" | "settings" | "board" | "github" | "chat";
   snapshot?: Snapshot;
   chats: ChatState[];
   activeChat: string;
@@ -65,6 +66,7 @@ export default function Sidebar({
   onSaved: () => void;
   onSettings: () => void;
   onBoard: () => void;
+  onIssues: () => void;
   onSelectChat: (id: string) => void;
   onCloseChat: (id: string) => void;
 }) {
@@ -96,6 +98,12 @@ export default function Sidebar({
           count={needsYou || undefined}
           attention={needsYou > 0}
           onClick={onBoard}
+        />
+        <NavItem
+          icon="issue"
+          label="Issues & PRs"
+          current={view === "github"}
+          onClick={onIssues}
         />
         <NavItem
           icon="branch"

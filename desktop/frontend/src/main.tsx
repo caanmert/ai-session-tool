@@ -11,6 +11,7 @@ import "./chat/details.css";
 import "./settings/settings.css";
 import "./history/history.css";
 import "./board/board.css";
+import "./github/github.css";
 createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
     <App />

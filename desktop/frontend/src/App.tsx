@@ -7,6 +7,7 @@ import { storeDraft } from "./useChatDraft";
 import { lastAgent, rememberAgent } from "./shell/lastAgent";
 import Settings from "./settings/Settings";
 import Board from "./board/Board";
+import IssuesPage from "./github/IssuesPage";
 import { basename } from "./ui/format";
 import {
   HistoryBrowser,
@@ -49,9 +50,9 @@ export default function App() {
   const [activeChat, setActiveChat] = useState("");
   const [project, setProject] = useState("");
   // The page behind any open conversation: History, Parallel runs or Settings.
-  const [page, setPage] = useState<"history" | "runs" | "settings" | "board">(
-    "history",
-  );
+  const [page, setPage] = useState<
+    "history" | "runs" | "settings" | "board" | "github"
+  >("history");
   const showRuns = page === "runs";
   const otherPage = page !== "history";
   const setShowRuns = useCallback(
@@ -315,6 +316,22 @@ export default function App() {
     setError("");
     setShowNew(true);
   }, [project, selected, snapshot, rememberedAgent]);
+  // Start a task from outside the dialog, such as from a GitHub issue: New
+  // task opens with the text filled in, and nothing is sent until started.
+  const startTaskFrom = useCallback(
+    (target: string, text: string) => {
+      setNewProject(target);
+      setNewTool(
+        rememberedAgent(target) ||
+          snapshot?.tools.find((t) => t.available)?.name ||
+          "codex",
+      );
+      setNewMessage(text);
+      setError("");
+      setShowNew(true);
+    },
+    [snapshot, rememberedAgent],
+  );
   // Everything the command palette can jump to. Choosing a saved conversation
   // only shows it in History; it never starts or resumes an agent.
   const commands = useMemo<Command[]>(() => {
@@ -353,6 +370,16 @@ export default function App() {
         run: () => {
           setActiveChat("");
           setPage("board");
+        },
+      },
+      {
+        id: "github",
+        group: "Actions",
+        label: "Issues and pull requests",
+        icon: "issue",
+        run: () => {
+          setActiveChat("");
+          setPage("github");
         },
       },
       {
@@ -638,6 +665,10 @@ export default function App() {
           setActiveChat("");
           setPage("board");
         }}
+        onIssues={() => {
+          setActiveChat("");
+          setPage("github");
+        }}
         onNew={openNew}
         onHistory={showHistory}
         onRuns={() => {
@@ -659,24 +690,28 @@ export default function App() {
             <h1>
               {page === "settings"
                 ? "Settings"
-                : page === "board"
-                  ? "Agents board"
-                  : showRuns
-                    ? "Parallel runs"
-                    : project
-                      ? currentProject?.name || basename(project)
-                      : "Your conversations"}
+                : page === "github"
+                  ? "Issues and pull requests"
+                  : page === "board"
+                    ? "Agents board"
+                    : showRuns
+                      ? "Parallel runs"
+                      : project
+                        ? currentProject?.name || basename(project)
+                        : "Your conversations"}
             </h1>
             <p title={project}>
               {page === "settings"
                 ? "Appearance, agents and shortcuts for this Mac."
-                : page === "board"
-                  ? boardSummary(chats)
-                  : showRuns
-                    ? project ||
-                      "Launch independent tasks and review their changes."
-                    : project ||
-                      "Every conversation. Every project. One place to pick up where you left off."}
+                : page === "github"
+                  ? "Open issues and pull requests on GitHub. Start a task from an issue."
+                  : page === "board"
+                    ? boardSummary(chats)
+                    : showRuns
+                      ? project ||
+                        "Launch independent tasks and review their changes."
+                      : project ||
+                        "Every conversation. Every project. One place to pick up where you left off."}
             </p>
           </header>
         )}
@@ -769,6 +804,13 @@ export default function App() {
               setActiveChat("");
               setPage("runs");
             }}
+          />
+        )}
+        {page === "github" && (
+          <IssuesPage
+            projects={snapshot?.projects || []}
+            project={project}
+            onStartTask={startTaskFrom}
           />
         )}
         {page === "settings" && (

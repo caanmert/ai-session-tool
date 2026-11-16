@@ -155,6 +155,52 @@ try {
       main: {
         App: {
           SetAppearance: async () => {},
+          GitHubOverview: async () => ({
+            repository: "acme/checkout",
+            url: "https://github.com/acme/checkout",
+            issues: [
+              {
+                number: 42,
+                title: "Retrying a declined card charges twice",
+                url: "https://github.com/acme/checkout/issues/42",
+                author: "ana",
+                labels: ["bug", "payments"],
+                updatedAt: "2026-10-04T09:00:00Z",
+              },
+              {
+                number: 39,
+                title: "Document the retry contract for API clients",
+                url: "https://github.com/acme/checkout/issues/39",
+                author: "bo",
+                labels: ["documentation"],
+                updatedAt: "2026-10-02T09:00:00Z",
+              },
+            ],
+            pulls: [
+              {
+                number: 44,
+                title: "Make checkout retries safe",
+                url: "https://github.com/acme/checkout/pull/44",
+                author: "ana",
+                branch: "ais/make-checkout-retries-safe",
+                isDraft: false,
+                updatedAt: "2026-10-04T10:00:00Z",
+                review: "REVIEW_REQUIRED",
+                checks: "running",
+              },
+              {
+                number: 41,
+                title: "Bound retries for refunds",
+                url: "https://github.com/acme/checkout/pull/41",
+                author: "bo",
+                branch: "refund-retries",
+                isDraft: true,
+                updatedAt: "2026-10-03T10:00:00Z",
+                review: "CHANGES_REQUESTED",
+                checks: "failing",
+              },
+            ],
+          }),
           CommitPlan: async () => ({
             branch: "main",
             defaultBranch: "main",
@@ -461,6 +507,16 @@ try {
   });
   await page.keyboard.press("Escape");
   await palette.waitFor({ state: "detached" });
+  // Issues and pull requests page.
+  await page.getByRole("button", { name: "Issues & PRs" }).click();
+  await page.getByRole("list", { name: "Open issues" }).waitFor();
+  await checkContrast();
+  await page.screenshot({ path: `${screenshots}/desktop-issues${suffix}.png` });
+  await page.getByRole("button", { name: /Pull requests/ }).click();
+  await page.getByRole("list", { name: "Open pull requests" }).waitFor();
+  await checkContrast();
+  await page.screenshot({ path: `${screenshots}/desktop-pulls${suffix}.png` });
+  await page.getByRole("button", { name: /^History/ }).click();
   // New task dialog: the task box has focus and fits the window.
   await page.getByRole("button", { name: /New task/ }).click();
   const newTask = page.getByRole("dialog", { name: "New task" });
