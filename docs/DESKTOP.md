@@ -100,7 +100,10 @@ They demonstrate the layout, not output from a live model run.
   **Saved workspace** and **Settings**; the two agents with how many of their
   conversations are running or waiting; and your open conversations grouped by
   project. A conversation that needs you is marked with an icon and warning text,
-  and the Dock icon shows how many are waiting.
+  and the Dock icon shows how many are waiting. While ais is in the background, a
+  notification banner tells you when an agent needs approval, has a question,
+  finishes or stops with an error; macOS asks for permission the first time, and
+  **Settings › Notifications** turns the banners off.
 - **Command palette** (**⌘K**): jump to an action, an open conversation, a project
   or any saved conversation. Choosing a saved conversation only shows it in
   History; it never starts an agent.

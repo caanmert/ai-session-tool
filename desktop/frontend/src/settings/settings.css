@@ -101,3 +101,24 @@
 .shortcut-list dd {
   margin: 0;
 }
+
+.setting-check {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  font-size: var(--text-base);
+  cursor: pointer;
+}
+.setting-check input {
+  width: 16px;
+  height: 16px;
+  margin-top: 2px;
+  accent-color: var(--brand);
+}
+.setting-check small {
+  display: block;
+  margin-top: 3px;
+  font-size: var(--text-sm);
+  line-height: 1.5;
+  color: var(--muted);
+}

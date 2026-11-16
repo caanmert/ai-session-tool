@@ -97,6 +97,7 @@ beforeEach(() => {
     SetAppearance: vi.fn().mockResolvedValue(undefined),
     SetAttention: vi.fn().mockResolvedValue(undefined),
     AgentHealth: vi.fn().mockResolvedValue([]),
+    Notify: vi.fn().mockResolvedValue(undefined),
     RevealProject: vi.fn(),
     AnnotateSession: vi.fn(),
     ChatModels: vi
@@ -564,6 +565,14 @@ describe("desktop workflows", () => {
     expect(within(settings).getByText("Found")).toBeVisible();
     expect(within(settings).getByText("Not found")).toBeVisible();
     expect(within(settings).getByText("⌘K")).toBeVisible();
+    // Notifications are on by default and can be turned off.
+    const notify = within(settings).getByRole("checkbox", {
+      name: /Notify me when an agent needs me or finishes/,
+    });
+    expect(notify).toBeChecked();
+    await userEvent.click(notify);
+    expect(notify).not.toBeChecked();
+    expect(window.localStorage.getItem("ais:notifications:v1")).toBe("off");
     await userEvent.click(
       within(settings).getByRole("button", { name: "Check again" }),
     );

@@ -264,6 +264,8 @@ export interface Backend {
   SetAppearance(theme: "light" | "dark"): Promise<void>;
   /** Dock badge with the number of conversations waiting; `alert` bounces the icon. */
   SetAttention(count: number, alert: boolean): Promise<void>;
+  /** Posts a notification banner. macOS asks for permission the first time. */
+  Notify(title: string, body: string): Promise<void>;
   AgentHealth(): Promise<AgentHealth[]>;
   /** Opens the conversation's project folder in Finder. */
   RevealProject(id: string): Promise<void>;
@@ -346,6 +348,7 @@ function backend(): Backend {
 export const api: Backend = {
   SetAppearance: async (theme) => backend().SetAppearance(theme),
   SetAttention: async (count, alert) => backend().SetAttention(count, alert),
+  Notify: async (title, body) => backend().Notify(title, body),
   AgentHealth: async () => backend().AgentHealth(),
   RevealProject: async (id) => backend().RevealProject(id),
   ChatModels: async (id, reviewer, refresh) =>

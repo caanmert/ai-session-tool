@@ -1,4 +1,9 @@
+import { useState } from "react";
 import AgentMark from "../AgentMark";
+import {
+  notificationsEnabled,
+  setNotificationsEnabled,
+} from "../shell/attention";
 import { AppearanceSetting, type AppearanceControl } from "../Appearance";
 import Icon from "../Icon";
 import { toolLabel, type AgentHealth, type Tool } from "../api";
@@ -36,6 +41,8 @@ export default function Settings({
   checking: boolean;
   onCheck: () => void;
 }) {
+  const [notify, setNotify] = useState(notificationsEnabled);
+  const [notifyError, setNotifyError] = useState("");
   return (
     <div className="settings" role="region" aria-label="Settings">
       <section>
@@ -46,6 +53,38 @@ export default function Settings({
           <p className="setting-note">
             System follows your Mac and changes with it.
           </p>
+        </div>
+      </section>
+
+      <section aria-labelledby="settings-notifications">
+        <h2 id="settings-notifications">Notifications</h2>
+        <div className="setting-group">
+          <label className="setting-check">
+            <input
+              type="checkbox"
+              checked={notify}
+              onChange={(e) => {
+                setNotify(e.target.checked);
+                setNotifyError(
+                  setNotificationsEnabled(e.target.checked)
+                    ? ""
+                    : "This choice could not be saved and applies until you quit.",
+                );
+              }}
+            />
+            <span>
+              Notify me when an agent needs me or finishes
+              <small>
+                Only while ais is in the background. macOS asks for permission
+                the first time. The Dock icon shows the count either way.
+              </small>
+            </span>
+          </label>
+          {notifyError && (
+            <p className="setting-note" role="status">
+              {notifyError}
+            </p>
+          )}
         </div>
       </section>
 

@@ -30,10 +30,12 @@ type App struct {
 	dockAttention func(count int, alert bool)
 	// openFolder shows a folder in Finder; replaced in tests.
 	openFolder func(path string) error
+	// notify posts a notification banner; replaced in tests.
+	notify func(title, body string)
 }
 
 func NewApp() *App {
-	return &App{terminals: newTerminals(), dockAttention: setDockAttention, openFolder: revealFolder}
+	return &App{terminals: newTerminals(), dockAttention: setDockAttention, openFolder: revealFolder, notify: postNotification}
 }
 
 // revealFolder opens a folder with the system's file manager. The path is
@@ -142,6 +144,36 @@ func (a *App) Refresh() (application.Snapshot, error) {
 	ctx, cancel := context.WithTimeout(a.ctx, 2*time.Minute)
 	defer cancel()
 	return a.service.Refresh(ctx)
+}
+
+// Notify posts a notification banner, for example when an agent needs the
+// user while the app is in the background. macOS asks for permission the first
+// time. Text is shortened and stripped of control characters.
+func (a *App) Notify(title, body string) error {
+	if a.ctx == nil {
+		return errors.New("the app is still starting")
+	}
+	clean := func(text string, limit int) string {
+		text = strings.Map(func(r rune) rune {
+			if r < 32 || r == 127 {
+				return ' '
+			}
+			return r
+		}, text)
+		text = strings.Join(strings.Fields(text), " ")
+		if len([]rune(text)) > limit {
+			text = string([]rune(text)[:limit-1]) + "…"
+		}
+		return text
+	}
+	title, body = clean(title, 80), clean(body, 160)
+	if title == "" {
+		return errors.New("a notification needs a title")
+	}
+	if a.notify != nil {
+		a.notify(title, body)
+	}
+	return nil
 }
 
 // AnnotateSession renames, pins or tags a saved session in ais and returns the
