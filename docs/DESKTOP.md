@@ -102,8 +102,10 @@ They demonstrate the layout, not output from a live model run.
   project. A conversation that needs you is marked with an icon and warning text,
   and the Dock icon shows how many are waiting. While ais is in the background, a
   notification banner tells you when an agent needs approval, has a question,
-  finishes or stops with an error; macOS asks for permission the first time, and
-  **Settings › Notifications** turns the banners off.
+  finishes or stops with an error, and clicking it opens that conversation.
+  macOS asks for permission the first time. **Settings › Notifications** turns
+  the banners off, or limits them to when an agent needs you (an approval, a
+  question or an error).
 - **Command palette** (**⌘K**): jump to an action, an open conversation, a project
   or any saved conversation. Choosing a saved conversation only shows it in
   History; it never starts an agent.

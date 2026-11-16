@@ -42,20 +42,24 @@ func TestQuitConfirmation(t *testing.T) {
 }
 
 func TestNotify(t *testing.T) {
-	type note struct{ title, body string }
+	type note struct{ title, body, chat string }
 	var notes []note
-	app := &App{notify: func(title, body string) { notes = append(notes, note{title, body}) }}
-	if err := app.Notify("Rotate keys", "Claude Code needs approval"); err == nil {
+	app := &App{notify: func(title, body, chat string) { notes = append(notes, note{title, body, chat}) }}
+	if err := app.Notify("Rotate keys", "Claude Code needs approval", "c1"); err == nil {
 		t.Fatal("expected an error before startup")
 	}
 	app.ctx = context.Background()
-	if err := app.Notify("  Rotate\nkeys\x00 ", strings.Repeat("long ", 80)); err != nil {
+	if err := app.Notify("  Rotate\nkeys\x00 ", strings.Repeat("long ", 80), "0b6e-chat"); err != nil {
 		t.Fatal(err)
 	}
-	if err := app.Notify("   ", "body"); err == nil {
+	// Anything but a plain ID is dropped, so the banner opens nothing.
+	if err := app.Notify("Done", "Codex finished", "../x\n"); err != nil {
+		t.Fatal(err)
+	}
+	if err := app.Notify("   ", "body", ""); err == nil {
 		t.Fatal("a notification without a title should be refused")
 	}
-	if len(notes) != 1 || notes[0].title != "Rotate keys" || len([]rune(notes[0].body)) != 160 || !strings.HasSuffix(notes[0].body, "…") {
+	if len(notes) != 2 || notes[0].title != "Rotate keys" || len([]rune(notes[0].body)) != 160 || !strings.HasSuffix(notes[0].body, "…") || notes[0].chat != "0b6e-chat" || notes[1].chat != "" {
 		t.Fatalf("notes: %+v", notes)
 	}
 }
@@ -63,5 +67,17 @@ func TestNotify(t *testing.T) {
 // The test binary is not an app bundle. Posting must do nothing rather than
 // reach for a notification center that does not exist for it.
 func TestPostNotificationOutsideABundle(t *testing.T) {
-	postNotification("ais", "This is never shown.")
+	postNotification("ais", "This is never shown.", "chat")
+	listenForNotificationClicks()
+}
+
+func TestBannerClickOpensItsConversation(t *testing.T) {
+	var opened []string
+	setBannerOpen(func(chat string) { opened = append(opened, chat) })
+	t.Cleanup(func() { setBannerOpen(nil) })
+	notificationOpened("c1")
+	notificationOpened("")
+	if len(opened) != 1 || opened[0] != "c1" {
+		t.Fatalf("opened: %v", opened)
+	}
 }

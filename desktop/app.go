@@ -31,7 +31,7 @@ type App struct {
 	// openFolder shows a folder in Finder; replaced in tests.
 	openFolder func(path string) error
 	// notify posts a notification banner; replaced in tests.
-	notify func(title, body string)
+	notify func(title, body, chat string)
 	// promptsPath holds the saved prompts; see prompts.go.
 	promptsPath string
 }
@@ -52,6 +52,12 @@ func revealFolder(path string) error {
 
 func (a *App) startup(ctx context.Context) {
 	a.ctx = ctx
+	// A clicked banner brings the window forward on its conversation.
+	setBannerOpen(func(chat string) {
+		wailsruntime.WindowShow(ctx)
+		wailsruntime.EventsEmit(ctx, "notification:open", chat)
+	})
+	listenForNotificationClicks()
 	// Finder does not run the user's shell startup files. Include common CLI
 	// install locations without executing shell profiles or changing their files.
 	path := filepath.SplitList(os.Getenv("PATH"))
@@ -151,8 +157,9 @@ func (a *App) Refresh() (application.Snapshot, error) {
 
 // Notify posts a notification banner, for example when an agent needs the
 // user while the app is in the background. macOS asks for permission the first
-// time. Text is shortened and stripped of control characters.
-func (a *App) Notify(title, body string) error {
+// time. Text is shortened and stripped of control characters. Clicking the
+// banner opens the conversation chat names, if any.
+func (a *App) Notify(title, body, chat string) error {
 	if a.ctx == nil {
 		return errors.New("the app is still starting")
 	}
@@ -173,8 +180,14 @@ func (a *App) Notify(title, body string) error {
 	if title == "" {
 		return errors.New("a notification needs a title")
 	}
+	// Only a conversation ID rides along, to open it when the banner is clicked.
+	if len(chat) > 64 || strings.ContainsFunc(chat, func(r rune) bool {
+		return !(r == '-' || r >= '0' && r <= '9' || r >= 'a' && r <= 'z' || r >= 'A' && r <= 'Z')
+	}) {
+		chat = ""
+	}
 	if a.notify != nil {
-		a.notify(title, body)
+		a.notify(title, body, chat)
 	}
 	return nil
 }
