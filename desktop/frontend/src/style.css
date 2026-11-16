@@ -1409,3 +1409,73 @@ h1 {
 .diff-toolbar label[hidden] {
   display: none;
 }
+
+/* Comments on changed lines */
+.diff-number {
+  display: inline-block;
+  flex-shrink: 0;
+  width: 40px;
+  padding: 0 8px 0 0;
+  border: 0;
+  background: none;
+  color: var(--muted);
+  font: inherit;
+  text-align: right;
+  cursor: pointer;
+}
+.diff-number:hover {
+  color: var(--text);
+  text-decoration: underline;
+}
+.diff-line.selected {
+  box-shadow: inset 3px 0 0 var(--accent);
+  background: var(--accent-soft);
+}
+.diff-line.commented > .diff-number,
+.diff-line.commented > span {
+  box-shadow: inset -2px 0 0 var(--warning);
+}
+.diff-comment,
+.diff-comment-form {
+  position: sticky;
+  left: 0;
+  display: grid;
+  gap: 6px;
+  max-width: min(640px, calc(100% - 24px));
+  margin: 4px 12px 8px 88px;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--warning);
+  border-radius: var(--radius-control);
+  background: var(--surface);
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+  color: var(--text);
+}
+.diff-comment p {
+  margin: 0;
+  white-space: pre-wrap;
+}
+.diff-comment small {
+  color: var(--muted);
+}
+.diff-comment .text-button {
+  justify-self: start;
+  margin: 0;
+  padding: 0;
+}
+.diff-comment-form textarea {
+  min-height: 60px;
+  padding: 6px 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-control);
+  background: var(--canvas);
+  color: var(--text);
+  font: inherit;
+  resize: vertical;
+}
+.diff-comment-form > div {
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
+}

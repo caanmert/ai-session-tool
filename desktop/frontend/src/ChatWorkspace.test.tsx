@@ -117,6 +117,81 @@ describe("graphical conversations", () => {
     expect(await within(dialog).findByText(/after/)).toBeVisible();
     expect(within(dialog).getByText(/read-only/)).toBeVisible();
   });
+  it("comments on changed lines and drafts them as one message", async () => {
+    show();
+    const panel = await screen.findByRole("complementary", {
+      name: "Conversation details",
+    });
+    const box = screen.getByRole("textbox", { name: /Message/ });
+    await userEvent.type(box, "Also:");
+    await userEvent.click(
+      await within(panel).findByRole("button", {
+        name: /^(Modified )?app\.txt/,
+      }),
+    );
+    const dialog = await screen.findByRole("dialog", {
+      name: "Uncommitted changes",
+    });
+    await userEvent.click(
+      await within(dialog).findByRole("button", { name: "Comment on line 1" }),
+    );
+    await userEvent.type(
+      within(dialog).getByRole("textbox", { name: /Comment on app\.txt:1/ }),
+      "Keep the old wording.",
+    );
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: "Add comment" }),
+    );
+    expect(within(dialog).getByText("Keep the old wording.")).toBeVisible();
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: "Close changes" }),
+    );
+    // Listed in the panel, kept for this conversation.
+    const comments = await within(panel).findByRole("region", {
+      name: "Comments on changes",
+    });
+    expect(within(comments).getByText("app.txt:1")).toBeVisible();
+    expect(window.localStorage.getItem("ais:line-comments:v1:chat")).toContain(
+      "Keep the old wording.",
+    );
+    await userEvent.click(
+      within(comments).getByRole("button", { name: "Send to agent" }),
+    );
+    expect((box as HTMLTextAreaElement).value).toBe(
+      "Also:\n\nPlease address these comments on the changes:\n\n1. app.txt:1\n   ```\n   after\n   ```\n   Keep the old wording.",
+    );
+    expect(backend.SendChat).not.toHaveBeenCalled();
+    expect(
+      within(panel).queryByRole("region", { name: "Comments on changes" }),
+    ).toBeNull();
+    expect(window.localStorage.getItem("ais:line-comments:v1:chat")).toBeNull();
+  });
+  it("shows what changed since one of your messages", async () => {
+    state.version = 2;
+    state.messages = [
+      { id: "u", role: "user", kind: "text", text: "Fix the copy" },
+    ];
+    state.checkpoints = [
+      { id: "p1", messageId: "u", commit: "abc", at: "", kind: "turn" },
+    ];
+    backend.TurnDiff = vi.fn().mockResolvedValue({
+      ...draft.snapshot,
+      files: [{ path: "copy.txt", patch: "@@ -1 +1 @@\n-old\n+new copy\n" }],
+    });
+    show();
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Changes since this message" }),
+    );
+    const dialog = await screen.findByRole("dialog", {
+      name: "Changes since this message",
+    });
+    expect(backend.TurnDiff).toHaveBeenCalledWith("chat", "p1");
+    expect(await within(dialog).findByText("+new copy")).toBeVisible();
+    // Read-only: no commenting here.
+    expect(
+      within(dialog).queryByRole("button", { name: /Comment on line/ }),
+    ).toBeNull();
+  });
   it("shows the project folder in Finder on request", async () => {
     show();
     const panel = await screen.findByRole("complementary", {

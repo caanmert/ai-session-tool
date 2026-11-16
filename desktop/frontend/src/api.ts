@@ -619,6 +619,8 @@ export interface Backend {
   /** A project's open issues and pull requests, read with the GitHub CLI. */
   GitHubOverview(project: string): Promise<GitHubOverview>;
   GitHubIssue(project: string, number: number): Promise<GitHubIssueDetail>;
+  /** What changed since a checkpoint, such as a message's turn. Only reads. */
+  TurnDiff(chatId: string, checkpointId: string): Promise<ReviewSnapshot>;
   /** Opens a conversation with the other agent in the same project and
    * drafts its first message from this one. Sends nothing. */
   HandOffChat(chatId: string): Promise<HandOff>;
@@ -747,6 +749,8 @@ export const api: Backend = {
   GitHubPull: async (project, number) => backend().GitHubPull(project, number),
   SearchMessages: async (query) => backend().SearchMessages(query),
   HandOffChat: async (chatId) => backend().HandOffChat(chatId),
+  TurnDiff: async (chatId, checkpointId) =>
+    backend().TurnDiff(chatId, checkpointId),
   ProjectCommands: async (chatId) => backend().ProjectCommands(chatId),
   StartProjectCommand: async (chatId, command) =>
     backend().StartProjectCommand(chatId, command),

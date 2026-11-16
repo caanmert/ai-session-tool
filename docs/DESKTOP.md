@@ -181,6 +181,16 @@ They demonstrate the layout, not output from a live model run.
   save is refused if the file changed on disk since you opened it, and leaving
   with unsaved edits asks first. Your own files are shown and opened in Finder.
   Only these file names can be read or written here.
+- **Comment on changed lines.** In **Review all changes** (or a file's diff),
+  click a line number to comment on it; shift-click another to include the
+  lines between. Comments are listed under **Comments** in the details panel,
+  where they can be edited or removed, and are kept for the conversation until
+  sent. **Send to agent** puts them all in the message box as one message
+  (file and lines, the code quoted, your note) to edit; nothing is sent until
+  you send it. A comment whose lines have changed since is marked out of date.
+- **Changes since this message.** The code button on one of your messages shows
+  what changed in the project since that message's turn began (read-only), such
+  as what the agent did about your comments.
 - **Undo a turn.** Before each turn in a Git project, ais keeps the project's
   files as they are (tracked and untracked, not ignored ones) as a checkpoint
   under `refs/ais/`, without committing, moving the branch, or touching the
