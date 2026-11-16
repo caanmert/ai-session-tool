@@ -785,3 +785,25 @@ button.search:hover {
     transition: none;
   }
 }
+
+/* Matches inside conversations, in the palette */
+.palette-snippet {
+  display: block;
+  margin: 2px 0 0 25px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--text-sm);
+  color: var(--muted);
+}
+.palette-snippet mark {
+  padding: 0 1px;
+  border-radius: 3px;
+  background: var(--warning-soft);
+  color: var(--text);
+}
+.palette-searching {
+  padding: 8px 16px 12px;
+  font-size: var(--text-sm);
+  color: var(--muted);
+}

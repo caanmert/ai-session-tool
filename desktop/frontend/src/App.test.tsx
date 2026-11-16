@@ -148,6 +148,7 @@ beforeEach(() => {
     GitHubIssue: vi.fn(),
     GitHubPull: vi.fn(),
     RestorePlan: vi.fn(),
+    SearchMessages: vi.fn().mockResolvedValue([]),
     RestoreCheckpoint: vi.fn(),
     DiscardFile: vi.fn(),
     ChatModes: vi.fn().mockResolvedValue([]),
@@ -570,7 +571,8 @@ describe("desktop workflows", () => {
       ).getByRole("combobox"),
       "zzzz",
     );
-    expect(screen.getByRole("status")).toHaveTextContent("Nothing matches");
+    // Conversations are searched by their text too before nothing is said to match.
+    expect(await screen.findByText(/Nothing matches/)).toBeVisible();
   });
   it("explains what to do when no agent is installed", async () => {
     backend.Refresh = vi.fn().mockResolvedValue({

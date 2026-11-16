@@ -7,19 +7,43 @@ export type Command = {
   label: string;
   /** Secondary text, also searched. */
   hint?: string;
+  /** A matching passage, with matches between "\u0002" and "\u0003". */
+  snippet?: string;
   icon: IconName;
   shortcut?: string;
   run: () => void;
 };
 
 const LIMIT = 40;
+const FOUND_LIMIT = 25;
+
+/** A passage with its matches marked. */
+export function Marked({ text }: { text: string }) {
+  return (
+    <>
+      {text.split("\u0002").map((part, i) => {
+        if (i === 0) return part;
+        const [hit, rest = ""] = part.split("\u0003");
+        return (
+          <span key={i}>
+            <mark>{hit}</mark>
+            {rest}
+          </span>
+        );
+      })}
+    </>
+  );
+}
 
 /** Jump to a conversation, project or action from the keyboard (Cmd+K). */
 export default function CommandPalette({
   commands,
+  search,
   onClose,
 }: {
   commands: Command[];
+  /** Finds conversations by their text, for queries of two or more letters. */
+  search?: (query: string) => Promise<Command[]>;
   onClose: () => void;
 }) {
   const dialog = useRef<HTMLDialogElement>(null);
@@ -27,6 +51,29 @@ export default function CommandPalette({
   const input = useRef<HTMLInputElement>(null);
   const [query, setQuery] = useState("");
   const [index, setIndex] = useState(0);
+  const [found, setFound] = useState<Command[]>([]);
+  const [searching, setSearching] = useState(false);
+  // Search inside conversations after a pause in typing.
+  useEffect(() => {
+    const q = query.trim();
+    setFound([]);
+    if (!search || q.length < 2) {
+      setSearching(false);
+      return;
+    }
+    let active = true;
+    setSearching(true);
+    const timer = setTimeout(() => {
+      search(q)
+        .then((results) => active && setFound(results.slice(0, FOUND_LIMIT)))
+        .catch(() => active && setFound([]))
+        .finally(() => active && setSearching(false));
+    }, 180);
+    return () => {
+      active = false;
+      clearTimeout(timer);
+    };
+  }, [query, search]);
   useEffect(() => {
     const el = dialog.current;
     if (el?.showModal) el.showModal();
@@ -35,14 +82,15 @@ export default function CommandPalette({
   }, []);
   const matches = useMemo(() => {
     const terms = query.toLowerCase().split(/\s+/).filter(Boolean);
-    return commands
+    const local = commands
       .filter((command) => {
         const text =
           `${command.label} ${command.hint || ""} ${command.group}`.toLowerCase();
         return terms.every((term) => text.includes(term));
       })
       .slice(0, LIMIT);
-  }, [commands, query]);
+    return [...local, ...found];
+  }, [commands, query, found]);
   const active = Math.min(index, Math.max(0, matches.length - 1));
   useEffect(() => {
     list.current
@@ -124,10 +172,20 @@ export default function CommandPalette({
               )}
               {command.shortcut && <kbd>{command.shortcut}</kbd>}
             </span>
+            {command.snippet && (
+              <span className="palette-snippet">
+                <Marked text={command.snippet} />
+              </span>
+            )}
           </li>
         ))}
       </ul>
-      {!matches.length && (
+      {searching && (
+        <p className="palette-searching" role="status">
+          Searching inside conversations…
+        </p>
+      )}
+      {!matches.length && !searching && (
         <p className="palette-empty" role="status">
           Nothing matches “{query}”.
         </p>

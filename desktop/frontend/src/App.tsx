@@ -575,6 +575,68 @@ export default function App() {
       })),
     ];
   }, [chats, snapshot, openNew, showHistory, setShowRuns, rail, setRail]);
+  // Search inside conversations: the app's own conversations open at the
+  // matching message; saved sessions open in History.
+  const [focus, setFocus] = useState<{
+    chatId: string;
+    id: string;
+    at: number;
+  }>();
+  const searchConversations = useCallback(
+    async (q: string): Promise<Command[]> => {
+      const hits = await api.SearchMessages(q);
+      return hits.map((hit): Command => {
+        if (hit.kind === "chat")
+          return {
+            id: `found-chat-${hit.chatId}`,
+            group: "Inside conversations",
+            label: hit.title || "Conversation",
+            hint: hit.tool ? toolLabel(hit.tool as ToolName) : "",
+            snippet: hit.snippet,
+            icon: "message",
+            run: () => {
+              const chatId = hit.chatId!;
+              const show = () => {
+                setShowRuns(false);
+                setPage("history");
+                setActiveChat(chatId);
+                setFocus({ chatId, id: hit.messageId || "", at: Date.now() });
+              };
+              if (chats.some((chat) => chat.id === chatId)) show();
+              else
+                api
+                  .ReopenChat(chatId)
+                  .then((chat) => {
+                    openChat(chat);
+                    show();
+                  })
+                  .catch((e) => setError(errorText(e)));
+            },
+          };
+        const session = snapshot?.sessions.find((s) => s.key === hit.key);
+        return {
+          id: `found-session-${hit.key}`,
+          group: "Inside saved conversations",
+          label: session?.title || hit.key || "Conversation",
+          hint: session
+            ? `${toolLabel(session.tool)} · ${basename(session.project)}`
+            : "",
+          snippet: hit.snippet,
+          icon: "file",
+          run: () => {
+            showHistory();
+            setProject("");
+            setQuery("");
+            setTool("all");
+            setHistoryView("all");
+            setSelectedKey(hit.key || "");
+          },
+        };
+      });
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [chats, snapshot],
+  );
   // App shortcuts. The listener is added once and reads the latest state, so
   // a key pressed right after the state changes, such as Cmd+N as soon as
   // projects load, is never handled with the state from before the change.
@@ -970,6 +1032,11 @@ export default function App() {
             }}
             onState={chatChanged}
             onClosed={(ids) => ids.forEach(chatClosed)}
+            focusMessage={
+              focus?.chatId === live.id
+                ? { id: focus.id, at: focus.at }
+                : undefined
+            }
           />
         ))}
         {page === "board" && (
@@ -1033,6 +1100,7 @@ export default function App() {
       {showPalette && (
         <CommandPalette
           commands={commands}
+          search={searchConversations}
           onClose={() => setShowPalette(false)}
         />
       )}
