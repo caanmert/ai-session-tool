@@ -91,6 +91,13 @@ func TestAgentProcess(t *testing.T) {
 		if mode == "review" {
 			require(str(params["sandbox"]) == "read-only" && str(params["approvalPolicy"]) == "never", "review permission configuration")
 		}
+		if mode == "writer" {
+			// Another Codex program has this conversation open.
+			emit(map[string]any{"id": 2, "error": map[string]any{"code": -32600, "message": "thread native-thread already has an active writer"}})
+			for {
+				time.Sleep(time.Second)
+			}
+		}
 		if mode == "resume" {
 			require(str(thread["method"]) == "thread/resume" && str(params["threadId"]) == "native-thread", "expected saved thread")
 		}
