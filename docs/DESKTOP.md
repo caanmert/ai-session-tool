@@ -295,9 +295,12 @@ or committed and pushed are lost.
    conversation: tool calls as steps such as "Run `npm test`" with their results,
    long runs of steps folded to a summary, and the time of each message. **Continue in app** opens that
    provider's saved session in its recorded directory. Codex lets only one program write to a
-   conversation at a time: if it is still open in the Codex app or in `codex` in
-   a terminal, sending says so. Close it there and send again; your message stays
-   in the conversation.
+   conversation at a time. While a Codex conversation is shown, ais checks
+   whether another program (the Codex app, `codex` in a terminal) has it open,
+   using macOS's `lsof` read-only, and says so above the message box; it checks
+   again when a turn ends, when the window comes back, on **Check again**, and
+   just before sending, so a message that would be refused stops at once. Close
+   it there and send again; your message stays in the conversation.
 3. For a fresh conversation, choose **New task** (**⌘N**). Describe the task,
    select a project and agent, then **Start task** (**⌘⏎**): the conversation is
    created and your message is sent in one step. Leave the task empty and choose

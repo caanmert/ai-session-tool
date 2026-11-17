@@ -890,6 +890,30 @@
   padding: 0 10px;
   font-size: var(--text-sm);
 }
+/* Another Codex program has this conversation open. */
+.holder-note {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px 8px;
+  margin: 0 0 8px;
+  padding: 8px 12px;
+  border: 1px solid var(--warning-border);
+  border-radius: var(--radius-card);
+  background: var(--sidebar);
+  font-size: var(--text-sm);
+  color: var(--text);
+}
+.holder-note > svg {
+  flex: none;
+  color: var(--warning-text);
+}
+.holder-note > span {
+  flex: 1 1 260px;
+}
+.holder-note .text-button {
+  margin: 0;
+}
 .queue-note {
   margin: 0 0 6px;
   font-size: var(--text-sm);

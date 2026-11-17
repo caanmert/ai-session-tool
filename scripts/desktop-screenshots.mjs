@@ -837,6 +837,8 @@ try {
             partial: true,
           }),
           TurnDiff: async () => snapshot,
+          // Set by the capture that shows a conversation open elsewhere.
+          CodexHolder: async () => window.__aisHolder || "",
           CopyChanges: async () => snapshot,
           BringBackCopy: async () => ["src/checkout.ts"],
           RemoveCopy: async () => {},
@@ -1162,6 +1164,21 @@ try {
     throw new Error(`unexpected turn line: ${await turnLine.textContent()}`);
   await checkContrast();
   await page.screenshot({ path: `${screenshots}/desktop-turn${suffix}.png` });
+  // Another Codex program has the conversation open: the notice above the
+  // message box says so. The check runs again when the window comes back.
+  await page.evaluate(() => {
+    window.__aisHolder = "the Codex app";
+    window.dispatchEvent(new Event("focus"));
+  });
+  const holderNote = page.locator(".holder-note");
+  await holderNote.waitFor();
+  await checkContrast();
+  await page.screenshot({ path: `${screenshots}/desktop-holder${suffix}.png` });
+  await page.evaluate(() => {
+    window.__aisHolder = "";
+    window.dispatchEvent(new Event("focus"));
+  });
+  await holderNote.waitFor({ state: "detached" });
   // The message box toolbar, context indicator included, keeps to one row.
   const toolbar = await page.evaluate(() => {
     const footer = document.querySelector(
