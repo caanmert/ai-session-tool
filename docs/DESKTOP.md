@@ -289,7 +289,10 @@ or committed and pushed are lost.
 2. Select a saved conversation to preview it. The preview reads like an open
    conversation: tool calls as steps such as "Run `npm test`" with their results,
    long runs of steps folded to a summary, and the time of each message. **Continue in app** opens that
-   provider's saved session in its recorded directory.
+   provider's saved session in its recorded directory. Codex lets only one program write to a
+   conversation at a time: if it is still open in the Codex app or in `codex` in
+   a terminal, sending says so. Close it there and send again; your message stays
+   in the conversation.
 3. For a fresh conversation, choose **New task** (**⌘N**). Describe the task,
    select a project and agent, then **Start task** (**⌘⏎**): the conversation is
    created and your message is sent in one step. Leave the task empty and choose

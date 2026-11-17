@@ -74,7 +74,7 @@ func (m *chatManager) runCodex(ctx context.Context, c *chatSession, state ChatSt
 			method := str(v["method"])
 			if method == "" {
 				if raw := v["error"]; len(raw) > 0 && string(raw) != "null" {
-					return "", fmt.Errorf("Codex: %s", pretty(raw))
+					return "", codexError("Codex", raw)
 				}
 				result := object(v["result"])
 				switch number(v["id"]) {
@@ -197,7 +197,7 @@ func (m *chatManager) runCodex(ctx context.Context, c *chatSession, state ChatSt
 					continue
 				}
 				if str(result["status"]) == "failed" {
-					return "", fmt.Errorf("Codex turn failed: %s", pretty(result["error"]))
+					return "", codexError("Codex turn failed", result["error"])
 				}
 				if str(result["status"]) == "interrupted" {
 					return "", errors.New("Codex response interrupted")
@@ -205,12 +205,31 @@ func (m *chatManager) runCodex(ctx context.Context, c *chatSession, state ChatSt
 				return final, nil
 			case "error":
 				if !boolean(params["willRetry"]) {
-					return "", fmt.Errorf("Codex: %s", pretty(params["error"]))
+					return "", codexError("Codex", params["error"])
 				}
 			}
 		}
 	}
 }
+
+// errOpenElsewhere is Codex refusing a conversation another program has open.
+var errOpenElsewhere = errors.New("This Codex conversation is open in another Codex program, such as the Codex app or codex in a terminal, and Codex lets only one program write to a conversation at a time. Close it there, then send your message again")
+
+// codexError reads an error Codex reported: its message in plain words rather
+// than the JSON around it.
+func codexError(prefix string, raw json.RawMessage) error {
+	var reported struct {
+		Message string `json:"message"`
+	}
+	if json.Unmarshal(raw, &reported) != nil || strings.TrimSpace(reported.Message) == "" {
+		return fmt.Errorf("%s: %s", prefix, pretty(raw))
+	}
+	if strings.Contains(reported.Message, "already has an active writer") {
+		return errOpenElsewhere
+	}
+	return fmt.Errorf("%s: %s", prefix, strings.TrimSpace(reported.Message))
+}
+
 func codexRequest(ctx context.Context, c *chatSession, p *jsonProcess, id json.RawMessage, method string, params jsonObject, review bool) {
 	send := func(result any) {
 		if err := p.send(map[string]any{"id": id, "result": result}); err != nil {
