@@ -186,6 +186,11 @@ func TestAgentProcess(t *testing.T) {
 			emit(map[string]any{"method": "thread/tokenUsage/updated", "params": map[string]any{"threadId": "native-thread", "turnId": "turn", "tokenUsage": map[string]any{
 				"last":  map[string]any{"totalTokens": 52000, "inputTokens": 48000, "cachedInputTokens": 30000, "outputTokens": 4000, "reasoningOutputTokens": 2000},
 				"total": map[string]any{"totalTokens": 90000, "inputTokens": 80000, "cachedInputTokens": 50000, "outputTokens": 10000, "reasoningOutputTokens": 5000}, "modelContextWindow": 272000}}})
+			// A second request in the same turn: the turn used 142000 less the
+			// 38000 from before it.
+			emit(map[string]any{"method": "thread/tokenUsage/updated", "params": map[string]any{"threadId": "native-thread", "turnId": "turn", "tokenUsage": map[string]any{
+				"last":  map[string]any{"totalTokens": 52000, "reasoningOutputTokens": 2000},
+				"total": map[string]any{"totalTokens": 142000}, "modelContextWindow": 272000}}})
 		}
 		emit(map[string]any{"method": "turn/completed", "params": map[string]any{"turn": map[string]any{"id": "turn", "status": "completed"}}})
 	} else {
@@ -281,7 +286,11 @@ func TestAgentProcess(t *testing.T) {
 		if mode == "context" {
 			assistant["usage"] = map[string]any{"input_tokens": 1200, "cache_creation_input_tokens": 3000, "cache_read_input_tokens": 40000, "output_tokens": 800}
 			// A sub-agent's smaller model is listed too; the answering model's window counts.
-			final["modelUsage"] = map[string]any{model: map[string]any{"contextWindow": 200000}, "small-helper": map[string]any{"contextWindow": 100000}}
+			final["modelUsage"] = map[string]any{
+				model:          map[string]any{"contextWindow": 200000, "inputTokens": 1200, "outputTokens": 800, "cacheReadInputTokens": 40000, "cacheCreationInputTokens": 3000},
+				"small-helper": map[string]any{"contextWindow": 100000, "inputTokens": 500, "outputTokens": 100},
+			}
+			final["total_cost_usd"] = 0.42
 		}
 		emit(map[string]any{"type": "assistant", "message": assistant})
 		emit(final)

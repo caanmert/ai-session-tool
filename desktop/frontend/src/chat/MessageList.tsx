@@ -1,9 +1,17 @@
-import { memo, useCallback, useEffect, useRef, useState } from "react";
+import {
+  memo,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
 import { SafeMarkdown } from "../ui/SafeMarkdown";
 import AgentMark from "../AgentMark";
 import Icon from "../Icon";
 import Foldable, { useReveal } from "../ui/Foldable";
 import { describeToolStep, type ToolStepView } from "./toolStep";
+import { turnSummary } from "./turnStats";
 import { toolLabel, type ChatMessage, type Checkpoint } from "../api";
 
 const stepStatus = (status?: string) =>
@@ -407,15 +415,39 @@ export default function MessageList({
   items.forEach((item, index) => {
     if (!Array.isArray(item) && item.role === "user") lastUser = index;
   });
-  return items.map((item, index) =>
-    Array.isArray(item) ? (
-      <ToolGroup
-        key={item[0].id}
-        messages={item}
-        project={project}
-        live={busy && index > lastUser}
-      />
-    ) : (
+  // Each finished turn ends with how long it took: before your next message,
+  // or at the end.
+  const nodes: ReactNode[] = [];
+  let turn: ChatMessage | undefined;
+  const endTurn = () => {
+    if (turn?.turn) {
+      const { text, detail } = turnSummary(turn.turn, toolLabel(tool));
+      nodes.push(
+        <p className="turn-stats" key={`turn-${turn.id}`} title={detail}>
+          <Icon name="clock" size={12} />
+          {text}
+        </p>,
+      );
+    }
+    turn = undefined;
+  };
+  items.forEach((item, index) => {
+    if (Array.isArray(item)) {
+      nodes.push(
+        <ToolGroup
+          key={item[0].id}
+          messages={item}
+          project={project}
+          live={busy && index > lastUser}
+        />,
+      );
+      return;
+    }
+    if (item.role === "user") {
+      endTurn();
+      turn = item;
+    }
+    nodes.push(
       <TextMessage
         key={item.id}
         message={item}
@@ -426,7 +458,9 @@ export default function MessageList({
         onRestore={onRestore}
         onTurnDiff={onTurnDiff}
         restoreDisabled={busy}
-      />
-    ),
-  );
+      />,
+    );
+  });
+  endTurn();
+  return nodes;
 }

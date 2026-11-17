@@ -210,6 +210,11 @@ They demonstrate the layout, not output from a live model run.
   sent. **Send to agent** puts them all in the message box as one message
   (file and lines, the code quoted, your note) to edit; nothing is sent until
   you send it. A comment whose lines have changed since is marked out of date.
+- **Time per turn.** Each turn that ran in the app ends with how long the agent
+  worked, and the tokens it reported, cached input included ("Worked 2m 14s ·
+  48k tokens"). Claude Code also reports a cost estimate at API prices; it shows
+  only on hover, since a subscription is not charged by token. Codex reports no
+  cost. A stopped or failed turn still shows how long it ran.
 - **Changes since this message.** The code button on one of your messages shows
   what changed in the project since that message's turn began (read-only), such
   as what the agent did about your comments.

@@ -105,3 +105,36 @@ test("an edit shows the file, line counts and the changed lines", () => {
   expect(within(group).queryByText(/old_string/)).not.toBeInTheDocument();
   expect(within(group).getByText("The file was updated.")).toBeInTheDocument();
 });
+
+test("each finished turn ends with how long it took", () => {
+  const { container } = render(
+    <MessageList
+      tool="claude"
+      messages={[
+        {
+          ...text("u1", "user", "Rotate the keys"),
+          turn: { ms: 134_000, tokens: 45_600, costUsd: 0.42 },
+        },
+        tool("t1", "Read", "completed"),
+        text("a1", "assistant", "Done."),
+        { ...text("u2", "user", "Now the docs"), turn: { ms: 9_000 } },
+        text("a2", "assistant", "Updated."),
+        // Still running: no figures yet.
+        text("u3", "user", "And the changelog"),
+      ]}
+    />,
+  );
+  const lines = [...container.querySelectorAll(".turn-stats")];
+  expect(lines.map((line) => line.textContent)).toEqual([
+    "Worked 2m 14s · 46k tokens",
+    "Worked 9s",
+  ]);
+  // Each line ends its turn: after the reply, before the next message.
+  expect(lines[0].previousElementSibling).toHaveTextContent("Done.");
+  expect(lines[0].nextElementSibling).toHaveTextContent("Now the docs");
+  expect(lines[0]).toHaveAttribute(
+    "title",
+    expect.stringContaining("Claude Code estimates $0.42 at API prices"),
+  );
+  expect(screen.getByText("Updated.")).toBeVisible();
+});
