@@ -33,7 +33,7 @@ import {
   imageFiles,
   useImageAttachments,
 } from "./chat/ImageAttachments";
-import { applyChatUpdate } from "./chatUpdates";
+import { applyChatUpdate, prependEarlier } from "./chatUpdates";
 import { storeDraft, useChatDraft } from "./useChatDraft";
 import {
   api,
@@ -141,11 +141,13 @@ export default function ChatWorkspace({
   notify.current = onState;
   const input = useRef<HTMLTextAreaElement>(null);
   const operation = useRef(false);
+  // The conversation as last read, shared with loading older messages.
+  const held = useRef<ChatState | undefined>(undefined);
   useEffect(() => {
     let disposed = false;
     let timer: ReturnType<typeof setTimeout>;
     let version = -1;
-    let current: ChatState | undefined;
+    held.current = undefined;
     let lastStatus = chat.status;
     let lastTitle = chat.title;
     let lastApprovals = chat.approvals.map((a) => a.id).join();
@@ -155,7 +157,7 @@ export default function ChatWorkspace({
       try {
         const update = await api.ReadChat(chat.id, version);
         if (disposed) return;
-        const next = applyChatUpdate(current, update);
+        const next = applyChatUpdate(held.current, update);
         if (!next) {
           // A partial update did not fit: read the whole conversation again.
           version = -1;
@@ -164,7 +166,7 @@ export default function ChatWorkspace({
         }
         version = update.version;
         if (update.state) {
-          current = next;
+          held.current = next;
           setState(next);
           const approvals = next.approvals.map((a) => a.id).join();
           if (
@@ -374,11 +376,36 @@ export default function ChatWorkspace({
     [state.messages, state.review?.complete],
   );
   const [shown, setShown] = useState(MESSAGE_WINDOW);
-  const earlier = Math.max(0, listed.length - shown);
+  // Older messages: drawn later, or not yet loaded from the app.
+  const notLoaded = state.earlier ?? 0;
+  const hiddenHere = Math.max(0, listed.length - shown);
+  const earlier = hiddenHere + notLoaded;
   const heightBefore = useRef(0);
-  function showEarlier() {
-    heightBefore.current = messages.current?.scrollHeight || 0;
+  const [loadingEarlier, setLoadingEarlier] = useState(false);
+  /** Load up to count older messages from the app. */
+  async function loadEarlier(count: number) {
+    const now = held.current;
+    const first = now?.messages[0]?.id;
+    if (!now || !first || !now.earlier) return;
+    setLoadingEarlier(true);
+    try {
+      const page = await api.ChatEarlier(state.id, first, count);
+      const joined = held.current && prependEarlier(held.current, first, page);
+      if (!joined) return;
+      held.current = joined;
+      heightBefore.current = messages.current?.scrollHeight || 0;
+      setState(joined);
+    } catch (e) {
+      setError(errorText(e));
+    } finally {
+      setLoadingEarlier(false);
+    }
+  }
+  async function showEarlier() {
     following.current = false;
+    if (hiddenHere < MESSAGE_WINDOW && notLoaded)
+      await loadEarlier(MESSAGE_WINDOW - hiddenHere);
+    heightBefore.current ||= messages.current?.scrollHeight || 0;
     setShown((count) => count + MESSAGE_WINDOW);
   }
   useLayoutEffect(() => {
@@ -387,13 +414,17 @@ export default function ChatWorkspace({
     // Messages were added above: move down by their height so the view stays put.
     el.scrollTop += el.scrollHeight - heightBefore.current;
     heightBefore.current = 0;
-  }, [shown]);
+  }, [shown, state.messages]);
   // Show a message found by search: draw it if it is among the earlier ones,
   // open whatever folds it, scroll to it and mark it for a moment.
   useEffect(() => {
     if (!focusMessage || !active) return;
     const at = listed.findIndex((m) => m.id === focusMessage.id);
-    if (at < 0) return;
+    if (at < 0) {
+      // It may be among the messages not loaded yet: load them all once.
+      if (notLoaded && !loadingEarlier) void loadEarlier(notLoaded);
+      return;
+    }
     if (at < listed.length - shown) {
       setShown(listed.length - at);
       return;
@@ -411,6 +442,8 @@ export default function ChatWorkspace({
       setTimeout(() => el.classList.remove("found"), 1600);
     });
     return () => cancelAnimationFrame(frame);
+    // loadEarlier reads the latest state through refs.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [focusMessage, active, listed, shown]);
   // Cmd+F searches this conversation; the window has no page search of its own.
   const [finding, setFinding] = useState(false);
@@ -731,7 +764,11 @@ export default function ChatWorkspace({
             </div>
           )}
           {earlier > 0 && (
-            <button className="show-earlier" onClick={showEarlier}>
+            <button
+              className="show-earlier"
+              disabled={loadingEarlier}
+              onClick={() => void showEarlier()}
+            >
               Show {Math.min(earlier, MESSAGE_WINDOW)} earlier messages
               <small>{earlier} not shown</small>
             </button>
@@ -744,7 +781,7 @@ export default function ChatWorkspace({
             checkpoints={checkpointsByMessage}
             onRestore={askRestore}
             onTurnDiff={state.review ? undefined : setTurnDiff}
-            messages={earlier > 0 ? listed.slice(earlier) : listed}
+            messages={hiddenHere > 0 ? listed.slice(hiddenHere) : listed}
           />
           {state.review?.complete && (
             <div className="review-findings">

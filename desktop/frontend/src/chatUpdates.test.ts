@@ -1,6 +1,6 @@
 import { expect, test } from "vitest";
 import type { ChatMessage, ChatState, ChatUpdate } from "./api";
-import { applyChatUpdate } from "./chatUpdates";
+import { applyChatUpdate, prependEarlier } from "./chatUpdates";
 
 const message = (id: string, text = id): ChatMessage => ({
   id,
@@ -78,5 +78,33 @@ test("a partial update that does not fit asks for a full read", () => {
   ).toBeUndefined();
   expect(
     applyChatUpdate(undefined, partial(3, [message("c")], "c", 1)),
+  ).toBeUndefined();
+});
+
+test("with only the newest messages held, updates still apply", () => {
+  // Older messages "a" and "b" were not loaded.
+  const before = { ...state(1, [message("c"), message("d")]), earlier: 2 };
+  const after = applyChatUpdate(before, partial(2, [message("e")], "a", 5))!;
+  expect(after.messages.map((m) => m.id)).toEqual(["c", "d", "e"]);
+  expect(after.earlier).toBe(2);
+  // The oldest is trimmed: one fewer not held.
+  const trimmed = applyChatUpdate(after, partial(3, [message("f")], "b", 5))!;
+  expect(trimmed.earlier).toBe(1);
+  // A missed message shows up as more not held: read everything again.
+  expect(applyChatUpdate(trimmed, partial(4, [], "b", 6))).toBeUndefined();
+});
+
+test("older messages join in front of those held", () => {
+  const held = { ...state(1, [message("c"), message("d")]), earlier: 2 };
+  const joined = prependEarlier(held, "c", {
+    messages: [message("b")],
+    earlier: 1,
+  })!;
+  expect(joined.messages.map((m) => m.id)).toEqual(["b", "c", "d"]);
+  expect(joined.earlier).toBe(1);
+  expect(joined.messages[1]).toBe(held.messages[0]);
+  // After a fresh read the page no longer joins up.
+  expect(
+    prependEarlier(joined, "c", { messages: [message("a")], earlier: 0 }),
   ).toBeUndefined();
 });

@@ -1,4 +1,4 @@
-import type { ChatMessage, ChatState, ChatUpdate } from "./api";
+import type { ChatMessage, ChatPage, ChatState, ChatUpdate } from "./api";
 
 const sameMessage = (a: ChatMessage, b: ChatMessage) =>
   a.id === b.id &&
@@ -32,12 +32,20 @@ export function applyChatUpdate(
   if (!update.partial) return { ...next, messages: next.messages.map(keep) };
   if (!current) return undefined;
 
-  // Older messages are trimmed from the front once the display limit is hit.
+  // The window may hold only the newest messages: `earlier` were not loaded.
+  // Older messages are trimmed from the front once the limit is hit.
   let messages = current.messages;
+  let earlier = current.earlier ?? 0;
   if (update.first) {
     const start = messages.findIndex((m) => m.id === update.first);
-    if (start > 0) messages = messages.slice(start);
-  } else messages = [];
+    if (start >= 0) {
+      messages = messages.slice(start);
+      earlier = 0;
+    }
+  } else {
+    messages = [];
+    earlier = 0;
+  }
   const changed = new Map(next.messages.map((m) => [m.id, m]));
   messages = messages.map((m) => {
     const replacement = changed.get(m.id);
@@ -48,10 +56,35 @@ export function applyChatUpdate(
   // Whatever is left is new, and new messages are only ever added at the end.
   if (changed.size)
     messages = [...messages, ...next.messages.filter((m) => changed.has(m.id))];
+  // Messages not held can only become fewer (trimmed), never more: more means
+  // an update was missed.
+  const left = (update.count ?? 0) - messages.length;
   if (
-    messages.length !== (update.count ?? 0) ||
-    (messages[0]?.id ?? "") !== (update.first ?? "")
+    left < 0 ||
+    left > earlier ||
+    (left === 0 && (messages[0]?.id ?? "") !== (update.first ?? ""))
   )
     return undefined;
-  return { ...next, messages };
+  return { ...next, messages, earlier: left };
+}
+
+/**
+ * Add older messages loaded with ChatEarlier in front of those held. Returns
+ * undefined when they no longer join up, such as after a fresh read.
+ */
+export function prependEarlier(
+  current: ChatState,
+  before: string,
+  page: ChatPage,
+): ChatState | undefined {
+  if (current.messages[0]?.id !== before) return undefined;
+  const held = new Set(current.messages.map((m) => m.id));
+  return {
+    ...current,
+    messages: [
+      ...page.messages.filter((m) => !held.has(m.id)),
+      ...current.messages,
+    ],
+    earlier: page.earlier,
+  };
 }

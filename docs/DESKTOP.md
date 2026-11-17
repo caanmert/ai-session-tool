@@ -605,8 +605,11 @@ These records can contain source code, prompts and tool output. Provider-native
 transcripts remain in the provider's own store.
 
 The history preview contains up to 200 recent messages, each capped at 20,000 bytes.
-Chat display retains up to 500 messages / 2 MiB of message text, with individual
-messages capped at 100,000 bytes. A notice indicates shortened history. Embedded
+A conversation in the app retains up to 5,000 messages / 8 MiB of message text,
+with individual messages capped at 100,000 bytes. A notice indicates shortened
+history. Opening a conversation reads its newest 300 messages; **Show earlier
+messages** reads older ones as you need them, and jumping to a search result or
+**Copy as Markdown** reads whatever they need. Embedded
 HTML and remote images are not activated; links render as text. The provider's
 native saved conversation is unaffected by display limits.
 
