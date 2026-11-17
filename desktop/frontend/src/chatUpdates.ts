@@ -7,7 +7,10 @@ const sameMessage = (a: ChatMessage, b: ChatMessage) =>
   a.model === b.model &&
   a.name === b.name &&
   a.role === b.role &&
-  a.kind === b.kind;
+  a.kind === b.kind &&
+  a.turn?.ms === b.turn?.ms &&
+  a.turn?.tokens === b.turn?.tokens &&
+  a.turn?.costUsd === b.turn?.costUsd;
 
 /**
  * Apply a backend update to the conversation on screen.

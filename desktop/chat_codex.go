@@ -155,6 +155,7 @@ func (m *chatManager) runCodex(ctx context.Context, c *chatSession, state ChatSt
 				c.reportModel(str(params["toModel"]))
 			case "thread/tokenUsage/updated":
 				c.reportContext(codexContextUsage(params))
+				c.reportCodexTokens(params)
 			case "turn/started":
 				turn = str(object(params["turn"])["id"])
 				timer.Stop()

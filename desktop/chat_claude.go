@@ -226,6 +226,7 @@ func (m *chatManager) runClaude(ctx context.Context, c *chatSession, state ChatS
 					}
 				}
 			case "result":
+				c.reportClaudeResult(v)
 				if boolean(v["is_error"]) {
 					return "", fmt.Errorf("Claude: %s %s", str(v["result"]), pretty(v["errors"]))
 				}

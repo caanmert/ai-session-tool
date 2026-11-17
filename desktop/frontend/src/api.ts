@@ -147,9 +147,19 @@ export type ModelCatalog = {
 };
 /** An image attached to a message: its name and bytes in base64. */
 export type ChatImage = { name: string; data: string };
+/** One finished turn: how long it ran, and what the agent reported using. */
+export type TurnStats = {
+  ms: number;
+  /** Tokens processed, cached input included; absent when not reported. */
+  tokens?: number;
+  /** Claude Code's estimate at API prices; not a subscription charge. */
+  costUsd?: number;
+};
 export type ChatMessage = {
   /** Names of images attached to a user message. */
   images?: string[];
+  /** On the message that started a turn, once that turn has ended. */
+  turn?: TurnStats;
   /** When the message first arrived (RFC 3339); absent on older saved messages. */
   at?: string;
   model?: string;

@@ -76,6 +76,8 @@ try {
           kind: "text",
           text: "Add safe retries to checkout requests. Keep the response clear when a payment fails.",
           at: new Date(Date.now() - 26 * 60_000).toISOString(),
+          // The turn ended: how long it took and what Codex reported.
+          turn: { ms: 134_000, tokens: 48_100 },
         },
         {
           id: "a",
@@ -1151,6 +1153,15 @@ try {
   await page.getByRole("group", { name: "Changed lines" }).waitFor();
   await checkContrast();
   await page.screenshot({ path: `${screenshots}/desktop-chat${suffix}.png` });
+  // The finished turn ends with how long it took.
+  const turnLine = page
+    .getByRole("region", { name: "Codex conversation" })
+    .locator(".turn-stats");
+  await turnLine.scrollIntoViewIfNeeded();
+  if ((await turnLine.textContent()) !== "Worked 2m 14s · 48k tokens")
+    throw new Error(`unexpected turn line: ${await turnLine.textContent()}`);
+  await checkContrast();
+  await page.screenshot({ path: `${screenshots}/desktop-turn${suffix}.png` });
   // The message box toolbar, context indicator included, keeps to one row.
   const toolbar = await page.evaluate(() => {
     const footer = document.querySelector(

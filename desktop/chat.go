@@ -28,6 +28,8 @@ type ChatMessage struct {
 	Model  string `json:"model,omitempty"`
 	// Images names the images attached to a user message.
 	Images []string `json:"images,omitempty"`
+	// Turn is set on the message that started a turn once the turn ends.
+	Turn *TurnStats `json:"turn,omitempty"`
 	// At is when the message first arrived, in RFC 3339. Empty for messages
 	// saved before times were kept.
 	At string `json:"at,omitempty"`
@@ -135,6 +137,7 @@ type chatSession struct {
 	pending    map[string]*pendingApproval
 	dismissed  map[string]bool
 	changed    chan struct{} // closed on the next change; guarded by mu
+	usage      turnUsage     // the running turn's usage; guarded by mu
 	saveMu     sync.Mutex
 	reviewMu   sync.Mutex
 	settingsMu sync.Mutex
@@ -601,6 +604,7 @@ func (m *chatManager) sendWith(id, text string, images []ChatImage) error {
 	c.state.Approvals = []ChatApproval{}
 	c.pending = map[string]*pendingApproval{}
 	c.dismissed = map[string]bool{}
+	c.usage = turnUsage{}
 	if c.state.Title == "New conversation" {
 		c.state.Title = shorten(strings.ReplaceAll(text, "\n", " "), 80)
 	}
@@ -622,6 +626,7 @@ func (m *chatManager) sendWith(id, text string, images []ChatImage) error {
 	userMessage := uuid.NewString()
 	c.message(ChatMessage{ID: userMessage, Role: "user", Kind: "text", Text: display, Images: names}, false)
 	m.saveOrWarn(c)
+	started := time.Now()
 	go func() {
 		defer close(done)
 		defer cancel()
@@ -645,6 +650,7 @@ func (m *chatManager) sendWith(id, text string, images []ChatImage) error {
 		}
 		interrupted := ctx.Err() != nil
 		cancel() // Retire approval handlers before allowing a new turn.
+		c.finishTurn(userMessage, started)
 		c.mu.Lock()
 		c.cancel = nil
 		c.pending = map[string]*pendingApproval{}
