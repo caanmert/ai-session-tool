@@ -255,7 +255,7 @@ func (m *chatManager) comparisonDiff(ctx context.Context, id, tool string) (Revi
 	if err != nil {
 		return ReviewSnapshot{}, err
 	}
-	return captureReviewFrom(ctx, side.Worktree, record.Base)
+	return captureView(ctx, side.Worktree, record.Base)
 }
 
 // sidePatch is one side's changes against the comparison's base commit.

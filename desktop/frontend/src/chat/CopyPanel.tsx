@@ -22,7 +22,11 @@ export default function CopyPanel({
 }) {
   const copy = chat.copy!;
   const [viewing, setViewing] = useState<string>();
-  const [bringing, setBringing] = useState<string[]>();
+  // The files to name, and how many change in all.
+  const [bringing, setBringing] = useState<{
+    paths: string[];
+    total: number;
+  }>();
   const [removing, setRemoving] = useState<"ask" | "discard">();
   const [working, setWorking] = useState(false);
   const [error, setError] = useState("");
@@ -31,8 +35,9 @@ export default function CopyPanel({
     setError("");
     try {
       const changes = await api.CopyChanges(chat.id);
-      if (!changes.files.length) setError("The copy has no changes yet.");
-      else setBringing(changes.files.map((f) => f.path));
+      const total = changes.total ?? changes.files.length;
+      if (!total) setError("The copy has no changes yet.");
+      else setBringing({ paths: changes.files.map((f) => f.path), total });
     } catch (e) {
       setError(errorText(e));
     }
@@ -124,7 +129,7 @@ export default function CopyPanel({
       )}
       {bringing && (
         <ConfirmDialog
-          title={`Bring ${bringing.length} ${bringing.length === 1 ? "file" : "files"} back into the project?`}
+          title={`Bring ${bringing.total} ${bringing.total === 1 ? "file" : "files"} back into the project?`}
           confirmLabel="Bring them back"
           cancelLabel="Not now"
           busy={working}
@@ -137,12 +142,16 @@ export default function CopyPanel({
             are never overwritten. Nothing is committed.
           </p>
           <ul className="restore-list">
-            {bringing.slice(0, 12).map((path) => (
+            {bringing.paths.slice(0, 12).map((path) => (
               <li key={path}>
                 <code>{path}</code>
               </li>
             ))}
-            {bringing.length > 12 && <li>and {bringing.length - 12} more</li>}
+            {bringing.total > Math.min(12, bringing.paths.length) && (
+              <li>
+                and {bringing.total - Math.min(12, bringing.paths.length)} more
+              </li>
+            )}
           </ul>
         </ConfirmDialog>
       )}

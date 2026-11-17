@@ -77,6 +77,13 @@ export default function ChangesDialog({
         </p>
       )}
       {!snapshot && !error && <p className="details-empty">Reading changes…</p>}
+      {!!snapshot?.warnings.length && (
+        <ul className="changes-warnings" aria-label="Not shown">
+          {snapshot.warnings.map((warning) => (
+            <li key={warning}>{warning}</li>
+          ))}
+        </ul>
+      )}
       {snapshot &&
         (snapshot.files.length ? (
           <DiffViewer
@@ -89,13 +96,8 @@ export default function ChangesDialog({
             onRemoveComment={onRemoveComment}
           />
         ) : (
-          <p className="details-empty">{empty}</p>
+          !snapshot.total && <p className="details-empty">{empty}</p>
         ))}
-      {snapshot?.warnings.map((warning) => (
-        <p className="details-note" key={warning}>
-          {warning}
-        </p>
-      ))}
     </dialog>
   );
 }
