@@ -97,8 +97,11 @@ type ChatState struct {
 	Review    *ReviewState   `json:"review,omitempty"`
 	UpdatedAt time.Time      `json:"updatedAt"`
 	Shortened bool           `json:"shortened"`
-	Version   int64          `json:"version"`
-	Closed    bool           `json:"closed"`
+	// Earlier counts the older messages a read left out; ChatEarlier loads
+	// them. Never saved: it describes one read.
+	Earlier int   `json:"earlier,omitempty"`
+	Version int64 `json:"version"`
+	Closed  bool  `json:"closed"`
 }
 
 // ChatUpdate answers a read. State is nil when nothing changed. When Partial
@@ -175,7 +178,7 @@ func (m *chatManager) load() error {
 			continue
 		}
 		info, err := entry.Info()
-		if err != nil || info.Size() > 32<<20 {
+		if err != nil || info.Size() > chatFileLimit {
 			continue
 		}
 		data, err := os.ReadFile(filepath.Join(m.dataDir, entry.Name()))
@@ -199,6 +202,21 @@ func (m *chatManager) load() error {
 	}
 	return nil
 }
+
+// A conversation keeps its newest messages up to these limits; older ones are
+// dropped and the conversation is marked shortened. The agent keeps its own
+// full transcript either way.
+const (
+	chatMessageLimit = 5000
+	chatTextLimit    = 8 << 20
+	// chatFileLimit bounds a saved conversation read from disk; JSON escaping
+	// can make the file larger than its text.
+	chatFileLimit = 64 << 20
+	// chatPage is how many of the newest messages a window receives when it
+	// reads a whole conversation. Older ones are loaded on request.
+	chatPage = 300
+)
+
 func busyChat(status string) bool {
 	return status == "running" || status == "waiting" || status == "stopping"
 }
@@ -235,7 +253,11 @@ func (m *chatManager) list() []ChatState {
 			c.mu.Unlock()
 			continue
 		}
-		state := cloneState(c.state)
+		// The list has no messages: leave them out before copying.
+		head := c.state
+		head.Messages = nil
+		head.Approvals = nil
+		state := cloneState(head)
 		state.Messages = []ChatMessage{}
 		state.Approvals = []ChatApproval{}
 		if state.Review != nil {
@@ -253,13 +275,14 @@ func (m *chatManager) list() []ChatState {
 
 // read returns the whole conversation.
 func (m *chatManager) read(id string, version int64) (ChatUpdate, error) {
-	return m.watch(context.Background(), id, version, 0)
+	return m.watch(context.Background(), id, version, 0, 0)
 }
 
 // watch returns what changed since version. A reader that is up to date waits
 // up to wait for the next change, so an idle conversation costs no polling.
-// Readers that are behind by a known amount receive a partial update.
-func (m *chatManager) watch(ctx context.Context, id string, version int64, wait time.Duration) (ChatUpdate, error) {
+// Readers that are behind by a known amount receive a partial update. A full
+// read holds at most page of the newest messages when page is above zero.
+func (m *chatManager) watch(ctx context.Context, id string, version int64, wait time.Duration, page int) (ChatUpdate, error) {
 	c, err := m.get(id)
 	if err != nil {
 		return ChatUpdate{}, err
@@ -303,10 +326,46 @@ func (m *chatManager) watch(ctx context.Context, id string, version int64, wait 
 			}
 		}
 	} else {
-		s.Messages = append([]ChatMessage{}, c.state.Messages...)
+		from := 0
+		if page > 0 && len(c.state.Messages) > page {
+			from = len(c.state.Messages) - page
+		}
+		s.Messages = append([]ChatMessage{}, c.state.Messages[from:]...)
+		s.Earlier = from
 	}
 	result.State = &s
 	return result, nil
+}
+
+// ChatPage is a run of older messages, and how many come before it.
+type ChatPage struct {
+	Messages []ChatMessage `json:"messages"`
+	Earlier  int           `json:"earlier"`
+}
+
+// earlier returns up to limit messages just before the message before.
+func (m *chatManager) earlier(id, before string, limit int) (ChatPage, error) {
+	c, err := m.get(id)
+	if err != nil {
+		return ChatPage{}, err
+	}
+	if limit <= 0 || limit > chatMessageLimit {
+		limit = chatPage
+	}
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	end := -1
+	for i, message := range c.state.Messages {
+		if message.ID == before {
+			end = i
+			break
+		}
+	}
+	if end < 0 {
+		return ChatPage{}, errors.New("that message is no longer in the conversation")
+	}
+	start := max(0, end-limit)
+	return ChatPage{Messages: append([]ChatMessage{}, c.state.Messages[start:end]...), Earlier: start}, nil
 }
 func (m *chatManager) save(c *chatSession) error {
 	if m.dataDir == "" {
@@ -457,7 +516,7 @@ func (c *chatSession) boundMessages() {
 	for _, msg := range c.state.Messages {
 		size += len(msg.Text)
 	}
-	for len(c.state.Messages) > 500 || size > 2<<20 {
+	for len(c.state.Messages) > chatMessageLimit || size > chatTextLimit {
 		size -= len(c.state.Messages[0].Text)
 		c.state.Messages = c.state.Messages[1:]
 		c.state.Shortened = true

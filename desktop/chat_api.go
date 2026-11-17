@@ -108,7 +108,16 @@ func (a *App) ReadChat(id string, version int64) (ChatUpdate, error) {
 	}
 	// Each bound call runs on its own goroutine, so waiting here does not hold
 	// up other calls. The wait ends early when the app shuts down.
-	return a.chats.watch(a.ctx, id, version, 20*time.Second)
+	return a.chats.watch(a.ctx, id, version, 20*time.Second, chatPage)
+}
+
+// ChatEarlier returns up to limit messages before a message, for a window
+// that holds only the newest part of a long conversation.
+func (a *App) ChatEarlier(id, before string, limit int) (ChatPage, error) {
+	if err := a.chatReady(); err != nil {
+		return ChatPage{}, err
+	}
+	return a.chats.earlier(id, before, limit)
 }
 func (a *App) SendChat(id, text string) error {
 	if err := a.chatReady(); err != nil {

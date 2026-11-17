@@ -110,3 +110,71 @@ test(
     ).toBeVisible();
   },
 );
+
+test("older messages not loaded yet are read from the app on request", async () => {
+  const message = (i: number) => ({
+    id: `m${i}`,
+    role: i % 2 ? "assistant" : "user",
+    kind: "text",
+    text: `Message ${i}`,
+  });
+  // The window holds messages 30–49; the 30 before were left out.
+  const chat = {
+    id: "chat",
+    tool: "codex",
+    project: "/project",
+    title: "Long conversation",
+    status: "idle",
+    error: "",
+    messages: Array.from({ length: 20 }, (_, i) => message(i + 30)),
+    earlier: 30,
+    approvals: [],
+    shortened: false,
+    version: 1,
+    settings: { model: "", effort: "", configured: false },
+    reviewerSettings: { model: "", effort: "", configured: false },
+  } as unknown as ChatState;
+  const ChatEarlier = vi.fn(async () => ({
+    messages: Array.from({ length: 30 }, (_, i) => message(i)),
+    earlier: 0,
+  }));
+  window.go = {
+    main: {
+      App: {
+        ReadChat: async (_: string, version: number) =>
+          version < 1
+            ? { version: 1, state: chat }
+            : { version: 1, state: null },
+        ChatEarlier,
+        ChatChanges: async () => ({
+          available: true,
+          files: [],
+          added: 0,
+          removed: 0,
+        }),
+        ChatModels: async () => ({
+          models: [],
+          defaultModel: "",
+          defaultEffort: "",
+        }),
+      } as unknown as Backend,
+    },
+  };
+  render(
+    <ChatWorkspace
+      chat={chat}
+      active
+      reviewerAvailable={false}
+      onOpen={vi.fn()}
+      onSelect={vi.fn()}
+      onState={vi.fn()}
+    />,
+  );
+  await screen.findByText("Message 49");
+  await userEvent.click(
+    screen.getByRole("button", { name: /Show 30 earlier messages/ }),
+  );
+  expect(await screen.findByText("Message 0")).toBeVisible();
+  expect(ChatEarlier).toHaveBeenCalledWith("chat", "m30", 150);
+  expect(screen.queryByRole("button", { name: /earlier messages/ })).toBeNull();
+});

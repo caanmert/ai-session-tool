@@ -499,8 +499,31 @@ export default function DetailsPanel({
           className="button secondary reveal"
           title="Copies messages and the names of tool steps, without tool output"
           onClick={() => {
-            navigator.clipboard
-              .writeText(conversationMarkdown(chat))
+            // Older messages not loaded in the window are read first.
+            const text = (async () => {
+              let messages = chat.messages;
+              if (chat.earlier && messages[0]) {
+                const page = await api.ChatEarlier(
+                  chat.id,
+                  messages[0].id,
+                  chat.earlier,
+                );
+                messages = [...page.messages, ...messages];
+              }
+              return conversationMarkdown({ ...chat, messages });
+            })();
+            // WebKit lets a click write later only through a ClipboardItem.
+            const written =
+              typeof ClipboardItem !== "undefined" && navigator.clipboard.write
+                ? navigator.clipboard.write([
+                    new ClipboardItem({
+                      "text/plain": text.then(
+                        (t) => new Blob([t], { type: "text/plain" }),
+                      ),
+                    }),
+                  ])
+                : text.then((t) => navigator.clipboard.writeText(t));
+            written
               .then(() => setCopied("Copied"))
               .catch(() => setCopied("Copy failed"));
           }}

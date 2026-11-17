@@ -485,6 +485,8 @@ export type ChatState = {
   review?: ReviewState;
   updatedAt: string;
   shortened: boolean;
+  /** Older messages this read left out; ChatEarlier loads them. */
+  earlier?: number;
   closed?: boolean;
   version: number;
 };
@@ -500,6 +502,8 @@ export type ChatUpdate = {
   first?: string;
   count?: number;
 };
+/** Older messages of a conversation, and how many come before them. */
+export type ChatPage = { messages: ChatMessage[]; earlier: number };
 export type RunTask = {
   prompt: string;
   branch: string;
@@ -574,6 +578,7 @@ export interface Backend {
   ListSavedChats(): Promise<ChatSummary[]>;
   ReopenChat(id: string): Promise<ChatState>;
   ReadChat(id: string, version: number): Promise<ChatUpdate>;
+  ChatEarlier(id: string, before: string, limit: number): Promise<ChatPage>;
   SendChat(id: string, text: string): Promise<void>;
   SendChatWithImages(
     id: string,
@@ -755,6 +760,8 @@ export const api: Backend = {
   ListSavedChats: async () => backend().ListSavedChats(),
   ReopenChat: async (id) => backend().ReopenChat(id),
   ReadChat: async (id, version) => backend().ReadChat(id, version),
+  ChatEarlier: async (id, before, limit) =>
+    backend().ChatEarlier(id, before, limit),
   SendChat: async (id, text) => backend().SendChat(id, text),
   SendChatWithImages: async (id, text, images) =>
     backend().SendChatWithImages(id, text, images),
