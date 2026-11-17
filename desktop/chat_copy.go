@@ -185,7 +185,7 @@ func (m *chatManager) copyChanges(ctx context.Context, id string) (ReviewSnapsho
 	if copy == nil {
 		return ReviewSnapshot{}, errors.New("this conversation works in the project itself")
 	}
-	return captureReviewFrom(ctx, copy.Worktree, copy.Base)
+	return captureView(ctx, copy.Worktree, copy.Base)
 }
 
 // bringBack applies the copy's changes to the project as uncommitted changes.

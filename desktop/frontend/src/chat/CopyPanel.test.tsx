@@ -60,6 +60,30 @@ it("brings the copy's changes back after listing them", async () => {
   );
 });
 
+it("counts every file to bring back when the view left some out", async () => {
+  backend.CopyChanges.mockResolvedValueOnce({
+    root: "",
+    base: "",
+    hash: "",
+    diff: "",
+    warnings: ["Only the first 1 of 30 changed files are shown."],
+    files: [{ path: "a.ts", patch: "@@ -1 +1 @@\n-a\n+b\n" }],
+    total: 30,
+    partial: true,
+  });
+  render(
+    <CopyPanel chat={chat} busy={false} onDone={vi.fn()} onRemoved={vi.fn()} />,
+  );
+  await userEvent.click(
+    screen.getByRole("button", { name: "Bring changes back…" }),
+  );
+  const dialog = await screen.findByRole("dialog", {
+    name: "Bring 30 files back into the project?",
+  });
+  expect(within(dialog).getByText("a.ts")).toBeVisible();
+  expect(within(dialog).getByText("and 29 more")).toBeVisible();
+});
+
 it("asks again before discarding changes that were not brought back", async () => {
   backend.RemoveCopy.mockRejectedValueOnce(
     new Error(

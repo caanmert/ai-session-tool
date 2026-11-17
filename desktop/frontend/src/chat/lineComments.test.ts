@@ -50,6 +50,8 @@ describe("line comments", () => {
       isStale(comment, files(patch.replace("transient", "timeouts"))),
     ).toBe(true);
     expect(isStale(comment, { files: [] })).toBe(true);
+    // A partial view may have left the file out.
+    expect(isStale(comment, { files: [], partial: true })).toBe(false);
     // Unknown until the changes are read.
     expect(isStale(comment, undefined)).toBe(false);
   });

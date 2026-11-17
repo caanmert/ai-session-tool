@@ -825,7 +825,15 @@ try {
             added: 49,
             removed: 4,
           }),
-          ChatDiff: async () => snapshot,
+          // A file too large to show is listed above the diff.
+          ChatDiff: async () => ({
+            ...snapshot,
+            warnings: [
+              "fixtures/orders.json is larger than 512 KiB and is not shown.",
+            ],
+            total: 2,
+            partial: true,
+          }),
           TurnDiff: async () => snapshot,
           CopyChanges: async () => snapshot,
           BringBackCopy: async () => ["src/checkout.ts"],

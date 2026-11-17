@@ -58,11 +58,11 @@ func summarizeChangesFrom(ctx context.Context, dir, base string) ChangeSummary {
 	if _, err := reviewGit(ctx, root, "rev-parse", "--verify", base+"^{commit}"); err != nil {
 		return unavailable("Changes appear after the project's first commit.")
 	}
-	statuses, err := reviewGit(ctx, root, "diff", "--no-ext-diff", "--no-textconv", "--no-renames", "--name-status", "-z", base, "--")
+	statuses, err := listGit(ctx, root, "diff", "--no-ext-diff", "--no-textconv", "--no-renames", "--name-status", "-z", base, "--")
 	if err != nil {
 		return unavailable("Changes could not be read: " + err.Error())
 	}
-	counts, err := reviewGit(ctx, root, "diff", "--no-ext-diff", "--no-textconv", "--no-renames", "--numstat", "-z", base, "--")
+	counts, err := listGit(ctx, root, "diff", "--no-ext-diff", "--no-textconv", "--no-renames", "--numstat", "-z", base, "--")
 	if err != nil {
 		return unavailable("Changes could not be read: " + err.Error())
 	}
@@ -109,7 +109,7 @@ func summarizeChangesFrom(ctx context.Context, dir, base string) ChangeSummary {
 		file.Added, _ = strconv.Atoi(parts[0])
 		file.Removed, _ = strconv.Atoi(parts[1])
 	}
-	untracked, err := reviewGit(ctx, root, "ls-files", "--others", "--exclude-standard", "-z")
+	untracked, err := listGit(ctx, root, "ls-files", "--others", "--exclude-standard", "-z")
 	if err == nil {
 		filesystem, openErr := os.OpenRoot(root)
 		if openErr == nil {
@@ -181,7 +181,7 @@ func (m *chatManager) diff(ctx context.Context, id string) (ReviewSnapshot, erro
 	if project == "" {
 		return ReviewSnapshot{}, errors.New("this conversation has no project folder")
 	}
-	return captureReview(ctx, project)
+	return captureView(ctx, project, "HEAD")
 }
 
 // ChatChanges lists the uncommitted files in a conversation's project.

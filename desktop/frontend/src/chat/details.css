@@ -230,6 +230,18 @@
 .changes-dialog .details-note {
   padding: 16px 20px;
 }
+/* What the view left out, above the diff so it is seen first. */
+.changes-warnings {
+  flex: none;
+  max-height: 96px;
+  overflow-y: auto;
+  margin: 0;
+  padding: 8px 20px 8px 36px;
+  border-bottom: 1px solid var(--border);
+  font-size: var(--text-sm);
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
 
 /* Commit and pull request */
 .git-actions {

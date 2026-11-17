@@ -188,6 +188,10 @@ export type ReviewSnapshot = {
   diff: string;
   files: ReviewFile[];
   warnings: string[];
+  /** Every changed file, shown or not. */
+  total?: number;
+  /** A view that leaves changed files out; the warnings say which. */
+  partial?: boolean;
 };
 export type ChangedFile = {
   path: string;

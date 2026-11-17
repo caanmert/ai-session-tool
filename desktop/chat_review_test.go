@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -149,4 +150,61 @@ func TestReviewIsolatedDirectory(t *testing.T) {
 	if _, err := os.Stat(state.Project); !os.IsNotExist(err) {
 		t.Fatal("review directory leaked")
 	}
+}
+
+// Views show what fits and say what was left out; reviews refuse instead of
+// reviewing part of the changes.
+func TestViewIsPartialWhereReviewRefuses(t *testing.T) {
+	ctx := context.Background()
+	t.Run("many files", func(t *testing.T) {
+		dir := reviewRepo(t)
+		for i := range 120 {
+			writeReviewFile(t, dir, fmt.Sprintf("new-%03d.txt", i), "x\n")
+		}
+		if _, err := captureReview(ctx, dir); err == nil || !strings.Contains(err.Error(), "at most 100 changed files, and there are 121") {
+			t.Fatalf("review accepted too many files: %v", err)
+		}
+		view, err := captureView(ctx, dir, "HEAD")
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(view.Files) != 100 || view.Total != 121 || !view.Partial || view.Files[0].Path != "app.txt" {
+			t.Fatalf("unexpected view: %d files, total %d, partial %v", len(view.Files), view.Total, view.Partial)
+		}
+		if strings.Join(view.Warnings, "|") != "Only the first 100 of 121 changed files are shown." {
+			t.Fatalf("unexpected warnings %q", view.Warnings)
+		}
+	})
+	t.Run("large files", func(t *testing.T) {
+		dir := reviewRepo(t)
+		big := strings.Repeat("a line of text that repeats\n", 20000)
+		writeReviewFile(t, dir, "app.txt", big)
+		writeReviewFile(t, dir, "big-new.txt", big)
+		writeReviewFile(t, dir, "small.txt", "small\n")
+		if _, err := captureReview(ctx, dir); err == nil || !strings.Contains(err.Error(), "512 KiB") {
+			t.Fatalf("review accepted a large diff: %v", err)
+		}
+		view, err := captureView(ctx, dir, "HEAD")
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(view.Files) != 1 || view.Files[0].Path != "small.txt" || view.Total != 3 || !view.Partial {
+			t.Fatalf("unexpected view %+v %q %d", view.Files, view.Warnings, view.Total)
+		}
+		want := "app.txt has changes larger than 512 KiB and is not shown.|big-new.txt is larger than 512 KiB and is not shown."
+		if strings.Join(view.Warnings, "|") != want {
+			t.Fatalf("unexpected warnings %q", view.Warnings)
+		}
+	})
+	t.Run("no changes", func(t *testing.T) {
+		dir := reviewRepo(t)
+		writeReviewFile(t, dir, "app.txt", "before\n")
+		view, err := captureView(ctx, dir, "HEAD")
+		if err != nil || len(view.Files) != 0 || view.Total != 0 || view.Partial {
+			t.Fatalf("unexpected view %+v %v", view, err)
+		}
+		if _, err := captureReview(ctx, dir); err == nil {
+			t.Fatal("review of nothing accepted")
+		}
+	})
 }

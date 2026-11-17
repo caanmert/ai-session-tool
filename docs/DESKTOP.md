@@ -151,7 +151,9 @@ They demonstrate the layout, not output from a live model run.
   hidden until you show it again): the project's uncommitted files against the last commit, with
   added and removed line counts. Click a file or **Review all changes** to read the
   diff. Nothing is reverted from here. A folder that is not a Git repository
-  simply says so.
+  simply says so. With many changes, the diff shows the first 100 files and up
+  to 512 KiB, and says above it what was left out; a file too large to show is
+  skipped the same way.
 - **Motion.** Dialogs, menus, the details drawer, pages and new messages ease
   in over 200ms or less. With **Reduce motion** on in macOS Accessibility
   settings, the app does not animate.
@@ -532,7 +534,8 @@ single-use and expires after ten minutes. Already-sent findings cannot be sent
 again through the same review.
 
 Review requires a Git repository with an initial commit. Each snapshot is limited
-to 100 changed files and 512 KiB of diff text. Binary contents and non-regular
+to 100 changed files and 512 KiB of diff text; unlike reading the changes, a
+review is never partial, so larger changes are refused. Binary contents and non-regular
 untracked files are omitted with warnings; ignored files are excluded. Large
 changes must be narrowed first. Findings must reference files and visible lines
 in the snapshot, or use line zero for a file-level observation. Invalid reviewer

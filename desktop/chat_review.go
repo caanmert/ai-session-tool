@@ -32,7 +32,22 @@ type ReviewSnapshot struct {
 	Diff     string       `json:"diff"`
 	Files    []ReviewFile `json:"files"`
 	Warnings []string     `json:"warnings"`
+	// Total counts every changed file, shown or not.
+	Total int `json:"total"`
+	// Partial is set when a view leaves changed files out.
+	Partial bool `json:"partial,omitempty"`
 }
+
+func splitNames(raw []byte) []string {
+	names := []string{}
+	for _, name := range strings.Split(string(raw), "\x00") {
+		if name != "" {
+			names = append(names, name)
+		}
+	}
+	return names
+}
+
 type ReviewDraft struct {
 	ID       string         `json:"id"`
 	SourceID string         `json:"sourceId"`
@@ -58,20 +73,45 @@ type ReviewState struct {
 	Complete bool            `json:"complete"`
 }
 
-const reviewLimit = 512 * 1024
+const (
+	reviewLimit     = 512 * 1024
+	reviewFileLimit = 100
+	listLimit       = 16 << 20
+)
 
+// errTooLarge is a Git output over the review size limit.
+var errTooLarge = errors.New("diff exceeds the 512 KiB review limit; narrow the working-tree changes")
+
+// boundedOutput keeps at most limit bytes. The buffer is not embedded: its
+// ReadFrom would let io.Copy bypass Write and the limit.
 type boundedOutput struct {
-	bytes.Buffer
+	buf   bytes.Buffer
 	limit int
+	full  bool
 }
 
 func (b *boundedOutput) Write(p []byte) (int, error) {
-	if b.Len()+len(p) > b.limit {
-		return 0, errors.New("diff exceeds the 512 KiB review limit; narrow the working-tree changes")
+	if b.buf.Len()+len(p) > b.limit {
+		b.full = true
+		return 0, errTooLarge
 	}
-	return b.Buffer.Write(p)
+	return b.buf.Write(p)
 }
+
+func (b *boundedOutput) Bytes() []byte { return b.buf.Bytes() }
+
+// reviewGit runs Git for diff text, which is limited to 512 KiB.
 func reviewGit(ctx context.Context, dir string, args ...string) ([]byte, error) {
+	return boundedGit(ctx, dir, reviewLimit, args...)
+}
+
+// listGit runs Git for a list of files, which may be long in a project with
+// many changes.
+func listGit(ctx context.Context, dir string, args ...string) ([]byte, error) {
+	return boundedGit(ctx, dir, listLimit, args...)
+}
+
+func boundedGit(ctx context.Context, dir string, limit int, args ...string) ([]byte, error) {
 	cmd := exec.CommandContext(ctx, "git", append([]string{"--no-pager", "--literal-pathspecs", "-c", "core.fsmonitor=false", "-C", dir}, args...)...)
 	for _, entry := range os.Environ() {
 		name, _, _ := strings.Cut(entry, "=")
@@ -80,22 +120,40 @@ func reviewGit(ctx context.Context, dir string, args ...string) ([]byte, error) 
 		}
 		cmd.Env = append(cmd.Env, entry)
 	}
-	out := &boundedOutput{limit: reviewLimit}
+	out := &boundedOutput{limit: limit}
 	var stderr bytes.Buffer
 	cmd.Stdout = out
 	cmd.Stderr = &stderr
-	if err := cmd.Run(); err != nil {
+	err := cmd.Run()
+	if out.full {
+		// Git fails once its output is cut off; the size is the reason.
+		if limit != reviewLimit {
+			return nil, fmt.Errorf("git %s: the output is larger than %d MiB", args[0], limit>>20)
+		}
+		return nil, errTooLarge
+	}
+	if err != nil {
 		return nil, fmt.Errorf("git %s: %w: %s", args[0], err, shorten(stderr.String(), 2000))
 	}
 	return out.Bytes(), nil
 }
+
+// captureReview captures the uncommitted diff for a review. A review sees the
+// whole diff or nothing, so any limit is an error.
 func captureReview(ctx context.Context, dir string) (ReviewSnapshot, error) {
-	return captureReviewFrom(ctx, dir, "HEAD")
+	return captureChanges(ctx, dir, "HEAD", false)
 }
 
-// captureReviewFrom captures the working tree's diff against a commit,
-// including commits made on top of it.
-func captureReviewFrom(ctx context.Context, dir, from string) (ReviewSnapshot, error) {
+// captureView captures the diff for reading: what fits is shown, and
+// warnings say what was left out.
+func captureView(ctx context.Context, dir, from string) (ReviewSnapshot, error) {
+	return captureChanges(ctx, dir, from, true)
+}
+
+// captureChanges captures the working tree's diff against a commit, including
+// commits made on top of it. A partial capture skips what doesn't fit and
+// warns; otherwise every limit is an error.
+func captureChanges(ctx context.Context, dir, from string, partial bool) (ReviewSnapshot, error) {
 	raw, err := reviewGit(ctx, dir, "rev-parse", "--show-toplevel")
 	if err != nil {
 		return ReviewSnapshot{}, errors.New("review requires a Git working tree")
@@ -106,63 +164,89 @@ func captureReviewFrom(ctx context.Context, dir, from string) (ReviewSnapshot, e
 	if err != nil {
 		return ReviewSnapshot{}, errors.New("make an initial commit before reviewing working-tree changes")
 	}
-	names, err := reviewGit(ctx, root, "diff", "--no-ext-diff", "--no-textconv", "--no-renames", "--name-only", "-z", base, "--")
+	names, err := listGit(ctx, root, "diff", "--no-ext-diff", "--no-textconv", "--no-renames", "--name-only", "-z", base, "--")
 	if err != nil {
 		return ReviewSnapshot{}, err
 	}
-	snapshot := ReviewSnapshot{Root: root, Base: base, Files: []ReviewFile{}, Warnings: []string{}}
+	untracked, err := listGit(ctx, root, "ls-files", "--others", "--exclude-standard", "-z")
+	if err != nil {
+		return ReviewSnapshot{}, err
+	}
+	tracked, others := splitNames(names), splitNames(untracked)
+	snapshot := ReviewSnapshot{Root: root, Base: base, Files: []ReviewFile{}, Warnings: []string{}, Total: len(tracked) + len(others)}
+	warn := func(format string, args ...any) {
+		snapshot.Warnings = append(snapshot.Warnings, fmt.Sprintf(format, args...))
+	}
+	// skip leaves a file out of a partial view, or fails a review.
+	skip := func(err error, format string, args ...any) error {
+		if !partial {
+			return err
+		}
+		snapshot.Partial = true
+		warn(format, args...)
+		return nil
+	}
+	full := false // A partial view has no room for more files.
 	appendFile := func(path, patch string) error {
-		if len(snapshot.Files) >= 100 {
-			return errors.New("review is limited to 100 changed files")
-		}
-		if len(snapshot.Diff)+len(patch) > reviewLimit {
-			return errors.New("diff exceeds the 512 KiB review limit; narrow the working-tree changes")
-		}
-		if !utf8.ValidString(patch) {
-			return fmt.Errorf("%s has non-UTF-8 changes; review text files separately", path)
+		switch {
+		case len(snapshot.Files) >= reviewFileLimit:
+			full = true
+			return skip(fmt.Errorf("a review covers at most %d changed files, and there are %d. Commit some of them, or add generated files to .gitignore, then review again", reviewFileLimit, snapshot.Total),
+				"Only the first %d of %d changed files are shown.", reviewFileLimit, snapshot.Total)
+		case len(snapshot.Diff)+len(patch) > reviewLimit:
+			full = true
+			return skip(errTooLarge, "The changes are larger than 512 KiB, so only the first %d files are shown.", len(snapshot.Files))
+		case !utf8.ValidString(patch):
+			return skip(fmt.Errorf("%s has non-UTF-8 changes; review text files separately", path), "%s has non-UTF-8 changes and is not shown.", path)
 		}
 		snapshot.Files = append(snapshot.Files, ReviewFile{Path: path, Patch: patch})
 		snapshot.Diff += patch
 		return nil
 	}
-	for _, name := range strings.Split(string(names), "\x00") {
-		if name == "" {
-			continue
+	for _, name := range tracked {
+		if full {
+			break
 		}
 		patch, err := reviewGit(ctx, root, "diff", "--no-ext-diff", "--no-textconv", "--no-renames", "--unified=20", "--full-index", base, "--", name)
+		if errors.Is(err, errTooLarge) {
+			err = skip(err, "%s has changes larger than 512 KiB and is not shown.", name)
+			if err == nil {
+				continue
+			}
+		}
 		if err != nil {
 			return ReviewSnapshot{}, err
 		}
 		if bytes.Contains(patch, []byte("Binary files ")) {
-			snapshot.Warnings = append(snapshot.Warnings, "Binary contents omitted: "+name)
+			warn("Binary contents omitted: %s", name)
 		}
 		if err := appendFile(name, string(patch)); err != nil {
 			return ReviewSnapshot{}, err
 		}
-	}
-	untracked, err := reviewGit(ctx, root, "ls-files", "--others", "--exclude-standard", "-z")
-	if err != nil {
-		return ReviewSnapshot{}, err
 	}
 	filesystem, err := os.OpenRoot(root)
 	if err != nil {
 		return ReviewSnapshot{}, err
 	}
 	defer filesystem.Close()
-	for _, name := range strings.Split(string(untracked), "\x00") {
-		if name == "" {
-			continue
+	for _, name := range others {
+		if full {
+			break
 		}
 		info, err := filesystem.Lstat(name)
 		if err != nil {
 			return ReviewSnapshot{}, err
 		}
 		if !info.Mode().IsRegular() {
-			snapshot.Warnings = append(snapshot.Warnings, "Non-regular untracked file omitted: "+name)
+			warn("Non-regular untracked file omitted: %s", name)
 			continue
 		}
+		tooLarge := fmt.Errorf("untracked file %s exceeds the review size limit", name)
 		if info.Size() > reviewLimit {
-			return ReviewSnapshot{}, fmt.Errorf("untracked file %s exceeds the review size limit", name)
+			if err := skip(tooLarge, "%s is larger than 512 KiB and is not shown.", name); err != nil {
+				return ReviewSnapshot{}, err
+			}
+			continue
 		}
 		f, err := filesystem.Open(name)
 		if err != nil {
@@ -174,10 +258,13 @@ func captureReviewFrom(ctx context.Context, dir, from string) (ReviewSnapshot, e
 			return ReviewSnapshot{}, err
 		}
 		if len(content) > reviewLimit {
-			return ReviewSnapshot{}, errors.New("untracked file grew beyond the review size limit")
+			if err := skip(tooLarge, "%s is larger than 512 KiB and is not shown.", name); err != nil {
+				return ReviewSnapshot{}, err
+			}
+			continue
 		}
 		if bytes.IndexByte(content, 0) >= 0 || !utf8.Valid(content) {
-			snapshot.Warnings = append(snapshot.Warnings, "Binary untracked file omitted: "+name)
+			warn("Binary untracked file omitted: %s", name)
 			continue
 		}
 		lines := strings.Split(strings.TrimSuffix(string(content), "\n"), "\n")
@@ -195,7 +282,7 @@ func captureReviewFrom(ctx context.Context, dir, from string) (ReviewSnapshot, e
 			return ReviewSnapshot{}, err
 		}
 	}
-	if len(snapshot.Files) == 0 {
+	if len(snapshot.Files) == 0 && !partial {
 		return ReviewSnapshot{}, errors.New("there are no reviewable uncommitted changes")
 	}
 	data, _ := json.Marshal(snapshot)

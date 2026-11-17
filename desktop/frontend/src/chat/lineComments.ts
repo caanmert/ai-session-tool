@@ -76,11 +76,12 @@ export function quoteLines(
 /** True when a comment's lines no longer read the same in the changes. */
 export function isStale(
   comment: LineComment,
-  snapshot: Pick<ReviewSnapshot, "files"> | undefined,
+  snapshot: Pick<ReviewSnapshot, "files" | "partial"> | undefined,
 ) {
   if (!snapshot) return false;
   const file = snapshot.files.find((f) => f.path === comment.path);
-  if (!file) return true;
+  // A partial view may have left the file out; it is not known to be stale.
+  if (!file) return !snapshot.partial;
   const now = quoteLines(file.patch, comment.side, comment.start, comment.end);
   return !now || now.join("\n") !== comment.quote.join("\n");
 }
