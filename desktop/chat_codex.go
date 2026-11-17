@@ -39,6 +39,13 @@ func (m *chatManager) runCodex(ctx context.Context, c *chatSession, state ChatSt
 			}
 		}
 	}
+	// A conversation another Codex program has open would be refused; say so
+	// without starting Codex.
+	if state.SessionID != "" {
+		if holder := codexHolder(ctx, state.SessionID); holder != "" {
+			return "", openElsewhereIn(holder)
+		}
+	}
 	cmd := m.command("codex", "app-server", "--listen", "stdio://")
 	cmd.Dir = state.Project
 	p, err := startJSONProcess(ctx, cmd)

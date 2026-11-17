@@ -288,6 +288,26 @@ export default function ChatWorkspace({
     [state.id],
   );
   const queue = useQueuedMessage(state.id, state.status, sendQueued);
+  // Codex lets one program write to a conversation. While this one is shown
+  // and idle, check whether another program has it open: when it is shown,
+  // when a turn ends, when the window comes back, and on request.
+  const [holder, setHolder] = useState("");
+  const checkHolder = useCallback(() => {
+    if (state.tool !== "codex" || !state.sessionId || chatBusy(state.status)) {
+      setHolder("");
+      return;
+    }
+    api
+      .CodexHolder(state.id)
+      .then((name) => setHolder(name || ""))
+      .catch(() => setHolder(""));
+  }, [state.id, state.tool, state.sessionId, state.status]);
+  useEffect(() => {
+    if (!active) return;
+    checkHolder();
+    window.addEventListener("focus", checkHolder);
+    return () => window.removeEventListener("focus", checkHolder);
+  }, [active, checkHolder]);
   const [queueNote, setQueueNote] = useState("");
   // Details sit beside the conversation on wide windows and in a drawer below
   // 1200px. Reviews have their own fixed snapshot instead.
@@ -982,6 +1002,23 @@ export default function ChatWorkspace({
                   Discard
                 </button>
               </div>
+            </div>
+          )}
+          {!state.review && holder && (
+            <div className="holder-note" role="status">
+              <Icon name="alert" size={13} />
+              <span>
+                Open in {holder}. Codex lets only one program write to a
+                conversation at a time, so sending here fails until you close it
+                there.
+              </span>
+              <button
+                type="button"
+                className="text-button"
+                onClick={checkHolder}
+              >
+                Check again
+              </button>
             </div>
           )}
           {!state.review && queueNote && (

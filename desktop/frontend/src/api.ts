@@ -589,6 +589,8 @@ export interface Backend {
   ReopenChat(id: string): Promise<ChatState>;
   ReadChat(id: string, version: number): Promise<ChatUpdate>;
   ChatEarlier(id: string, before: string, limit: number): Promise<ChatPage>;
+  /** The other program holding a Codex conversation open; "" when none. */
+  CodexHolder(chatId: string): Promise<string>;
   SendChat(id: string, text: string): Promise<void>;
   SendChatWithImages(
     id: string,
@@ -772,6 +774,7 @@ export const api: Backend = {
   ReadChat: async (id, version) => backend().ReadChat(id, version),
   ChatEarlier: async (id, before, limit) =>
     backend().ChatEarlier(id, before, limit),
+  CodexHolder: async (chatId) => backend().CodexHolder(chatId),
   SendChat: async (id, text) => backend().SendChat(id, text),
   SendChatWithImages: async (id, text, images) =>
     backend().SendChatWithImages(id, text, images),

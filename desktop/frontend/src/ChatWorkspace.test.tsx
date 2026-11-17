@@ -97,6 +97,23 @@ function show() {
   );
 }
 describe("graphical conversations", () => {
+  it("says when another Codex program has the conversation open", async () => {
+    const holder = vi
+      .fn()
+      .mockResolvedValueOnce("the Codex app")
+      .mockResolvedValue("");
+    (backend as unknown as Record<string, unknown>).CodexHolder = holder;
+    show();
+    const note = await screen.findByText(/^Open in the Codex app\./);
+    expect(note).toHaveTextContent(
+      "sending here fails until you close it there",
+    );
+    expect(holder).toHaveBeenCalledWith("chat");
+    await userEvent.click(screen.getByRole("button", { name: "Check again" }));
+    await waitFor(() =>
+      expect(screen.queryByText(/^Open in the Codex app/)).toBeNull(),
+    );
+  });
   it("lists changed files beside the conversation and opens the diff on request", async () => {
     show();
     const panel = await screen.findByRole("complementary", {

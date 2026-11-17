@@ -142,6 +142,7 @@ beforeEach(() => {
     LiveSessions: vi.fn(),
     ReadChat: vi.fn(),
     ChatEarlier: vi.fn(),
+    CodexHolder: vi.fn().mockResolvedValue(""),
     SendChat: vi.fn(),
     SendChatWithImages: vi.fn(),
     StopChat: vi.fn(),
