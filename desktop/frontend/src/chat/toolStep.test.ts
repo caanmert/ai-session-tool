@@ -174,3 +174,34 @@ test("reads a compaction as one step with its note", () => {
     "The agent summarized the conversation.",
   ]);
 });
+
+test("names the server and tool of an MCP step", () => {
+  const claude = describeToolStep(
+    step(
+      "mcp__claude_ai_Gmail__search_threads",
+      { query: "invoice" },
+      "3 threads",
+    ),
+  );
+  expect([claude.verb, claude.target, claude.output]).toEqual([
+    "MCP",
+    "claude_ai_Gmail › search_threads",
+    "3 threads",
+  ]);
+  const codex = describeToolStep(
+    step("mcpToolCall", {
+      type: "mcpToolCall",
+      server: "linear",
+      tool: "list_issues",
+      arguments: { team: "web" },
+      result: { content: [{ type: "text", text: "2 issues" }] },
+    }),
+  );
+  expect([codex.verb, codex.target]).toEqual(["MCP", "linear › list_issues"]);
+  expect(codex.output).toContain('"2 issues"');
+  // Still running: no result yet.
+  expect(
+    describeToolStep(step("mcpToolCall", { server: "linear", tool: "x" }))
+      .output,
+  ).toBe("");
+});

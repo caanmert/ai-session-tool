@@ -310,6 +310,18 @@ export type WorkCopy = {
 export type SavedPrompt = { id: string; name: string; text: string };
 /** A conversation continued with the other agent, and its drafted first message. */
 export type HandOff = { chat: ChatState; prompt: string };
+/** One MCP server as the agent reports it. Never its command or URL. */
+export type AgentServer = {
+  name: string;
+  state: "connected" | "failed" | "needs-auth" | "pending" | "off" | "unknown";
+  /** The agent's own words for the state, or its error. */
+  detail?: string;
+  /** The server's tools, when the agent lists them (Codex). */
+  tools?: string[];
+  /** Tools left out of `tools`. */
+  more?: number;
+};
+export type AgentTools = { tool: string; servers: AgentServer[] };
 /** Turns added up: their count, time, reported tokens and cost estimate. */
 export type UsageTotals = {
   turns: number;
@@ -700,6 +712,9 @@ export interface Backend {
   CompactChat(chatId: string): Promise<void>;
   /** Adds up the turns saved over the last days. Only reads. */
   UsageHistory(days: number): Promise<UsageHistory>;
+  /** Asks the conversation's agent for its MCP servers in the project. This
+   * starts them, as a turn would; nothing is changed. */
+  AgentTools(chatId: string): Promise<AgentTools>;
   /** The commands the conversation's project offers. Only reads. */
   ProjectCommands(chatId: string): Promise<ProjectCommand[]>;
   /** Runs a command the user chose in the project folder. */
@@ -846,6 +861,7 @@ export const api: Backend = {
   ContinueChat: async (chatId) => backend().ContinueChat(chatId),
   CompactChat: async (chatId) => backend().CompactChat(chatId),
   UsageHistory: async (days) => backend().UsageHistory(days),
+  AgentTools: async (chatId) => backend().AgentTools(chatId),
   NewChatInCopy: async (project, tool) =>
     backend().NewChatInCopy(project, tool),
   CopyChanges: async (chatId) => backend().CopyChanges(chatId),

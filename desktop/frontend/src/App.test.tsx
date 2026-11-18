@@ -175,6 +175,7 @@ beforeEach(() => {
     HandOffChat: vi.fn(),
     ContinueChat: vi.fn(),
     CompactChat: vi.fn(),
+    AgentTools: vi.fn(),
     UsageHistory: vi.fn().mockResolvedValue({
       days: [],
       projects: [],
