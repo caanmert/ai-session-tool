@@ -874,3 +874,76 @@
   align-items: center;
   gap: 5px;
 }
+
+/* Agent tools: the agent's MCP servers, checked on request */
+.agent-tools .details-section {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.agent-tools .details-section .text-button {
+  margin: 0;
+  font-weight: 500;
+}
+.agent-servers {
+  display: grid;
+  gap: 2px;
+  margin: 6px 0 0;
+  padding: 0;
+  list-style: none;
+  font-size: var(--text-sm);
+}
+.agent-servers li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 2px 8px;
+  padding: 5px 0;
+  border-bottom: 1px solid var(--border-subtle);
+}
+.agent-server-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.agent-server-state {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  max-width: 160px;
+  overflow: hidden;
+  color: var(--muted);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+/* A long state, such as an error, gets its own line. */
+.agent-servers li.long .agent-server-state {
+  grid-column: 1 / -1;
+  max-width: none;
+  align-items: flex-start;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.agent-servers li.long .agent-server-state svg {
+  flex: none;
+  margin-top: 2px;
+}
+.agent-servers li.connected .agent-server-state svg {
+  color: var(--success);
+}
+.agent-servers li.failed .agent-server-state,
+.agent-servers li.needs-auth .agent-server-state {
+  color: var(--warning-text);
+}
+.agent-servers details {
+  grid-column: 1 / -1;
+  color: var(--muted);
+}
+.agent-servers summary {
+  cursor: pointer;
+  width: fit-content;
+}
+.agent-servers details p {
+  margin: 4px 0 2px;
+  overflow-wrap: anywhere;
+}

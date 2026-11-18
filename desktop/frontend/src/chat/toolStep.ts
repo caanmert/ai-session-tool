@@ -135,6 +135,21 @@ export function describeToolStep(
   if (/^(websearch|webfetch)$/.test(key))
     return view("search", "Web", text(input?.query) || text(input?.url));
   if (key === "file changes") return view("pencil", "Edit", "files");
+  // A tool from an MCP server: Claude Code names it mcp__<server>__<tool>,
+  // and Codex records the server and tool in the step itself.
+  const mcp = /^mcp__(.+?)__(.+)$/.exec(name);
+  if (mcp) return view("code", "MCP", `${mcp[1]} › ${mcp[2]}`);
+  if (key === "mcptoolcall" && input && text(input.tool)) {
+    const result = input.error ?? input.result;
+    return view("code", "MCP", `${text(input.server)} › ${text(input.tool)}`, {
+      output:
+        result === undefined || result === null
+          ? ""
+          : typeof result === "string"
+            ? result
+            : JSON.stringify(result, null, 2),
+    });
+  }
   if (key === "conversation compacted")
     return view("gauge", "Compacted", "the context");
   // A single word is a tool name; anything else is a command line (Codex).

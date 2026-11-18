@@ -190,6 +190,18 @@ They demonstrate the layout, not output from a live model run.
   **Send output to agent** puts the command, how it ended and the end of its
   output (last 120 lines, at most 8,000 characters) in the message box, after
   anything already there; nothing is sent until you send it.
+- **Agent tools** (in the details panel) shows the MCP servers the agent has in
+  this project and whether they work. Problems are listed first: connected,
+  failed, needs sign-in, waiting for approval, or off.
+  - Nothing is read until you choose **Check tools**. Checking starts the
+    servers, as a message would; it changes nothing.
+  - Claude Code is asked with `claude mcp list`. Codex is asked through its app
+    server, which also names each server's tools.
+  - Only names and states are shown, never a server's command, URL or
+    arguments, which can hold secrets.
+
+  In the conversation, a step that used an MCP tool reads as "MCP server ›
+  tool".
 - **Project instructions…** (in Session) lists the instruction files each agent
   reads for the project: `CLAUDE.md`, `.claude/CLAUDE.md` and `CLAUDE.local.md`
   for Claude Code and `AGENTS.md` for Codex, at the repository root, plus your

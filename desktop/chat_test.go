@@ -52,12 +52,39 @@ func TestAgentProcess(t *testing.T) {
 		result = `{"summary":"One issue","findings":[{"priority":"P2","file":"app.txt","line":1,"title":"Check result","body":"Handle the changed result."}]}`
 	}
 	messageID := fmt.Sprintf("message-%d", os.Getpid())
+	if provider == "claude" && cliArgs == "mcp list" {
+		require(mode == "tools", "unexpected mcp list")
+		fmt.Print("Checking MCP server health…\n\n" +
+			"github: npx -y @modelcontextprotocol/server-github --token SECRET - ✔ Connected\n" +
+			"claude.ai Google Drive: https://drive.mcp.example/mcp - ! Needs authentication\n" +
+			"plugin:engineering:google calendar: https://calendar.example/mcp (HTTP) - Not configured\n" +
+			"local-db: /usr/local/bin/db-mcp --dsn a-b - c - ✗ Failed to connect\n" +
+			"shared: node server.js - ⏸ Pending approval\n")
+		os.Exit(0)
+	}
 	if provider == "codex" {
 		init := read()
 		require(str(init["method"]) == "initialize", "expected initialize")
 		emit(map[string]any{"id": 1, "result": map[string]any{}})
 		require(str(read()["method"]) == "initialized", "expected initialized")
 
+		if str(object(object(init["params"])["clientInfo"])["name"]) == "ais_agent_tools" {
+			first := read()
+			require(str(first["method"]) == "mcpServerStatus/list" && str(object(first["params"])["detail"]) == "toolsAndAuthOnly", "expected an MCP status list")
+			emit(map[string]any{"method": "mcpServer/startupStatus/updated", "params": map[string]any{}})
+			emit(map[string]any{"id": 2, "result": map[string]any{"nextCursor": "page-2", "data": []any{
+				map[string]any{"name": "node_repl", "authStatus": "unsupported", "tools": map[string]any{"js": map[string]any{}, "eval": map[string]any{}}},
+				map[string]any{"name": "linear", "authStatus": "notLoggedIn", "tools": map[string]any{}},
+			}}})
+			second := read()
+			require(str(object(second["params"])["cursor"]) == "page-2", "expected the next page")
+			emit(map[string]any{"id": 3, "result": map[string]any{"data": []any{
+				map[string]any{"name": "broken", "authStatus": "unsupported", "tools": map[string]any{}, "toolsError": "spawn db-mcp: not found"},
+			}}})
+			for {
+				time.Sleep(time.Second)
+			}
+		}
 		if str(object(object(init["params"])["clientInfo"])["name"]) == "ais_model_picker" {
 			require(str(read()["method"]) == "config/read", "expected config read")
 			emit(map[string]any{"id": 2, "result": map[string]any{"config": map[string]any{"model": "model-a", "model_reasoning_effort": "medium"}}})

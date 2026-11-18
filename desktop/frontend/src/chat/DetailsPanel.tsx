@@ -18,6 +18,7 @@ import { busyChat } from "../shell/OpenSessions";
 import NewIssueDialog from "../github/NewIssueDialog";
 import InstructionsDialog from "./InstructionsDialog";
 import RunPanel from "./RunPanel";
+import AgentToolsSection from "./AgentTools";
 import ChangesDialog from "./ChangesDialog";
 import CopyPanel from "./CopyPanel";
 import {
@@ -459,6 +460,9 @@ export default function DetailsPanel({
           </section>
         )}
         {!chat.review && <RunPanel chatId={chat.id} onDraft={onDraft} />}
+        {!chat.review && (
+          <AgentToolsSection chatId={chat.id} tool={chat.tool} />
+        )}
         <h3 className="details-section">Session</h3>
         <dl className="details-facts">
           <div>

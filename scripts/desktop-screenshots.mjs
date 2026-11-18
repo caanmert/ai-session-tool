@@ -900,6 +900,33 @@ try {
           TurnDiff: async () => snapshot,
           // Set by the capture that shows a conversation open elsewhere.
           CodexHolder: async () => window.__aisHolder || "",
+          AgentTools: async () => ({
+            tool: "codex",
+            servers: [
+              {
+                name: "node_repl",
+                state: "connected",
+                detail: "4 tools",
+                tools: [
+                  "js",
+                  "js_add_node_module_dir",
+                  "js_reset",
+                  "js_status",
+                ],
+              },
+              { name: "linear", state: "needs-auth", detail: "Needs sign-in" },
+              {
+                name: "local-database-with-a-long-name",
+                state: "failed",
+                detail: "spawn db-mcp: No such file or directory",
+              },
+              {
+                name: "code-review",
+                state: "unknown",
+                detail: "No tools reported",
+              },
+            ],
+          }),
           CopyChanges: async () => snapshot,
           BringBackCopy: async () => ["src/checkout.ts"],
           RemoveCopy: async () => {},
@@ -1310,6 +1337,16 @@ try {
   await runPanel.scrollIntoViewIfNeeded();
   await checkContrast();
   await page.screenshot({ path: `${screenshots}/desktop-run${suffix}.png` });
+  // Agent tools: the agent's MCP servers, checked on request.
+  const agentTools = page.getByRole("region", { name: "Agent tools" });
+  await agentTools.getByRole("button", { name: "Check tools" }).click();
+  await agentTools.getByText("4 servers, 2 not working.").waitFor();
+  await agentTools.getByText("Tools", { exact: true }).click();
+  await agentTools.scrollIntoViewIfNeeded();
+  await checkContrast();
+  await page.screenshot({
+    path: `${screenshots}/desktop-agent-tools${suffix}.png`,
+  });
   // Comment on a changed line, then see it listed beside the conversation.
   await page
     .getByRole("complementary", { name: "Conversation details" })
