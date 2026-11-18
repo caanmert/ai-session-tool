@@ -310,6 +310,23 @@ export type WorkCopy = {
 export type SavedPrompt = { id: string; name: string; text: string };
 /** A conversation continued with the other agent, and its drafted first message. */
 export type HandOff = { chat: ChatState; prompt: string };
+/** Turns added up: their count, time, reported tokens and cost estimate. */
+export type UsageTotals = {
+  turns: number;
+  ms: number;
+  tokens: number;
+  costUsd: number;
+};
+/** The turns run in ais over a number of days, today included. */
+export type UsageHistory = {
+  /** Every day, oldest first, as YYYY-MM-DD in local time. */
+  days: (UsageTotals & { day: string })[];
+  /** By project folder, most time first. */
+  projects: (UsageTotals & { key: string })[];
+  /** By agent, most time first. */
+  agents: (UsageTotals & { key: string })[];
+  total: UsageTotals;
+};
 /** A command the project offers, such as a package script. */
 export type ProjectCommand = {
   label: string;
@@ -681,6 +698,8 @@ export interface Backend {
   ContinueChat(chatId: string): Promise<HandOff>;
   /** Asks the agent to summarize its history to free context. Starts a turn. */
   CompactChat(chatId: string): Promise<void>;
+  /** Adds up the turns saved over the last days. Only reads. */
+  UsageHistory(days: number): Promise<UsageHistory>;
   /** The commands the conversation's project offers. Only reads. */
   ProjectCommands(chatId: string): Promise<ProjectCommand[]>;
   /** Runs a command the user chose in the project folder. */
@@ -826,6 +845,7 @@ export const api: Backend = {
   HandOffChat: async (chatId) => backend().HandOffChat(chatId),
   ContinueChat: async (chatId) => backend().ContinueChat(chatId),
   CompactChat: async (chatId) => backend().CompactChat(chatId),
+  UsageHistory: async (days) => backend().UsageHistory(days),
   NewChatInCopy: async (project, tool) =>
     backend().NewChatInCopy(project, tool),
   CopyChanges: async (chatId) => backend().CopyChanges(chatId),

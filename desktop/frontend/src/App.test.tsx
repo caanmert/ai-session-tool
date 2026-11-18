@@ -175,6 +175,12 @@ beforeEach(() => {
     HandOffChat: vi.fn(),
     ContinueChat: vi.fn(),
     CompactChat: vi.fn(),
+    UsageHistory: vi.fn().mockResolvedValue({
+      days: [],
+      projects: [],
+      agents: [],
+      total: { turns: 0, ms: 0, tokens: 0, costUsd: 0 },
+    }),
     SavedPrompts: vi.fn().mockResolvedValue([]),
     NewChatInCopy: vi.fn(),
     CopyChanges: vi.fn(),
