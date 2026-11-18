@@ -9,7 +9,13 @@ import {
   type Snapshot,
 } from "../api";
 import AgentsMissing from "../shell/AgentsMissing";
-import { age, basename, sessionCost, sessionTokens } from "../ui/format";
+import {
+  age,
+  basename,
+  plural,
+  sessionCost,
+  sessionTokens,
+} from "../ui/format";
 import { SessionTags, SessionTitle } from "./SessionAnnotations";
 import MessageList from "../chat/MessageList";
 import { previewMessages } from "./previewMessages";
@@ -214,9 +220,7 @@ export function HistoryBrowser(props: HistoryProps) {
     <div className="session-workspace" hidden={hidden}>
       <section className="session-list" aria-label="Conversations">
         <div className="list-heading">
-          <span>
-            CONVERSATIONS <b>{sessions.length}</b>
-          </span>
+          <span>CONVERSATIONS</span>
           <label className="history-sort">
             <span className="sr-only">Sort conversations</span>
             <select
@@ -388,8 +392,10 @@ export function HistoryBrowser(props: HistoryProps) {
                 </button>
               </div>
               <div className="session-facts">
-                <span>{selected.userTurns} prompts</span>
-                <span>{selected.assistantTurns} replies</span>
+                <span>{plural(selected.userTurns, "prompt")}</span>
+                <span>
+                  {plural(selected.assistantTurns, "reply", "replies")}
+                </span>
                 <span>{sessionTokens(selected)} tokens</span>
                 {sessionCost(selected) && (
                   <span title="What this usage would cost at API list prices. A subscription is not billed this way.">
