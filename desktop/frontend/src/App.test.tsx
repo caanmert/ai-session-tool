@@ -176,6 +176,11 @@ beforeEach(() => {
     ContinueChat: vi.fn(),
     CompactChat: vi.fn(),
     AgentTools: vi.fn(),
+    Schedules: vi.fn().mockResolvedValue([]),
+    SaveSchedule: vi.fn(),
+    SetScheduleEnabled: vi.fn(),
+    DeleteSchedule: vi.fn(),
+    RunSchedule: vi.fn(),
     UsageHistory: vi.fn().mockResolvedValue({
       days: [],
       projects: [],

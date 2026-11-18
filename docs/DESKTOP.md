@@ -215,6 +215,24 @@ They demonstrate the layout, not output from a live model run.
   skills; choosing it puts its text in the message box to edit, with
   `{project}`, `{branch}` and `{changed files}` filled in. A few starters are
   offered until you first change the list.
+- **Scheduled tasks.** In Settings, a task sends a message to an agent at a set
+  time: every day, on weekdays or on one day of the week. Each run opens a new
+  conversation in the task's project, named after the task and marked
+  **Scheduled**, and a notification says it started (under your notification
+  settings).
+  - A task is created off. Turning it on asks first, and **Run now** runs it
+    once by hand.
+  - It runs in **Plan** mode unless you choose the agent's default mode (Ask
+    for Claude Code; for Codex, Default, which edits the project). Approvals
+    wait for you as in any conversation.
+  - Tasks run only while ais is open. A time that passes while ais is closed,
+    or that ais can't reach within ten minutes (for example while the Mac
+    sleeps), is shown as **Missed** and is not made up later, so opening ais
+    never starts a turn.
+  - A run is skipped, with the reason, when the previous run of the task is
+    still going or the agent can't start (for example, eight agents already
+    running).
+  - Tasks are kept in `desktop-schedules.json` in the ais data folder.
 - **Comment on changed lines.** In **Review all changes** (or a file's diff),
   click a line number to comment on it; shift-click another to include the
   lines between. Comments are listed under **Comments** in the details panel,

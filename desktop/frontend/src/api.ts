@@ -310,6 +310,28 @@ export type WorkCopy = {
 export type SavedPrompt = { id: string; name: string; text: string };
 /** A conversation continued with the other agent, and its drafted first message. */
 export type HandOff = { chat: ChatState; prompt: string };
+/** A saved prompt an agent is sent at a set time while ais is open. */
+export type Schedule = {
+  id: string;
+  name: string;
+  project: string;
+  tool: ToolName;
+  prompt: string;
+  /** "plan", or "" for the agent's default mode. */
+  mode: string;
+  /** daily, weekdays, or one weekday: mon … sun. */
+  days: string;
+  /** Local time of day, HH:MM. */
+  time: string;
+  enabled: boolean;
+  /** The scheduled time last considered, and what came of it. */
+  lastAt?: string;
+  lastResult?: "started" | "missed" | "skipped";
+  lastNote?: string;
+  lastChat?: string;
+  /** When it runs next, while on. */
+  next?: string;
+};
 /** One MCP server as the agent reports it. Never its command or URL. */
 export type AgentServer = {
   name: string;
@@ -523,6 +545,8 @@ export type ChatState = {
   continuedFrom?: string;
   /** Conversations that continue this one with the same agent. */
   continuedIn?: string[];
+  /** The scheduled task that opened this conversation. */
+  schedule?: string;
   /** Set when the conversation works in its own copy of the project. */
   copy?: WorkCopy;
   review?: ReviewState;
@@ -715,6 +739,14 @@ export interface Backend {
   /** Asks the conversation's agent for its MCP servers in the project. This
    * starts them, as a turn would; nothing is changed. */
   AgentTools(chatId: string): Promise<AgentTools>;
+  /** The scheduled tasks, with their next run. */
+  Schedules(): Promise<Schedule[]>;
+  /** Adds a task, off, or changes one. Never turns a task on. */
+  SaveSchedule(task: Schedule): Promise<Schedule>;
+  SetScheduleEnabled(id: string, enabled: boolean): Promise<void>;
+  DeleteSchedule(id: string): Promise<void>;
+  /** Runs a task now: opens its conversation and sends its message. */
+  RunSchedule(id: string): Promise<ChatState>;
   /** The commands the conversation's project offers. Only reads. */
   ProjectCommands(chatId: string): Promise<ProjectCommand[]>;
   /** Runs a command the user chose in the project folder. */
@@ -784,6 +816,14 @@ declare global {
   }
 }
 
+/** Calls back with the conversation a scheduled task just opened. */
+export function onScheduleStarted(callback: (chat: ChatState) => void) {
+  const off = window.runtime?.EventsOn?.("schedule:started", (chat) => {
+    const state = chat as ChatState | undefined;
+    if (state && typeof state.id === "string" && state.id) callback(state);
+  });
+  return () => off?.();
+}
 /** Calls back with a conversation's ID when its notification is clicked. */
 export function onNotificationOpen(callback: (chatId: string) => void) {
   const off = window.runtime?.EventsOn?.("notification:open", (chatId) => {
@@ -862,6 +902,12 @@ export const api: Backend = {
   CompactChat: async (chatId) => backend().CompactChat(chatId),
   UsageHistory: async (days) => backend().UsageHistory(days),
   AgentTools: async (chatId) => backend().AgentTools(chatId),
+  Schedules: async () => backend().Schedules(),
+  SaveSchedule: async (task) => backend().SaveSchedule(task),
+  SetScheduleEnabled: async (id, enabled) =>
+    backend().SetScheduleEnabled(id, enabled),
+  DeleteSchedule: async (id) => backend().DeleteSchedule(id),
+  RunSchedule: async (id) => backend().RunSchedule(id),
   NewChatInCopy: async (project, tool) =>
     backend().NewChatInCopy(project, tool),
   CopyChanges: async (chatId) => backend().CopyChanges(chatId),

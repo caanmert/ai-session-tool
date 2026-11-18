@@ -34,6 +34,12 @@ type App struct {
 	notify func(title, body, chat string)
 	// promptsPath holds the saved prompts; see prompts.go.
 	promptsPath string
+	// schedules runs scheduled tasks while the app is open; see schedules.go.
+	schedules     *scheduler
+	scheduleError error
+	stopSchedules context.CancelFunc
+	// emit sends an event to the window; replaced in tests.
+	emit func(name string, data any)
 }
 
 func NewApp() *App {
@@ -90,9 +96,24 @@ func (a *App) startup(ctx context.Context) {
 	a.promptsPath = filepath.Join(dataDir, "desktop-prompts.json")
 	a.chatError = a.chats.load()
 	a.runs = runner.New(filepath.Join(dataDir, "runs"))
+	if a.emit == nil {
+		a.emit = func(name string, data any) { wailsruntime.EventsEmit(ctx, name, data) }
+	}
+	a.schedules = newScheduler(filepath.Join(dataDir, "desktop-schedules.json"), time.Now)
+	a.schedules.busy = a.chats.chatBusy
+	a.schedules.run = a.startSchedule
+	a.scheduleError = a.schedules.load()
+	if a.chatError == nil && a.scheduleError == nil {
+		var scheduleCtx context.Context
+		scheduleCtx, a.stopSchedules = context.WithCancel(ctx)
+		go a.schedules.loop(scheduleCtx)
+	}
 }
 
 func (a *App) shutdown(context.Context) {
+	if a.stopSchedules != nil {
+		a.stopSchedules()
+	}
 	a.terminals.close()
 	if a.chats != nil {
 		a.chats.close()
