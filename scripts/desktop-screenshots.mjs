@@ -1211,7 +1211,7 @@ try {
   await checkContrast();
   await page.screenshot({ path: `${screenshots}/desktop-pulls${suffix}.png` });
   // Usage limits page, also at the smallest window.
-  await page.getByRole("button", { name: "Usage limits", exact: true }).click();
+  await page.getByRole("button", { name: "Usage", exact: true }).click();
   await page.getByRole("meter", { name: "Codex: Weekly" }).waitFor();
   await checkContrast();
   await page.screenshot({ path: `${screenshots}/desktop-usage${suffix}.png` });
@@ -1443,6 +1443,22 @@ try {
   await runPanel.scrollIntoViewIfNeeded();
   await checkContrast();
   await page.screenshot({ path: `${screenshots}/desktop-run${suffix}.png` });
+  // The details panel's less frequent actions are in two menus.
+  const detailsPanel = page.getByRole("complementary", {
+    name: "Conversation details",
+  });
+  await detailsPanel
+    .getByRole("button", { name: "Continue" })
+    .scrollIntoViewIfNeeded();
+  await detailsPanel.getByRole("button", { name: "Continue" }).click();
+  await detailsPanel
+    .getByRole("menuitem", { name: /Continue in a new conversation/ })
+    .waitFor();
+  await checkContrast();
+  await page.screenshot({
+    path: `${screenshots}/desktop-details-actions${suffix}.png`,
+  });
+  await page.keyboard.press("Escape");
   // A guided task: the plan is ready, and the user reads it before the
   // other agent builds it.
   await page.evaluate(() => {
@@ -1487,6 +1503,7 @@ try {
   await strip.waitFor({ state: "detached" });
   // Agent tools: the agent's MCP servers, checked on request.
   const agentTools = page.getByRole("region", { name: "Agent tools" });
+  await agentTools.getByRole("button", { name: "Agent tools section" }).click();
   await agentTools.getByRole("button", { name: "Check tools" }).click();
   await agentTools.getByText("4 servers, 2 not working.").waitFor();
   await agentTools.getByText("Tools", { exact: true }).click();
@@ -1568,7 +1585,8 @@ try {
   });
   await copyPanel.waitFor({ state: "detached" });
   // Project instructions: each agent's files, editable in the project.
-  await page.getByRole("button", { name: /Project instructions/ }).click();
+  await page.getByRole("button", { name: "More actions" }).click();
+  await page.getByRole("menuitem", { name: /Project instructions/ }).click();
   const instructions = page.getByRole("dialog", {
     name: "Project instructions",
   });
@@ -1729,6 +1747,16 @@ try {
   await checkContrast();
   if (await page.evaluate(() => document.body.scrollWidth > innerWidth))
     throw Error("The board overflows the minimum window");
+  // Every column fits beside the others; none is cut off at the edge.
+  const clipped = await page.evaluate(() => {
+    const columns = document.querySelector(".board-columns");
+    const edge = columns.getBoundingClientRect().right;
+    return [...columns.querySelectorAll(".task-card")]
+      .filter((card) => card.getBoundingClientRect().right > edge + 1)
+      .map((card) => card.textContent.slice(0, 40));
+  });
+  if (clipped.length)
+    throw Error(`Board cards cut off at 960×640: ${JSON.stringify(clipped)}`);
   await page.screenshot({
     path: join(tmpdir(), `ais-board-small${suffix}.png`),
   });
@@ -1850,7 +1878,7 @@ try {
   await page
     .getByRole("button", { name: "Close Review with Claude Code", exact: true })
     .click();
-  await page.getByRole("button", { name: "Saved workspace" }).click();
+  await page.getByRole("button", { name: "Saved work" }).click();
   await page.getByLabel("Saved work type").selectOption("reviews");
   await page
     .getByRole("button", { name: "Reopen Review with Claude Code" })
@@ -1876,11 +1904,11 @@ try {
   });
   await page.keyboard.press("Escape");
   await page
-    .getByRole("button", { name: "Saved workspace" })
+    .getByRole("button", { name: "Saved work" })
     .waitFor({ state: "visible" });
   if (await page.getByRole("dialog").count())
     throw Error("Escape did not close the saved workspace");
-  await page.getByRole("button", { name: "Saved workspace" }).click();
+  await page.getByRole("button", { name: "Saved work" }).click();
   await page.getByLabel("Saved work type").selectOption("reviews");
   await page
     .getByRole("button", { name: "Reopen Review with Claude Code" })

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import AgentMark from "../AgentMark";
 import {
   notificationsEnabled,
@@ -44,6 +44,7 @@ export default function Settings({
   projects = [],
   project = "",
   onOpenChat,
+  focusSection,
 }: {
   appearance: AppearanceControl;
   tools: Tool[];
@@ -55,15 +56,18 @@ export default function Settings({
   project?: string;
   /** Opens a conversation, such as one a scheduled task started. */
   onOpenChat?: (chatId: string) => void;
+  /** A section to scroll to, such as "schedules", with a changing key. */
+  focusSection?: { id: string; at: number };
 }) {
   const [notify, setNotify] = useState(notificationsEnabled);
   const [needsOnly, setNeedsOnly] = useState(notifyOnlyWhenNeeded);
   const [notifyError, setNotifyError] = useState("");
   return (
     <div className="settings" role="region" aria-label="Settings">
-      <section>
+      <SettingsIndex focus={focusSection} />
+      <section aria-labelledby="settings-look">
         {/* The control below carries the "Appearance" label. */}
-        <h2>Look</h2>
+        <h2 id="settings-look">Look</h2>
         <div className="setting-group">
           <AppearanceSetting {...appearance} />
           <p className="setting-note">
@@ -177,7 +181,7 @@ export default function Settings({
                 </span>
               ) : tool.available ? (
                 <span className="chip status found">
-                  <Icon name="check" size={12} /> Found
+                  <Icon name="check" size={12} /> Installed
                 </span>
               ) : (
                 <span className="chip status error">
@@ -226,5 +230,72 @@ export default function Settings({
         </p>
       </section>
     </div>
+  );
+}
+
+/** Settings' sections, in page order, for the index and for ⌘K. */
+export const SETTINGS_SECTIONS: [string, string][] = [
+  ["look", "Look"],
+  ["notifications", "Notifications"],
+  ["agents", "Agents"],
+  ["skills", "Skills"],
+  ["prompts", "Saved prompts"],
+  ["schedules", "Scheduled tasks"],
+  ["shortcuts", "Keyboard shortcuts"],
+  ["data", "Your data"],
+];
+
+function sectionElement(id: string) {
+  return document.getElementById(`settings-${id}`)?.closest("section");
+}
+
+/**
+ * Links to each section of Settings at the top of the page. The section in
+ * view is marked as it scrolls, and ⌘K can open a section directly.
+ */
+function SettingsIndex({ focus }: { focus?: { id: string; at: number } }) {
+  const [current, setCurrent] = useState("look");
+  useEffect(() => {
+    if (!focus) return;
+    sectionElement(focus.id)?.scrollIntoView?.({ block: "start" });
+    setCurrent(focus.id);
+  }, [focus]);
+  // The current section is the last one whose heading has reached the
+  // top of the page, just under the index.
+  useEffect(() => {
+    const page = document.querySelector<HTMLElement>(".settings");
+    if (!page) return;
+    const mark = () => {
+      const top = page.getBoundingClientRect().top + 90;
+      let at = SETTINGS_SECTIONS[0][0];
+      for (const [id] of SETTINGS_SECTIONS) {
+        const el = sectionElement(id);
+        if (el && el.getBoundingClientRect().top <= top) at = id;
+      }
+      // At the bottom, the last section counts even if its heading is lower.
+      if (page.scrollTop + page.clientHeight >= page.scrollHeight - 2)
+        at = SETTINGS_SECTIONS.at(-1)![0];
+      setCurrent(at);
+    };
+    page.addEventListener("scroll", mark, { passive: true });
+    return () => page.removeEventListener("scroll", mark);
+  }, []);
+  return (
+    <nav className="settings-index" aria-label="Settings sections">
+      {SETTINGS_SECTIONS.map(([id, label]) => (
+        <a
+          key={id}
+          href={`#settings-${id}`}
+          aria-current={current === id ? "true" : undefined}
+          onClick={(e) => {
+            e.preventDefault();
+            sectionElement(id)?.scrollIntoView?.({ block: "start" });
+            setCurrent(id);
+          }}
+        >
+          {label}
+        </a>
+      ))}
+    </nav>
   );
 }

@@ -7,6 +7,38 @@
 .settings > section {
   max-width: 720px;
   margin-top: 26px;
+  /* Leaves room for the index when a section is scrolled to. */
+  scroll-margin-top: 52px;
+}
+/* Links to each section, kept at the top while the page scrolls. */
+.settings-index {
+  position: sticky;
+  top: -6px;
+  z-index: 2;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  max-width: 720px;
+  margin: 0 -8px;
+  padding: 8px;
+  background: var(--canvas);
+  border-bottom: 1px solid var(--border-subtle);
+}
+.settings-index a {
+  padding: 4px 9px;
+  border-radius: var(--radius-pill);
+  color: var(--muted);
+  font-size: var(--text-sm);
+  text-decoration: none;
+}
+.settings-index a:hover {
+  background: var(--surface-hover);
+  color: var(--text);
+}
+.settings-index a[aria-current="true"] {
+  background: var(--selected);
+  color: var(--text);
+  font-weight: 600;
 }
 .settings h2 {
   margin-bottom: 10px;
