@@ -177,6 +177,10 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+/* Names and paths keep the code font; counts use the interface font. */
+.details-facts dd.mono {
   font-family: var(--font-mono);
 }
 .button .count {
@@ -946,4 +950,55 @@
 .agent-servers details p {
   margin: 4px 0 2px;
   overflow-wrap: anywhere;
+}
+
+/* Sections that fold, remembered across conversations */
+.fold-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.fold-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0 0 0 -4px;
+  padding: 2px 4px;
+  border: 0;
+  border-radius: var(--radius-control);
+  background: none;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+.fold-toggle:hover {
+  background: var(--surface-hover);
+}
+.fold-toggle svg {
+  color: var(--muted);
+  transition: transform 120ms ease;
+}
+.fold-toggle[aria-expanded="true"] svg {
+  transform: rotate(90deg);
+}
+
+/* Less frequent actions, in two menus */
+.details-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 18px;
+}
+.details-actions .button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.details-menu .popover-panel {
+  min-width: 270px;
+}
+.details-menu.end .popover-panel {
+  left: auto;
+  right: -6px;
 }

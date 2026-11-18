@@ -25,7 +25,12 @@ beforeEach(() => {
 });
 
 test("asks the agent only when asked, problems first", async () => {
+  window.localStorage.clear();
   render(<AgentToolsSection chatId="chat" tool="codex" />);
+  // Folded at first; opening it still asks nothing.
+  await userEvent.click(
+    screen.getByRole("button", { name: "Agent tools section" }),
+  );
   expect(backend.AgentTools).not.toHaveBeenCalled();
   expect(
     screen.getByText(
@@ -56,6 +61,13 @@ test("says when there are none, or the check failed", async () => {
     .mockRejectedValueOnce(
       new Error("Claude Code did not list its MCP servers in time"),
     );
+  window.localStorage.clear();
+  const view = render(<AgentToolsSection chatId="chat" tool="claude" />);
+  await userEvent.click(
+    screen.getByRole("button", { name: "Agent tools section" }),
+  );
+  // Opened once, it stays open.
+  view.unmount();
   render(<AgentToolsSection chatId="chat" tool="claude" />);
   await userEvent.click(screen.getByRole("button", { name: "Check tools" }));
   expect(

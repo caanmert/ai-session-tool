@@ -54,10 +54,13 @@ test("copies the conversation as Markdown", async () => {
     value: { writeText },
   });
   render(panel());
+  await userEvent.click(screen.getByRole("button", { name: "More actions" }));
   await userEvent.click(
-    screen.getByRole("button", { name: "Copy as Markdown" }),
+    screen.getByRole("menuitem", { name: "Copy as Markdown" }),
   );
   expect(writeText).toHaveBeenCalledTimes(1);
   expect(writeText.mock.calls[0][0]).toContain("Claude Code · /work/checkout");
-  expect(await screen.findByText("Copied")).toBeVisible();
+  expect(
+    await screen.findByText("Copied the conversation as Markdown."),
+  ).toBeVisible();
 });
