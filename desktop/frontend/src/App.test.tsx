@@ -1202,7 +1202,11 @@ describe("desktop workflows", () => {
     });
     render(<App />);
     await screen.findByRole("heading", { name: "Retry webhook delivery" });
-    expect(backend.UsageLimits).toHaveBeenCalledWith(false);
+    // The first read starts on its own, a moment after the app shows, and
+    // does not force a refresh.
+    await waitFor(() =>
+      expect(backend.UsageLimits).toHaveBeenCalledWith(false),
+    );
     await userEvent.click(
       await screen.findByRole("button", {
         name: "Claude Code: Session 40%. Open usage limits",
