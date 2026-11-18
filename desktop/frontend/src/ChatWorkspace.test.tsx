@@ -668,6 +668,39 @@ describe("graphical conversations", () => {
     );
   });
 
+  it("shows a guided task's steps above its conversation", async () => {
+    state.pipeline = {
+      id: "pl-1",
+      step: "plan",
+      task: "Fix checkout",
+      planner: "codex",
+      builder: "claude",
+    };
+    backend.PipelineView = vi.fn().mockResolvedValue({
+      id: "pl-1",
+      task: "Fix checkout",
+      project: "/project",
+      planner: "codex",
+      builder: "claude",
+      planChat: "chat",
+      plan: "1. Retry",
+      step: "planned",
+    });
+    render(
+      <ChatWorkspace chat={state} active reviewerAvailable {...handlers} />,
+    );
+    const strip = await screen.findByRole("region", { name: "Guided task" });
+    expect(
+      await within(strip).findByRole("button", {
+        name: "Build with Claude Code…",
+      }),
+    ).toBeVisible();
+    expect(within(strip).getByText("Plan · Codex")).toHaveAttribute(
+      "aria-current",
+      "step",
+    );
+  });
+
   it("links a conversation continued afresh both ways", async () => {
     state.continuedFrom = "earlier";
     state.continuedIn = ["later"];

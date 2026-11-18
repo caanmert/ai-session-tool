@@ -310,6 +310,38 @@ export type WorkCopy = {
 export type SavedPrompt = { id: string; name: string; text: string };
 /** A conversation continued with the other agent, and its drafted first message. */
 export type HandOff = { chat: ChatState; prompt: string };
+/** A conversation's part in a guided task. */
+export type PipelineLink = {
+  id: string;
+  step: "plan" | "build";
+  task: string;
+  planner: ToolName;
+  builder: ToolName;
+  plan?: string;
+  build?: string;
+  planChat?: string;
+};
+/** A guided task as it stands, worked out from its conversations. */
+export type Pipeline = {
+  id: string;
+  task: string;
+  project: string;
+  planner: ToolName;
+  builder: ToolName;
+  planChat: string;
+  buildChat?: string;
+  reviewChat?: string;
+  plan?: string;
+  step:
+    | "planning"
+    | "unplanned"
+    | "planned"
+    | "building"
+    | "built"
+    | "reviewing"
+    | "reviewed";
+  findings?: number;
+};
 /** A saved prompt an agent is sent at a set time while ais is open. */
 export type Schedule = {
   id: string;
@@ -547,6 +579,8 @@ export type ChatState = {
   continuedIn?: string[];
   /** The scheduled task that opened this conversation. */
   schedule?: string;
+  /** Ties the conversation to a guided task: plan, build, review. */
+  pipeline?: PipelineLink;
   /** Set when the conversation works in its own copy of the project. */
   copy?: WorkCopy;
   review?: ReviewState;
@@ -739,6 +773,16 @@ export interface Backend {
   /** Asks the conversation's agent for its MCP servers in the project. This
    * starts them, as a turn would; nothing is changed. */
   AgentTools(chatId: string): Promise<AgentTools>;
+  /** Starts a guided task: the planner plans it in Plan mode. */
+  StartPipeline(
+    project: string,
+    task: string,
+    planner: ToolName,
+  ): Promise<ChatState>;
+  /** Where a guided task stands. Only reads. */
+  PipelineView(id: string): Promise<Pipeline>;
+  /** Gives the plan to the other agent in a new conversation and starts it. */
+  BuildPipeline(id: string, plan: string): Promise<ChatState>;
   /** The scheduled tasks, with their next run. */
   Schedules(): Promise<Schedule[]>;
   /** Adds a task, off, or changes one. Never turns a task on. */
@@ -902,6 +946,10 @@ export const api: Backend = {
   CompactChat: async (chatId) => backend().CompactChat(chatId),
   UsageHistory: async (days) => backend().UsageHistory(days),
   AgentTools: async (chatId) => backend().AgentTools(chatId),
+  StartPipeline: async (project, task, planner) =>
+    backend().StartPipeline(project, task, planner),
+  PipelineView: async (id) => backend().PipelineView(id),
+  BuildPipeline: async (id, plan) => backend().BuildPipeline(id, plan),
   Schedules: async () => backend().Schedules(),
   SaveSchedule: async (task) => backend().SaveSchedule(task),
   SetScheduleEnabled: async (id, enabled) =>

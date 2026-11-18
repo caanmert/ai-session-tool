@@ -279,6 +279,12 @@ func claudeRequest(ctx context.Context, c *chatSession, p *jsonProcess, v jsonOb
 	if option, ok := claudeSuggestionOption(suggestions); ok {
 		view.Options = []ApprovalOption{option}
 	}
+	// In a guided task's plan, the plan is kept for the other agent to build
+	// and the planner stays in plan mode: leaving it is refused.
+	if name == "ExitPlanMode" && !review && c.keepPlan(str(input["plan"])) {
+		respond(map[string]any{"behavior": "deny", "message": "The plan is saved. I will review it, and another agent will build it, so stop here without changing anything."})
+		return
+	}
 	if name == "ExitPlanMode" {
 		view.Title = "Approve this plan?"
 		view.Plan = str(input["plan"])

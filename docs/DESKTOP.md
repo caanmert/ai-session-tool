@@ -174,6 +174,23 @@ They demonstrate the layout, not output from a live model run.
   Choosing another conversation replaces the focused pane, and the × in a
   pane's header closes the pane (the conversation stays open). Narrower
   windows show the focused pane; the split returns when the window widens.
+- **Plan, build, review** (in New task, with both agents installed) runs one
+  task across both agents. Each step starts only when you click it.
+  1. **Plan.** The agent you choose plans the task in Plan mode and changes
+     nothing. If Claude Code asks to leave plan mode, ais keeps its plan and
+     refuses the request, so the planner never starts building. Codex's plan is
+     its reply.
+  2. **Build.** **Build with …** shows the plan to read and edit. **Start the
+     build** opens a conversation with the other agent and sends it the task
+     and the plan; its edits and commands ask you as usual.
+  3. **Review.** When the build ends, **Review with …** in the build
+     conversation opens the usual review of the uncommitted changes, by the
+     agent that planned. Send the findings you agree with back to the builder
+     from the review.
+
+  A strip above each of these conversations shows the steps, links them, and
+  says what the task is waiting for. Committing and opening a pull request
+  stay yours.
 - **Continue with Codex / Claude Code** (in the details panel) opens a new
   conversation with the other agent in the same project. Its message box holds
   a summary of this one, ready to edit: your messages, the agent's last reply

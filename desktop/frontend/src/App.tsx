@@ -50,7 +50,7 @@ function boardSummary(chats: ChatState[]) {
   return `${count("running", "stopping")} working · ${count("waiting")} need you · ${chats.length} open`;
 }
 
-type AgentChoice = ToolName | "both";
+type AgentChoice = ToolName | "both" | "pipeline";
 
 /**
  * The agent for a new task, as a radio group: one row per choice, arrow keys
@@ -74,7 +74,12 @@ function AgentChoices({
       id: name as AgentChoice,
       enabled: tools.some((t) => t.name === name && t.available),
     })),
-    ...(both ? [{ id: "both" as AgentChoice, enabled: true }] : []),
+    ...(both
+      ? [
+          { id: "both" as AgentChoice, enabled: true },
+          { id: "pipeline" as AgentChoice, enabled: true },
+        ]
+      : []),
   ];
   const group = useRef<HTMLDivElement>(null);
   function move(by: number) {
@@ -104,7 +109,7 @@ function AgentChoices({
             data-choice={id}
             aria-checked={checked}
             tabIndex={checked ? 0 : -1}
-            className={`agent-option ${id === "both" ? "compare" : ""} ${checked ? "selected" : ""}`}
+            className={`agent-option ${id === "both" || id === "pipeline" ? "compare" : ""} ${checked ? "selected" : ""}`}
             disabled={!enabled || disabled}
             onClick={() => onChoose(id)}
             onKeyDown={(e) => {
@@ -114,7 +119,7 @@ function AgentChoices({
               e.preventDefault();
             }}
           >
-            {id === "both" ? (
+            {id === "both" || id === "pipeline" ? (
               <span className="compare-marks" aria-hidden="true">
                 <AgentMark tool="claude" dot />
                 <AgentMark tool="codex" dot />
@@ -124,14 +129,20 @@ function AgentChoices({
             )}
             <span className="agent-option-text">
               <strong>
-                {id === "both" ? "Both, compared" : toolLabel(id)}
+                {id === "both"
+                  ? "Both, compared"
+                  : id === "pipeline"
+                    ? "Plan, build, review"
+                    : toolLabel(id)}
               </strong>
               <small>
                 {id === "both"
                   ? "Each in its own worktree"
-                  : enabled
-                    ? "Ready"
-                    : "Not installed"}
+                  : id === "pipeline"
+                    ? "One plans, the other builds, then a review"
+                    : enabled
+                      ? "Ready"
+                      : "Not installed"}
               </small>
             </span>
             <span className="radio-dot" aria-hidden="true" />
@@ -268,6 +279,9 @@ export default function App() {
   const [newCompare, setNewCompare] = useState(false);
   // Start the conversation in its own copy (Git worktree) of the project.
   const [newCopy, setNewCopy] = useState(false);
+  // A guided task: one agent plans, the other builds, then a review.
+  const [newPipeline, setNewPipeline] = useState(false);
+  const [newPlanner, setNewPlanner] = useState<ToolName>("claude");
   const searchInput = useRef<HTMLInputElement>(null);
   const [showPalette, setShowPalette] = useState(false);
   const sessionRows = useRef<HTMLDivElement>(null);
@@ -921,6 +935,22 @@ export default function App() {
     setBusy(true);
     setError("");
     try {
+      if (fresh && newPipeline) {
+        const plan = await api.StartPipeline(
+          newProject,
+          newMessage.trim(),
+          newPlanner,
+        );
+        setNewMessage("");
+        setChats((items) =>
+          items.some((item) => item.id === plan.id) ? items : [...items, plan],
+        );
+        setActiveChat(plan.id);
+        setPage("history");
+        setShowRuns(false);
+        setShowNew(false);
+        return;
+      }
       if (fresh && newCompare) {
         const started = await api.StartComparison(
           newProject,
@@ -985,7 +1015,7 @@ export default function App() {
   const canStart =
     !!newProject &&
     !!snapshot?.projects.find((p) => p.path === newProject && p.available) &&
-    (newCompare
+    (newCompare || newPipeline
       ? bothAgents && !!newMessage.trim()
       : !!snapshot?.tools.find((t) => t.name === newTool && t.available));
 
@@ -1388,18 +1418,32 @@ export default function App() {
             </span>
             <AgentChoices
               tools={snapshot?.tools || []}
-              chosen={newCompare ? "both" : newTool}
+              chosen={newPipeline ? "pipeline" : newCompare ? "both" : newTool}
               both={bothAgents}
               disabled={busy}
               onChoose={(choice) => {
-                if (choice === "both") setNewCompare(true);
-                else {
+                setNewCompare(choice === "both");
+                setNewPipeline(choice === "pipeline");
+                if (choice !== "both" && choice !== "pipeline")
                   setNewTool(choice);
-                  setNewCompare(false);
-                }
               }}
             />
-            {!newCompare && (
+            {newPipeline && (
+              <label className="new-task-planner">
+                <span>Plans</span>
+                <select
+                  value={newPlanner}
+                  disabled={busy}
+                  onChange={(e) => setNewPlanner(e.target.value as ToolName)}
+                >
+                  <option value="claude">
+                    Claude Code plans, Codex builds
+                  </option>
+                  <option value="codex">Codex plans, Claude Code builds</option>
+                </select>
+              </label>
+            )}
+            {!newCompare && !newPipeline && (
               <label className="new-task-copy">
                 <input
                   type="checkbox"
@@ -1430,13 +1474,17 @@ export default function App() {
               </div>
             )}
             <p className="new-task-note">
-              {newCompare
+              {newPipeline
                 ? newMessage.trim()
-                  ? "Both agents start on this task, each in its own Git worktree and branch from the last commit. Uncommitted changes in the project are not included, and nothing reaches it until you choose a version."
-                  : "Describe the task to compare. Both agents get the same text."
-                : newMessage.trim()
-                  ? "The agent starts working as soon as you start the task."
-                  : "Leave the task empty to open the conversation and write your message there. Nothing is sent until you do."}
+                  ? `${toolLabel(newPlanner)} starts planning in Plan mode and changes nothing. You read the plan before ${toolLabel(newPlanner === "claude" ? "codex" : "claude")} builds it, and every step waits for you.`
+                  : "Describe the task to plan. The planner gets it first."
+                : newCompare
+                  ? newMessage.trim()
+                    ? "Both agents start on this task, each in its own Git worktree and branch from the last commit. Uncommitted changes in the project are not included, and nothing reaches it until you choose a version."
+                    : "Describe the task to compare. Both agents get the same text."
+                  : newMessage.trim()
+                    ? "The agent starts working as soon as you start the task."
+                    : "Leave the task empty to open the conversation and write your message there. Nothing is sent until you do."}
             </p>
             <button
               className="button accent start-session"
@@ -1445,11 +1493,13 @@ export default function App() {
             >
               {busy
                 ? "Starting…"
-                : newCompare
-                  ? "Start comparison"
-                  : newMessage.trim()
-                    ? "Start task"
-                    : "Start in app"}
+                : newPipeline
+                  ? "Start planning"
+                  : newCompare
+                    ? "Start comparison"
+                    : newMessage.trim()
+                      ? "Start task"
+                      : "Start in app"}
               {!busy && newMessage.trim() && <kbd>⌘⏎</kbd>}
               <Icon name="arrow" size={17} />
             </button>

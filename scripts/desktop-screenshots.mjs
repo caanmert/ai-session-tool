@@ -900,6 +900,16 @@ try {
           TurnDiff: async () => snapshot,
           // Set by the capture that shows a conversation open elsewhere.
           CodexHolder: async () => window.__aisHolder || "",
+          PipelineView: async (id) => ({
+            id,
+            task: "Make checkout retries safe",
+            project: "/projects/checkout",
+            planner: "codex",
+            builder: "claude",
+            planChat: window.__aisDemo.source.id,
+            plan: "1. Wrap the charge call in src/checkout.ts with retry(), reusing one idempotency key.\n2. Retry only timeouts and 5xx responses; return declines at once.\n3. Add tests for a timeout, a decline and three failures in test/checkout.test.ts.\n4. Run npm test.",
+            step: "planned",
+          }),
           AgentTools: async () => ({
             tool: "codex",
             servers: [
@@ -1300,7 +1310,7 @@ try {
       wrapped: names.some((name) => name.getBoundingClientRect().height > 24),
     };
   });
-  if (choices.sideways || choices.wrapped || choices.count !== 3)
+  if (choices.sideways || choices.wrapped || choices.count !== 4)
     throw Error(`New task agent choices: ${JSON.stringify(choices)}`);
   await resize(1360, 900);
   await page.keyboard.press("Escape");
@@ -1433,6 +1443,48 @@ try {
   await runPanel.scrollIntoViewIfNeeded();
   await checkContrast();
   await page.screenshot({ path: `${screenshots}/desktop-run${suffix}.png` });
+  // A guided task: the plan is ready, and the user reads it before the
+  // other agent builds it.
+  await page.evaluate(() => {
+    const source = window.__aisDemo.source;
+    source.pipeline = {
+      id: "pl-demo",
+      step: "plan",
+      task: "Make checkout retries safe",
+      planner: "codex",
+      builder: "claude",
+    };
+    source.version++;
+  });
+  const strip = page.getByRole("region", { name: "Guided task" });
+  await strip
+    .getByRole("button", { name: "Build with Claude Code…" })
+    .waitFor();
+  await checkContrast();
+  await page.screenshot({
+    path: `${screenshots}/desktop-pipeline-strip${suffix}.png`,
+  });
+  await strip.getByRole("button", { name: "Build with Claude Code…" }).click();
+  await strip.getByRole("textbox").waitFor();
+  await checkContrast();
+  await page.screenshot({
+    path: `${screenshots}/desktop-pipeline${suffix}.png`,
+  });
+  await resize(960, 640);
+  const stripOverflow = await strip.evaluate(
+    (el) => el.scrollWidth > el.clientWidth + 1,
+  );
+  if (stripOverflow) throw Error("The guided task strip overflows at 960×640");
+  await page.screenshot({
+    path: join(tmpdir(), `ais-pipeline-small${suffix}.png`),
+  });
+  await resize(1360, 900);
+  await strip.getByRole("button", { name: "Cancel" }).click();
+  await page.evaluate(() => {
+    delete window.__aisDemo.source.pipeline;
+    window.__aisDemo.source.version++;
+  });
+  await strip.waitFor({ state: "detached" });
   // Agent tools: the agent's MCP servers, checked on request.
   const agentTools = page.getByRole("region", { name: "Agent tools" });
   await agentTools.getByRole("button", { name: "Check tools" }).click();

@@ -13,7 +13,6 @@ import (
 	"unicode/utf8"
 
 	"github.com/caanmert/ai-session-tool/internal/application"
-	"github.com/caanmert/ai-session-tool/internal/launch"
 	"github.com/google/uuid"
 )
 
@@ -490,11 +489,7 @@ func (a *App) DeleteSchedule(id string) error {
 // startSchedule is the scheduler's way to run a task: it checks the agent
 // can start in the project, opens the conversation and tells the window.
 func (a *App) startSchedule(task Schedule) (string, error) {
-	cmd, err := a.service.NewSession(task.Tool, task.Project)
-	if err != nil {
-		return "", err
-	}
-	if err = launch.Check(cmd); err != nil {
+	if err := a.checkAgent(task.Tool, task.Project); err != nil {
 		return "", err
 	}
 	state, err := a.chats.runSchedule(task)

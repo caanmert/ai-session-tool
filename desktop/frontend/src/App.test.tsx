@@ -177,6 +177,9 @@ beforeEach(() => {
     CompactChat: vi.fn(),
     AgentTools: vi.fn(),
     Schedules: vi.fn().mockResolvedValue([]),
+    StartPipeline: vi.fn(),
+    PipelineView: vi.fn(),
+    BuildPipeline: vi.fn(),
     SaveSchedule: vi.fn(),
     SetScheduleEnabled: vi.fn(),
     DeleteSchedule: vi.fn(),
@@ -481,10 +484,15 @@ describe("desktop workflows", () => {
     expect(claude).toHaveFocus();
     await userEvent.keyboard("{ArrowRight}");
     expect(both).toHaveAttribute("aria-checked", "true");
+    const pipeline = within(group).getByRole("radio", {
+      name: "Plan, build, review One plans, the other builds, then a review",
+    });
+    await userEvent.keyboard("{ArrowDown}");
+    expect(pipeline).toHaveAttribute("aria-checked", "true");
     await userEvent.keyboard("{ArrowDown}");
     expect(codex).toHaveAttribute("aria-checked", "true");
     await userEvent.keyboard("{ArrowUp}");
-    expect(both).toHaveAttribute("aria-checked", "true");
+    expect(pipeline).toHaveAttribute("aria-checked", "true");
     expect(codex).toHaveAttribute("aria-checked", "false");
   });
   it("keeps the task as a draft when the first message cannot be sent", async () => {
@@ -916,6 +924,80 @@ describe("desktop workflows", () => {
     expect(within(dialog).getByLabelText("Project")).toHaveValue("/demo/docs");
     expect(backend.NewChat).not.toHaveBeenCalled();
     expect(backend.SendChat).not.toHaveBeenCalled();
+  });
+  it("starts a guided task from New task: the chosen agent plans", async () => {
+    const plan = {
+      ...live,
+      id: "plan-chat",
+      tool: "codex" as const,
+      title: "Plan: Add a greeting",
+      mode: "plan",
+      pipeline: {
+        id: "pl-1",
+        step: "plan" as const,
+        task: "Add a greeting",
+        planner: "codex" as const,
+        builder: "claude" as const,
+      },
+    };
+    backend.StartPipeline = vi.fn().mockResolvedValue(plan);
+    backend.PipelineView = vi.fn().mockResolvedValue({
+      id: "pl-1",
+      task: "Add a greeting",
+      project: "/demo/docs",
+      planner: "codex",
+      builder: "claude",
+      planChat: "plan-chat",
+      step: "planning",
+    });
+    backend.ReadChat = vi.fn(async (_id: string, version: number) => ({
+      version: 1,
+      state: version === 1 ? null : plan,
+    }));
+    render(<App />);
+    await screen.findByRole("heading", { name: "Retry webhook delivery" });
+    fireEvent.keyDown(document, { key: "n", metaKey: true });
+    const dialog = await screen.findByRole("dialog");
+    await userEvent.selectOptions(
+      within(dialog).getByLabelText("Project"),
+      "/demo/docs",
+    );
+    await userEvent.click(
+      within(dialog).getByRole("radio", { name: /Plan, build, review/ }),
+    );
+    expect(
+      within(dialog).getByRole("button", { name: /Start planning/ }),
+    ).toBeDisabled();
+    await userEvent.selectOptions(
+      within(dialog).getByLabelText("Plans"),
+      "codex",
+    );
+    await userEvent.type(
+      within(dialog).getByLabelText("Task"),
+      "Add a greeting",
+    );
+    expect(
+      within(dialog).getByText(/Codex starts planning in Plan mode/),
+    ).toBeVisible();
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: /Start planning/ }),
+    );
+    expect(backend.StartPipeline).toHaveBeenCalledWith(
+      "/demo/docs",
+      "Add a greeting",
+      "codex",
+    );
+    expect(backend.NewChat).not.toHaveBeenCalled();
+    // The plan conversation opens; its steps show inside it.
+    const sidebar = screen.getByRole("navigation", {
+      name: "Open conversations",
+    });
+    expect(
+      await within(sidebar).findByText("Plan: Add a greeting"),
+    ).toBeVisible();
+    expect(
+      screen.getByRole("region", { name: "Chat conversation" }),
+    ).toBeVisible();
   });
   it("starts a comparison of both agents from New task", async () => {
     const side = (id: string, tool: "claude" | "codex") => ({

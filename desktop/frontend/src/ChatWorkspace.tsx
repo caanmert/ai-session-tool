@@ -21,6 +21,7 @@ import { conversationStatus, requestSummary } from "./chat/conversation";
 import FindBar from "./chat/FindBar";
 import { useQueuedMessage } from "./chat/queuedMessage";
 import ContextMeter, { contextFill } from "./chat/ContextMeter";
+import PipelineStrip from "./chat/PipelineStrip";
 import Popover from "./ui/Popover";
 import { revealAround } from "./ui/Foldable";
 import { useNarrow } from "./ui/useNarrow";
@@ -731,6 +732,22 @@ export default function ChatWorkspace({
             )}
           </div>
         </header>
+        {state.pipeline && (
+          <PipelineStrip
+            chat={state}
+            active={active}
+            onSelect={onSelect}
+            onOpen={onOpen}
+            onReview={
+              reviewerAvailable && !busy
+                ? () =>
+                    void perform(async () =>
+                      setDraft(await api.PrepareReview(state.id)),
+                    )
+                : undefined
+            }
+          />
+        )}
         {(error || state.error) && (
           <div className="notice error" role="alert">
             <span>{error || state.error}</span>
