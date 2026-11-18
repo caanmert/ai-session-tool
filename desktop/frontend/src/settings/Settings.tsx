@@ -10,6 +10,7 @@ import { AppearanceSetting, type AppearanceControl } from "../Appearance";
 import Icon from "../Icon";
 import SkillsSection from "./SkillsSection";
 import SavedPromptsSection from "./SavedPromptsSection";
+import SchedulesSection from "./SchedulesSection";
 import { type Project, toolLabel, type AgentHealth, type Tool } from "../api";
 
 const install: Record<string, string> = {
@@ -42,6 +43,7 @@ export default function Settings({
   onCheck,
   projects = [],
   project = "",
+  onOpenChat,
 }: {
   appearance: AppearanceControl;
   tools: Tool[];
@@ -51,6 +53,8 @@ export default function Settings({
   /** For the Skills section: which project's skills to list. */
   projects?: Project[];
   project?: string;
+  /** Opens a conversation, such as one a scheduled task started. */
+  onOpenChat?: (chatId: string) => void;
 }) {
   const [notify, setNotify] = useState(notificationsEnabled);
   const [needsOnly, setNeedsOnly] = useState(notifyOnlyWhenNeeded);
@@ -192,6 +196,12 @@ export default function Settings({
       <SkillsSection tools={tools} projects={projects} project={project} />
 
       <SavedPromptsSection />
+
+      <SchedulesSection
+        tools={tools}
+        projects={projects}
+        onOpenChat={onOpenChat}
+      />
 
       <section aria-labelledby="settings-shortcuts">
         <h2 id="settings-shortcuts">Keyboard shortcuts</h2>

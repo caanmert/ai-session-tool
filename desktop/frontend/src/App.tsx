@@ -40,6 +40,7 @@ import {
   type AnnotationChange,
   type AgentHealth,
   onNotificationOpen,
+  onScheduleStarted,
 } from "./api";
 
 function boardSummary(chats: ChatState[]) {
@@ -358,6 +359,29 @@ export default function App() {
   };
   useEffect(
     () => onNotificationOpen((chatId) => openFromBanner.current(chatId)),
+    [],
+  );
+  // A scheduled task opened a conversation: list it without switching to it,
+  // and say so if nobody is looking.
+  useEffect(
+    () =>
+      onScheduleStarted((chat) => {
+        setChats((items) =>
+          items.some((item) => item.id === chat.id) ? items : [...items, chat],
+        );
+        if (!document.hasFocus())
+          for (const notice of wantedNotices([
+            {
+              title: chat.title,
+              body: `Scheduled task started with ${toolLabel(chat.tool)}`,
+              chatId: chat.id,
+              needsYou: false,
+            },
+          ]))
+            api
+              .Notify(notice.title, notice.body, notice.chatId)
+              .catch(() => {});
+      }),
     [],
   );
   function chatClosed(id: string) {
@@ -1241,6 +1265,7 @@ export default function App() {
             checking={loading}
             projects={snapshot?.projects || []}
             project={project}
+            onOpenChat={(chatId) => openFromBanner.current(chatId)}
             onCheck={() => {
               void refresh();
               checkHealth();

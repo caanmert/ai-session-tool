@@ -621,6 +621,15 @@ export default function ChatWorkspace({
               {state.activeModel && !state.review && (
                 <span className="chat-meta">{state.activeModel}</span>
               )}
+              {state.schedule && (
+                <span
+                  className="chip outline"
+                  title={`Opened by the scheduled task “${state.schedule}”`}
+                >
+                  <Icon name="clock" size={12} />
+                  Scheduled
+                </span>
+              )}
               {state.copy && (
                 <span
                   className="chip copy"

@@ -259,3 +259,66 @@
 .setting-check input:disabled + span {
   color: var(--muted);
 }
+
+/* Scheduled tasks */
+.schedule-list li {
+  grid-template-columns: auto minmax(0, 1fr) auto auto auto;
+  align-items: flex-start;
+}
+.schedule-list li > div span {
+  display: block;
+  white-space: normal;
+}
+.schedule-form select {
+  min-height: 32px;
+  padding: 5px 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-control);
+  background: var(--canvas);
+  color: var(--text);
+  font: inherit;
+  font-size: var(--text-md);
+}
+.schedule-form .schedule-project {
+  overflow: visible;
+}
+/* Long option text must not widen the form. */
+.schedule-fields > label {
+  min-width: 0;
+}
+.schedule-fields select,
+.schedule-fields input {
+  width: 100%;
+  min-width: 0;
+}
+.schedule-list li > div .text-button {
+  display: inline;
+  margin: 0;
+  padding: 0;
+}
+.schedule-list .schedule-miss {
+  color: var(--warning-text);
+}
+.schedule-switch {
+  display: flex;
+  padding-top: 2px;
+}
+.schedule-switch input {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  accent-color: var(--brand);
+}
+.schedule-fields {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 10px;
+}
+.schedule-project {
+  display: flex;
+  gap: 6px;
+}
+.schedule-project select {
+  flex: 1;
+  min-width: 0;
+}

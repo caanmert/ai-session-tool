@@ -944,6 +944,46 @@ try {
             },
           ],
           SetSavedPrompts: async () => {},
+          Schedules: async () => {
+            const at = (days, hour) => {
+              const d = new Date();
+              d.setDate(d.getDate() + days);
+              d.setHours(hour, 0, 0, 0);
+              return d.toISOString();
+            };
+            return [
+              {
+                id: "evening",
+                name: "Evening review",
+                project: "/projects/checkout",
+                tool: "codex",
+                prompt: "Review today's uncommitted changes for bugs.",
+                mode: "plan",
+                days: "weekdays",
+                time: "18:00",
+                enabled: true,
+                next: at(1, 18),
+                lastAt: at(-1, 18),
+                lastResult: "started",
+                lastChat: "fixture-chat",
+              },
+              {
+                id: "deps",
+                name: "Dependency updates",
+                project: "/projects/checkout",
+                tool: "claude",
+                prompt: "Check for dependency updates and list them.",
+                mode: "plan",
+                days: "mon",
+                time: "09:00",
+                enabled: true,
+                next: at(5, 9),
+                lastAt: at(-2, 9),
+                lastResult: "missed",
+                lastNote: "ais was not open.",
+              },
+            ];
+          },
           PrepareReview: async () => ({
             id: "draft",
             sourceId: "chat",
@@ -1018,6 +1058,62 @@ try {
   await page.screenshot({
     path: `${screenshots}/desktop-prompts${suffix}.png`,
   });
+  // Scheduled tasks, below the saved prompts.
+  const schedules = page.getByRole("region", { name: "Scheduled tasks" });
+  await schedules.getByText("Dependency updates", { exact: true }).waitFor();
+  await schedules.scrollIntoViewIfNeeded();
+  const schedulesContrast = await page.evaluate(contrastFailures);
+  if (schedulesContrast.length)
+    throw Error(
+      `Scheduled tasks contrast: ${JSON.stringify(schedulesContrast)}`,
+    );
+  await page.screenshot({
+    path: `${screenshots}/desktop-schedules${suffix}.png`,
+  });
+  // The form for a new task, at the smallest window too.
+  await schedules.getByRole("button", { name: "New task" }).click();
+  await schedules.getByRole("textbox", { name: "Name" }).fill("Nightly tests");
+  const scheduleForm = schedules.locator(".schedule-form");
+  await scheduleForm.scrollIntoViewIfNeeded();
+  const formContrast = await page.evaluate(contrastFailures);
+  if (formContrast.length)
+    throw Error(`Schedule form contrast: ${JSON.stringify(formContrast)}`);
+  await page.screenshot({
+    path: `${screenshots}/desktop-schedule-form${suffix}.png`,
+  });
+  await resize(960, 640);
+  const formOverflow = await page.evaluate(() => {
+    const form = document.querySelector(".schedule-form");
+    const settings = document.querySelector(".settings");
+    const wide = [...form.querySelectorAll("*")]
+      .filter(
+        (el) =>
+          el.getBoundingClientRect().right >
+          form.getBoundingClientRect().right + 1,
+      )
+      .map(
+        (el) =>
+          `${el.tagName}.${el.className} ${Math.round(el.getBoundingClientRect().right)}`,
+      );
+    return form.scrollWidth > form.clientWidth + 1 ||
+      settings.scrollWidth > settings.clientWidth + 1
+      ? {
+          form: [form.scrollWidth, form.clientWidth],
+          settings: [settings.scrollWidth, settings.clientWidth],
+          wide,
+        }
+      : null;
+  });
+  if (formOverflow)
+    throw Error(
+      `The schedule form overflows at 960×640: ${JSON.stringify(formOverflow)}`,
+    );
+  await page.screenshot({
+    path: join(tmpdir(), `ais-schedule-form-small${suffix}.png`),
+  });
+  await resize(1360, 900);
+  await schedules.getByRole("button", { name: "Cancel" }).click();
+  await scheduleForm.waitFor({ state: "detached" });
   await page.getByRole("button", { name: /^History/ }).click();
   await page
     .getByRole("heading", { name: "Make checkout retries safe" })
