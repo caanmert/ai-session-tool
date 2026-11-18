@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import Icon from "../Icon";
+import { FoldHeading, useFold } from "./Fold";
 import {
   api,
   errorText,
@@ -124,93 +125,98 @@ export default function RunPanel({
     }
   }
   const outcome = run && runOutcome(run);
+  const [open, toggle] = useFold("run", true);
   return (
     <section className="run-panel" aria-label="Run a command">
-      <h3 className="details-section">Run</h3>
-      {commands.length > 0 && (
-        <div
-          className="run-commands"
-          role="group"
-          aria-label="Project commands"
-        >
-          {commands.map((c) => (
-            <button
-              key={c.source + c.command}
-              className="run-chip"
-              title={`${c.command} (from ${c.source})`}
-              aria-pressed={command === c.command}
-              disabled={running}
-              onClick={() => setCommand(c.command)}
+      <FoldHeading title="Run" open={open} onToggle={toggle} />
+      {open && (
+        <>
+          {commands.length > 0 && (
+            <div
+              className="run-commands"
+              role="group"
+              aria-label="Project commands"
             >
-              {c.label}
-            </button>
-          ))}
-        </div>
-      )}
-      <form
-        className="run-form"
-        onSubmit={(e) => {
-          e.preventDefault();
-          void start();
-        }}
-      >
-        <input
-          aria-label="Command to run in the project folder"
-          placeholder={
-            commands.length
-              ? "Choose above or type a command"
-              : "Type a command"
-          }
-          value={command}
-          spellCheck={false}
-          disabled={running}
-          onChange={(e) => setCommand(e.target.value)}
-        />
-        {running ? (
-          <button
-            type="button"
-            className="button secondary"
-            onClick={() => void stop()}
-          >
-            <Icon name="stop" size={13} /> Stop
-          </button>
-        ) : (
-          <button
-            type="submit"
-            className="button secondary"
-            disabled={!command.trim() || starting}
-          >
-            <Icon name="play" size={13} /> Run
-          </button>
-        )}
-      </form>
-      {error && (
-        <p className="details-note error" role="alert">
-          {error}
-        </p>
-      )}
-      {run && (
-        <div className="run-result">
-          <p
-            className={`run-status ${run.running ? "running" : run.exitCode === 0 && !run.stopped ? "ok" : "failed"}`}
-            role="status"
-          >
-            <code>{run.command}</code> · {outcome}
-          </p>
-          <pre ref={output} className="run-output" aria-label="Output">
-            {run.shortened && "[Earlier output is not kept]\n"}
-            {run.output || (run.running ? "" : "No output.")}
-          </pre>
-          {!run.running && onDraft && (
-            <button
-              className="button secondary run-send"
-              title="Put the command, how it ended and the end of its output in the message box. Nothing is sent."
-              onClick={() => onDraft(runMessage(run))}
-            >
-              <Icon name="message" size={13} /> Send output to agent
-            </button>
+              {commands.map((c) => (
+                <button
+                  key={c.source + c.command}
+                  className="run-chip"
+                  title={`${c.command} (from ${c.source})`}
+                  aria-pressed={command === c.command}
+                  disabled={running}
+                  onClick={() => setCommand(c.command)}
+                >
+                  {c.label}
+                </button>
+              ))}
+            </div>
           )}
-        </div>
+          <form
+            className="run-form"
+            onSubmit={(e) => {
+              e.preventDefault();
+              void start();
+            }}
+          >
+            <input
+              aria-label="Command to run in the project folder"
+              placeholder={
+                commands.length
+                  ? "Choose above or type a command"
+                  : "Type a command"
+              }
+              value={command}
+              spellCheck={false}
+              disabled={running}
+              onChange={(e) => setCommand(e.target.value)}
+            />
+            {running ? (
+              <button
+                type="button"
+                className="button secondary"
+                onClick={() => void stop()}
+              >
+                <Icon name="stop" size={13} /> Stop
+              </button>
+            ) : (
+              <button
+                type="submit"
+                className="button secondary"
+                disabled={!command.trim() || starting}
+              >
+                <Icon name="play" size={13} /> Run
+              </button>
+            )}
+          </form>
+          {error && (
+            <p className="details-note error" role="alert">
+              {error}
+            </p>
+          )}
+          {run && (
+            <div className="run-result">
+              <p
+                className={`run-status ${run.running ? "running" : run.exitCode === 0 && !run.stopped ? "ok" : "failed"}`}
+                role="status"
+              >
+                <code>{run.command}</code> · {outcome}
+              </p>
+              <pre ref={output} className="run-output" aria-label="Output">
+                {run.shortened && "[Earlier output is not kept]\n"}
+                {run.output || (run.running ? "" : "No output.")}
+              </pre>
+              {!run.running && onDraft && (
+                <button
+                  className="button secondary run-send"
+                  title="Put the command, how it ended and the end of its output in the message box. Nothing is sent."
+                  onClick={() => onDraft(runMessage(run))}
+                >
+                  <Icon name="message" size={13} /> Send output to agent
+                </button>
+              )}
+            </div>
+          )}
+        </>
       )}
     </section>
   );

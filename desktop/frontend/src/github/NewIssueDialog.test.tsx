@@ -142,7 +142,10 @@ test("a conversation files an issue starting from the agent's latest reply", asy
       onClose={vi.fn()}
     />,
   );
-  await userEvent.click(screen.getByRole("button", { name: /File an issue/ }));
+  await userEvent.click(screen.getByRole("button", { name: "More actions" }));
+  await userEvent.click(
+    screen.getByRole("menuitem", { name: /File an issue/ }),
+  );
   const dialog = await screen.findByRole("dialog", { name: "New issue" });
   expect(backend.GitHubIssueForm).toHaveBeenCalledWith("/work/app");
   expect(within(dialog).getByLabelText("Issue title")).toHaveValue(

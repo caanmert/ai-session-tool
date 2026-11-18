@@ -11,13 +11,15 @@ import {
   type ToolName,
   toolLabel,
 } from "../api";
-import { sessionCost, sessionTokens } from "../ui/format";
+import { plural, sessionCost, sessionTokens } from "../ui/format";
 import { conversationMarkdown } from "./conversation";
 import { CommitDialog, PullRequestDialog } from "./GitDialogs";
 import { busyChat } from "../shell/OpenSessions";
 import NewIssueDialog from "../github/NewIssueDialog";
 import InstructionsDialog from "./InstructionsDialog";
 import RunPanel from "./RunPanel";
+import Popover from "../ui/Popover";
+import { FoldHeading, useFold } from "./Fold";
 import AgentToolsSection from "./AgentTools";
 import ChangesDialog from "./ChangesDialog";
 import CopyPanel from "./CopyPanel";
@@ -152,6 +154,7 @@ export default function DetailsPanel({
   const context = contextFill(chat.context);
   const [revealError, setRevealError] = useState("");
   const [handingOff, setHandingOff] = useState(false);
+  const [sessionOpen, toggleSession] = useFold("session", true);
   const [freeing, setFreeing] = useState<"compact" | "continue">();
   function freeContext(how: "compact" | "continue") {
     if (!contextActions) return;
@@ -463,162 +466,245 @@ export default function DetailsPanel({
         {!chat.review && (
           <AgentToolsSection chatId={chat.id} tool={chat.tool} />
         )}
-        <h3 className="details-section">Session</h3>
-        <dl className="details-facts">
-          <div>
-            <dt>Model</dt>
-            <dd>
-              {chat.activeModel || chat.settings?.model || "Agent default"}
-            </dd>
-          </div>
-          {session && (
-            <>
-              <div>
-                <dt>Turns</dt>
-                <dd>
-                  {session.userTurns} prompts · {session.assistantTurns} replies
-                </dd>
-              </div>
-              <div title={usageBreakdown(session)}>
-                <dt>Tokens</dt>
-                <dd>{sessionTokens(session)}</dd>
-              </div>
-              {sessionCost(session) && (
-                <div title="What this usage would cost at API list prices. A subscription is not billed this way.">
-                  <dt>At API prices</dt>
-                  <dd>{sessionCost(session)}</dd>
-                </div>
+        <div className="details-actions">
+          {(handOff || contextActions) && (
+            <Popover
+              label="Continue"
+              title="Carry this work on in another conversation, or free its context"
+              className="details-menu"
+              buttonClassName="button secondary"
+              panelLabel="Continue"
+              role="menu"
+              button={
+                <>
+                  <Icon name="message" size={14} />
+                  {handingOff || freeing ? "Starting…" : "Continue"}
+                </>
+              }
+            >
+              {(close) => (
+                <>
+                  {handOff && (
+                    <button
+                      type="button"
+                      role="menuitem"
+                      className="popover-item"
+                      disabled={!!handOff.blocked || handingOff}
+                      title={
+                        handOff.blocked ||
+                        `Open a new ${toolLabel(handOff.to)} conversation with a summary of this one to edit and send`
+                      }
+                      onClick={() => {
+                        close();
+                        setHandingOff(true);
+                        setRevealError("");
+                        handOff
+                          .run()
+                          .catch((e) => setRevealError(errorText(e)))
+                          .finally(() => setHandingOff(false));
+                      }}
+                    >
+                      <Icon name="handoff" size={15} />
+                      <strong>Continue with {toolLabel(handOff.to)}</strong>
+                    </button>
+                  )}
+                  {contextActions && (
+                    <>
+                      <button
+                        type="button"
+                        role="menuitem"
+                        className="popover-item"
+                        disabled={!!contextActions.blocked || !!freeing}
+                        title={
+                          contextActions.blocked ||
+                          `Open a new ${toolLabel(chat.tool)} conversation with a summary of this one to edit and send`
+                        }
+                        onClick={() => {
+                          close();
+                          freeContext("continue");
+                        }}
+                      >
+                        <Icon name="plus" size={15} />
+                        <strong>Continue in a new conversation</strong>
+                      </button>
+                      <button
+                        type="button"
+                        role="menuitem"
+                        className="popover-item"
+                        disabled={!!contextActions.blocked || !!freeing}
+                        title={
+                          contextActions.blocked ||
+                          `${toolLabel(chat.tool)} summarizes the conversation so far to free context and carries on from the summary. The messages here stay.`
+                        }
+                        onClick={() => {
+                          close();
+                          freeContext("compact");
+                        }}
+                      >
+                        <Icon name="gauge" size={15} />
+                        <strong>Compact the context</strong>
+                      </button>
+                    </>
+                  )}
+                </>
               )}
-            </>
+            </Popover>
           )}
-          {context && (
-            <div title={`${context.tokens} after the latest response`}>
-              <dt>Context</dt>
-              <dd className={`context-fact ${context.level}`}>
-                <span className="usage-meter" aria-hidden="true">
-                  <i style={{ width: `${context.share * 100}%` }} />
-                </span>
-                {context.percent}% used
+          <Popover
+            label="More actions"
+            className="details-menu end"
+            buttonClassName="button secondary"
+            panelLabel="More actions"
+            role="menu"
+            button={<>More…</>}
+          >
+            {(close) => (
+              <>
+                <button
+                  type="button"
+                  role="menuitem"
+                  className="popover-item"
+                  onClick={() => {
+                    close();
+                    setRevealError("");
+                    api
+                      .RevealProject(chat.id)
+                      .catch((e) => setRevealError(errorText(e)));
+                  }}
+                >
+                  <Icon name="folder" size={15} />
+                  <strong>Show in Finder</strong>
+                </button>
+                <button
+                  type="button"
+                  role="menuitem"
+                  className="popover-item"
+                  title="Copies messages and the names of tool steps, without tool output"
+                  onClick={() => {
+                    close();
+                    // Older messages not loaded in the window are read first.
+                    const text = (async () => {
+                      let messages = chat.messages;
+                      if (chat.earlier && messages[0]) {
+                        const page = await api.ChatEarlier(
+                          chat.id,
+                          messages[0].id,
+                          chat.earlier,
+                        );
+                        messages = [...page.messages, ...messages];
+                      }
+                      return conversationMarkdown({ ...chat, messages });
+                    })();
+                    // WebKit lets a click write later only through a ClipboardItem.
+                    const written =
+                      typeof ClipboardItem !== "undefined" &&
+                      navigator.clipboard.write
+                        ? navigator.clipboard.write([
+                            new ClipboardItem({
+                              "text/plain": text.then(
+                                (t) => new Blob([t], { type: "text/plain" }),
+                              ),
+                            }),
+                          ])
+                        : text.then((t) => navigator.clipboard.writeText(t));
+                    written
+                      .then(() => setCopied("Copied"))
+                      .catch(() => setCopied("Copy failed"));
+                  }}
+                >
+                  <Icon name="copy" size={15} />
+                  <strong>Copy as Markdown</strong>
+                </button>
+                <button
+                  type="button"
+                  role="menuitem"
+                  className="popover-item"
+                  title="Write a GitHub issue, starting from this conversation"
+                  onClick={() => {
+                    close();
+                    setDialog("issue");
+                  }}
+                >
+                  <Icon name="issue" size={15} />
+                  <strong>File an issue…</strong>
+                </button>
+                <button
+                  type="button"
+                  role="menuitem"
+                  className="popover-item"
+                  title="The CLAUDE.md and AGENTS.md files the agents read for this project"
+                  onClick={() => {
+                    close();
+                    setDialog("instructions");
+                  }}
+                >
+                  <Icon name="file" size={15} />
+                  <strong>Project instructions…</strong>
+                </button>
+              </>
+            )}
+          </Popover>
+        </div>
+        {copied && (
+          <p className="details-note" role="status">
+            {copied === "Copied"
+              ? "Copied the conversation as Markdown."
+              : "The conversation could not be copied."}
+          </p>
+        )}
+        <FoldHeading
+          title="Session"
+          open={sessionOpen}
+          onToggle={toggleSession}
+        />
+        {sessionOpen && (
+          <dl className="details-facts">
+            <div>
+              <dt>Model</dt>
+              <dd className="mono">
+                {chat.activeModel || chat.settings?.model || "Agent default"}
               </dd>
             </div>
-          )}
-          <div>
-            <dt>Project</dt>
-            <dd title={chat.project}>{chat.project}</dd>
-          </div>
-        </dl>
-        <button
-          className="button secondary reveal"
-          onClick={() => {
-            setRevealError("");
-            api
-              .RevealProject(chat.id)
-              .catch((e) => setRevealError(errorText(e)));
-          }}
-        >
-          <Icon name="folder" size={14} /> Show in Finder
-        </button>
-        <button
-          className="button secondary reveal"
-          title="Copies messages and the names of tool steps, without tool output"
-          onClick={() => {
-            // Older messages not loaded in the window are read first.
-            const text = (async () => {
-              let messages = chat.messages;
-              if (chat.earlier && messages[0]) {
-                const page = await api.ChatEarlier(
-                  chat.id,
-                  messages[0].id,
-                  chat.earlier,
-                );
-                messages = [...page.messages, ...messages];
-              }
-              return conversationMarkdown({ ...chat, messages });
-            })();
-            // WebKit lets a click write later only through a ClipboardItem.
-            const written =
-              typeof ClipboardItem !== "undefined" && navigator.clipboard.write
-                ? navigator.clipboard.write([
-                    new ClipboardItem({
-                      "text/plain": text.then(
-                        (t) => new Blob([t], { type: "text/plain" }),
-                      ),
-                    }),
-                  ])
-                : text.then((t) => navigator.clipboard.writeText(t));
-            written
-              .then(() => setCopied("Copied"))
-              .catch(() => setCopied("Copy failed"));
-          }}
-        >
-          <Icon name="copy" size={14} />
-          {copied ? <span role="status">{copied}</span> : "Copy as Markdown"}
-        </button>
-        <button
-          className="button secondary reveal"
-          title="Write a GitHub issue, starting from this conversation"
-          onClick={() => setDialog("issue")}
-        >
-          <Icon name="issue" size={14} /> File an issue…
-        </button>
-        {handOff && (
-          <button
-            className="button secondary reveal"
-            disabled={!!handOff.blocked || handingOff}
-            title={
-              handOff.blocked ||
-              `Open a new ${toolLabel(handOff.to)} conversation with a summary of this one to edit and send`
-            }
-            onClick={() => {
-              setHandingOff(true);
-              setRevealError("");
-              handOff
-                .run()
-                .catch((e) => setRevealError(errorText(e)))
-                .finally(() => setHandingOff(false));
-            }}
-          >
-            <Icon name="message" size={14} />
-            {handingOff ? "Opening…" : `Continue with ${toolLabel(handOff.to)}`}
-          </button>
+            {session && (
+              <>
+                <div>
+                  <dt>Turns</dt>
+                  <dd>
+                    {plural(session.userTurns, "prompt")} ·{" "}
+                    {plural(session.assistantTurns, "reply", "replies")}
+                  </dd>
+                </div>
+                <div title={usageBreakdown(session)}>
+                  <dt>Tokens</dt>
+                  <dd>{sessionTokens(session)}</dd>
+                </div>
+                {sessionCost(session) && (
+                  <div title="What this usage would cost at API list prices. A subscription is not billed this way.">
+                    <dt>At API prices</dt>
+                    <dd>{sessionCost(session)}</dd>
+                  </div>
+                )}
+              </>
+            )}
+            {context && (
+              <div title={`${context.tokens} after the latest response`}>
+                <dt>Context</dt>
+                <dd className={`context-fact ${context.level}`}>
+                  <span className="usage-meter" aria-hidden="true">
+                    <i style={{ width: `${context.share * 100}%` }} />
+                  </span>
+                  {context.percent}% used
+                </dd>
+              </div>
+            )}
+            <div>
+              <dt>Project</dt>
+              <dd className="mono" title={chat.project}>
+                {chat.project}
+              </dd>
+            </div>
+          </dl>
         )}
-        {contextActions && (
-          <>
-            <button
-              className="button secondary reveal"
-              disabled={!!contextActions.blocked || !!freeing}
-              title={
-                contextActions.blocked ||
-                `${toolLabel(chat.tool)} summarizes the conversation so far to free context and carries on from the summary. The messages here stay.`
-              }
-              onClick={() => freeContext("compact")}
-            >
-              <Icon name="gauge" size={14} />
-              {freeing === "compact" ? "Starting…" : "Compact the context"}
-            </button>
-            <button
-              className="button secondary reveal"
-              disabled={!!contextActions.blocked || !!freeing}
-              title={
-                contextActions.blocked ||
-                `Open a new ${toolLabel(chat.tool)} conversation with a summary of this one to edit and send`
-              }
-              onClick={() => freeContext("continue")}
-            >
-              <Icon name="plus" size={14} />
-              {freeing === "continue"
-                ? "Opening…"
-                : "Continue in a new conversation"}
-            </button>
-          </>
-        )}
-        <button
-          className="button secondary reveal"
-          title="The CLAUDE.md and AGENTS.md files the agents read for this project"
-          onClick={() => setDialog("instructions")}
-        >
-          <Icon name="file" size={14} /> Project instructions…
-        </button>
         {revealError && (
           <p className="details-note error" role="alert">
             {revealError}
