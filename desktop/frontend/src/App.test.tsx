@@ -705,7 +705,7 @@ describe("desktop workflows", () => {
     );
     expect(document.documentElement.dataset.theme).toBe("dark");
     expect(within(settings).getByText("/bin/codex")).toBeVisible();
-    expect(within(settings).getByText("Found")).toBeVisible();
+    expect(within(settings).getByText("Installed")).toBeVisible();
     expect(within(settings).getByText("Not found")).toBeVisible();
     expect(within(settings).getByText("⌘K")).toBeVisible();
     // Notifications are on by default and can be turned off.
@@ -1209,7 +1209,7 @@ describe("desktop workflows", () => {
       }),
     );
     expect(
-      screen.getByRole("heading", { name: "Usage limits", level: 1 }),
+      screen.getByRole("heading", { name: "Usage", level: 1 }),
     ).toBeVisible();
     expect(
       screen.getByRole("meter", { name: "Claude Code: 5-hour session" }),
@@ -1269,9 +1269,7 @@ describe("desktop workflows", () => {
     ]);
     render(<App />);
     await screen.findByRole("heading", { name: "Retry webhook delivery" });
-    await userEvent.click(
-      screen.getByRole("button", { name: "Saved workspace" }),
-    );
+    await userEvent.click(screen.getByRole("button", { name: "Saved work" }));
     await userEvent.click(
       await screen.findByRole("button", {
         name: "Reopen Saved checkout review",

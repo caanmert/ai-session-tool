@@ -113,7 +113,7 @@ function LimitGlance({
     <button
       className="agent-limit"
       aria-label={`${toolLabel(agent.tool)}: ${summary}. Open usage limits`}
-      title="Usage limits"
+      title="Usage"
       onClick={onOpen}
     >
       {parts.map((part, i) => (
@@ -205,7 +205,7 @@ export default function Sidebar({
     },
     {
       icon: "gauge",
-      label: "Usage limits",
+      label: "Usage",
       current: view === "usage",
       onClick: onUsage,
     },
@@ -215,7 +215,7 @@ export default function Sidebar({
       current: view === "runs",
       onClick: onRuns,
     },
-    { icon: "folder", label: "Saved workspace", onClick: onSaved },
+    { icon: "folder", label: "Saved work", onClick: onSaved },
     {
       icon: "settings",
       label: "Settings",

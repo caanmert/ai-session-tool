@@ -6,6 +6,7 @@ import {
   type ChatState,
   type ChatSummary,
 } from "./api";
+import { when } from "./ui/format";
 
 type Props = {
   project: string;
@@ -107,15 +108,15 @@ export default function SavedWorkspace({ project, onClose, onOpen }: Props) {
     >
       <header className="saved-header">
         <div>
-          <div className="eyebrow">SAVED ON THIS MAC</div>
-          <h2 id="saved-workspace-title">Return to your work</h2>
+          <div className="eyebrow">ON THIS MAC</div>
+          <h2 id="saved-workspace-title">Saved work</h2>
           <p>
             Conversations and independent reviews, including ones you closed.
           </p>
         </div>
         <button
           className="icon-button"
-          aria-label="Close saved workspace"
+          aria-label="Close saved work"
           disabled={!!opening}
           onClick={onClose}
         >
@@ -178,12 +179,7 @@ export default function SavedWorkspace({ project, onClose, onOpen }: Props) {
                   {item.isReview ? "Review" : "Conversation"}
                 </span>
                 <span>{toolLabel(item.tool)}</span>
-                <time dateTime={item.updatedAt}>
-                  {new Date(item.updatedAt).toLocaleString([], {
-                    dateStyle: "medium",
-                    timeStyle: "short",
-                  })}
-                </time>
+                <time dateTime={item.updatedAt}>{when(item.updatedAt)}</time>
               </div>
               <h3>{item.title || "Untitled conversation"}</h3>
               <p className="saved-project" title={item.project}>

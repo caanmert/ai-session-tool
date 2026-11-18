@@ -161,10 +161,10 @@ try {
   await page.context().grantPermissions(
     engine === "webkit" ? ["clipboard-read"] : ["clipboard-read", "clipboard-write"],
   );
-  await page.getByRole("button", { name: "Copy attach command" }).click();
+  await page.getByRole("button", { name: "Copy terminal command" }).click();
   await page
     .getByRole("status")
-    .filter({ hasText: "Attach command copied" })
+    .filter({ hasText: "Terminal command copied" })
     .waitFor();
   if (
     (await page.evaluate(() => navigator.clipboard.readText())) !==
@@ -173,7 +173,7 @@ try {
     throw Error("Task attach command was not copied");
   await page.getByRole("button", { name: /task-2.*Test permanent/ }).click();
   await page.getByRole("button", { name: /test\/checkout.test.ts/ }).click();
-  await page.getByRole("button", { name: "Refresh runs" }).click();
+  await page.getByRole("button", { name: "Refresh now" }).click();
   await page.getByRole("button", { name: /test\/checkout.test.ts/ }).waitFor();
   if (
     (await page

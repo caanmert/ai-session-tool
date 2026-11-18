@@ -11,6 +11,8 @@ import {
 } from "./api";
 import DiffViewer from "./DiffViewer";
 import "./runs.css";
+import { when } from "./ui/format";
+import { runTaskState } from "./board/runTasks";
 
 type Props = {
   project: string;
@@ -181,15 +183,13 @@ export default function RunDashboard({
               ))}
           </select>
         </label>
-        <span className="runs-refresh-note">
-          Task status refreshes every 5 seconds
-        </span>
+        <span className="runs-refresh-note">Updates every 5 seconds</span>
         <button
           className="button subtle"
           disabled={loading}
           onClick={() => setRevision((n) => n + 1)}
         >
-          Refresh runs
+          Refresh now
         </button>
         <button className="button primary" onClick={() => setShowLaunch(true)}>
           New parallel run
@@ -233,12 +233,7 @@ export default function RunDashboard({
                 {toolLabel(run.tool)} · {run.tasks.length}{" "}
                 {run.tasks.length === 1 ? "task" : "tasks"}
               </span>
-              <time>
-                {new Date(run.createdAt).toLocaleString([], {
-                  dateStyle: "short",
-                  timeStyle: "short",
-                })}
-              </time>
+              <time>{when(run.createdAt)}</time>
               <small>{run.id}</small>
             </button>
           ))}
@@ -288,10 +283,7 @@ export default function RunDashboard({
                       }}
                     >
                       <span className={`run-state ${item.state}`}>
-                        {item.state}
-                        {item.exitCode !== undefined
-                          ? ` (${item.exitCode})`
-                          : ""}
+                        {runTaskState(item)}
                         {item.signal ? ` · ${item.signal}` : ""}
                       </span>
                       <strong>{item.task.window}</strong>
@@ -303,8 +295,8 @@ export default function RunDashboard({
                           ? "Files unavailable"
                           : `${item.files.length} changed files`}
                       </small>
-                      {item.attention && <em>Agent event</em>}
-                      {item.quiet && <em>Silence alert</em>}
+                      {item.attention && <em>Agent alert</em>}
+                      {item.quiet && <em>No output for a while</em>}
                     </button>
                   ),
                 )}
@@ -339,17 +331,17 @@ export default function RunDashboard({
                               );
                               await navigator.clipboard.writeText(command);
                               setCopyNote(
-                                `Attach command copied for ${selectedTask.task.window}`,
+                                `Terminal command copied for ${selectedTask.task.window}`,
                               );
                             } catch (e) {
                               setError(
-                                `Could not copy attach command: ${errorText(e)}`,
+                                `Could not copy the terminal command: ${errorText(e)}`,
                               );
                             }
                           })()
                         }
                       >
-                        Copy attach command
+                        Copy terminal command
                       </button>
                     </div>
                     {copyNote && (
@@ -359,8 +351,8 @@ export default function RunDashboard({
                       </small>
                     )}
                     <small>
-                      Pane state describes a process. Alerts record events, not
-                      proof an agent is still waiting.
+                      The state is the agent&apos;s process. An alert means the
+                      agent signalled something; it may no longer be waiting.
                     </small>
                   </div>
                   {selectedTask.error ? (
