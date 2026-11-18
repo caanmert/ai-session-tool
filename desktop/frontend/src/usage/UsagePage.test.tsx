@@ -166,7 +166,7 @@ test("the sidebar sums up each agent and opens the page", async () => {
     }),
   ).toBeVisible();
   await userEvent.click(claudeGlance);
-  await userEvent.click(screen.getByRole("button", { name: "Usage limits" }));
+  await userEvent.click(screen.getByRole("button", { name: "Usage" }));
   expect(open).toHaveBeenCalledTimes(2);
 });
 

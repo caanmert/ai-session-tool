@@ -108,7 +108,7 @@ function RunTaskCard({
         <span className="chip outline">{runTaskState(status)}</span>
         {status.attention && (
           <span className="chip status waiting">
-            <Icon name="alert" size={12} /> Agent event
+            <Icon name="alert" size={12} /> Agent alert
           </span>
         )}
         {status.quiet && (
@@ -342,7 +342,7 @@ export default function Board({
               </div>
               {tool.available ? (
                 <span className="capacity-state found">
-                  <Icon name="check" size={12} /> Found
+                  <Icon name="check" size={12} /> Installed
                 </span>
               ) : (
                 <span className="capacity-state missing">

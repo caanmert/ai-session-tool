@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { beforeEach, expect, test, vi } from "vitest";
 import type { Backend, ChatState, Run, RunTaskStatus, Tool } from "../api";
 import Board from "./Board";
+import { runTaskState } from "./runTasks";
 
 const chat = (id: string, patch: Partial<ChatState>): ChatState =>
   ({
@@ -201,7 +202,7 @@ test("shows parallel-run tasks in the same columns, with process state and atten
   });
   // Still running, and separately marked as wanting attention.
   expect(within(needs).getByText("Running")).toBeVisible();
-  expect(within(needs).getByText("Agent event")).toBeVisible();
+  expect(within(needs).getByText("Agent alert")).toBeVisible();
   expect(within(needs).getByText("1 changed file to review")).toBeVisible();
   const headings = screen
     .getAllByRole("heading", { level: 2 })
@@ -210,7 +211,10 @@ test("shows parallel-run tasks in the same columns, with process state and atten
   const done = screen.getByRole("article", {
     name: "Prompt task-3, parallel run task",
   });
-  expect(within(done).getByText("Exited (0)")).toBeVisible();
+  expect(within(done).getByText("Finished")).toBeVisible();
+  expect(runTaskState({ state: "exited", exitCode: 2 } as RunTaskStatus)).toBe(
+    "Ended with an error (2)",
+  );
   expect(within(done).getByText("2 changed files to review")).toBeVisible();
   expect(screen.getByText("The worktree is missing.")).toBeVisible();
   // A run that cannot be inspected is reported without hiding the others.

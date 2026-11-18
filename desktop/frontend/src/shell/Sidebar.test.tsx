@@ -115,9 +115,9 @@ test("the narrow sidebar keeps every page, agent and conversation reachable", as
   for (const name of [
     "History",
     "Issues & PRs",
-    "Usage limits",
+    "Usage",
     "Parallel runs",
-    "Saved workspace",
+    "Saved work",
     "Settings",
   ])
     expect(within(sidebar).getByRole("button", { name })).toBeVisible();

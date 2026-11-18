@@ -88,7 +88,7 @@ describe("parallel run dashboard", () => {
     });
     render(<RunDashboard {...props} />);
     await userEvent.click(
-      await screen.findByRole("button", { name: "Copy attach command" }),
+      await screen.findByRole("button", { name: "Copy terminal command" }),
     );
     await waitFor(() =>
       expect(writeText).toHaveBeenCalledWith("tmux attach-session -t %1"),
@@ -98,7 +98,7 @@ describe("parallel run dashboard", () => {
   });
   it("shows task state and alerts separately, and preserves task/file selection on refresh", async () => {
     render(<RunDashboard {...props} />);
-    await screen.findByText("Agent event");
+    await screen.findByText("Agent alert");
     const tasks = screen.getByLabelText("Run tasks");
     await userEvent.click(
       within(tasks).getByRole("button", { name: /task-2/ }),
@@ -113,7 +113,7 @@ describe("parallel run dashboard", () => {
         "odd [1].txt",
       ),
     );
-    await userEvent.click(screen.getByRole("button", { name: "Refresh runs" }));
+    await userEvent.click(screen.getByRole("button", { name: "Refresh now" }));
     await waitFor(() => expect(backend.RunStatus).toHaveBeenCalledTimes(2));
     expect(
       within(tasks).getByRole("button", { name: /task-2/ }),
@@ -134,7 +134,7 @@ describe("parallel run dashboard", () => {
         : Promise.resolve({ patch: "+Newest patch", truncated: false }),
     );
     render(<RunDashboard {...props} />);
-    await screen.findByText("Agent event");
+    await screen.findByText("Agent alert");
     await userEvent.click(screen.getByRole("button", { name: "M app.txt" }));
     expect(screen.queryByText("+Newest patch")).not.toBeInTheDocument();
     await userEvent.click(

@@ -33,7 +33,7 @@ export default function AgentsMissing({
             <strong>{toolLabel(tool.name)}</strong>
             {tool.available ? (
               <span className="state">
-                <Icon name="check" size={13} /> Found
+                <Icon name="check" size={13} /> Installed
               </span>
             ) : (
               <span className="state missing">

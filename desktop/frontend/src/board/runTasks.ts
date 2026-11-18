@@ -22,9 +22,11 @@ export function runTaskColumn(status: RunTaskStatus) {
 /** The process state in words. This is separate from attention on purpose. */
 export function runTaskState(status: RunTaskStatus) {
   if (status.state === "exited")
-    return status.exitCode !== undefined
-      ? `Exited (${status.exitCode})`
-      : "Exited";
+    return status.exitCode === undefined
+      ? "Ended"
+      : status.exitCode === 0
+        ? "Finished"
+        : `Ended with an error (${status.exitCode})`;
   if (status.state === "running") return "Running";
   if (status.state === "missing") return "Not running";
   return "State unknown";
