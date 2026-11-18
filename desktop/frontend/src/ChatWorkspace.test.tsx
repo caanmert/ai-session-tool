@@ -215,7 +215,10 @@ describe("graphical conversations", () => {
       name: "Conversation details",
     });
     await userEvent.click(
-      within(panel).getByRole("button", { name: "Show in Finder" }),
+      within(panel).getByRole("button", { name: "More actions" }),
+    );
+    await userEvent.click(
+      within(panel).getByRole("menuitem", { name: "Show in Finder" }),
     );
     expect(backend.RevealProject).toHaveBeenCalledWith("chat");
   });
@@ -563,8 +566,9 @@ describe("graphical conversations", () => {
     const view = render(
       <ChatWorkspace chat={initial} active reviewerAvailable {...handlers} />,
     );
-    const handOff = screen.getByRole("button", {
-      name: "Continue with Claude Code",
+    await userEvent.click(screen.getByRole("button", { name: "Continue" }));
+    const handOff = screen.getByRole("menuitem", {
+      name: /Continue with Claude Code/,
     });
     // Nothing to hand over before a message.
     expect(handOff).toBeDisabled();
@@ -594,7 +598,10 @@ describe("graphical conversations", () => {
       />,
     );
     await userEvent.click(
-      await screen.findByRole("button", { name: "Continue with Claude Code" }),
+      await screen.findByRole("button", { name: "Continue" }),
+    );
+    await userEvent.click(
+      screen.getByRole("menuitem", { name: /Continue with Claude Code/ }),
     );
     await waitFor(() => expect(handlers.onOpen).toHaveBeenCalledWith(next));
     expect(backend.HandOffChat).toHaveBeenCalledWith("chat");
@@ -652,20 +659,14 @@ describe("graphical conversations", () => {
     expect(screen.queryByText(/The context is/)).not.toBeInTheDocument();
   });
 
-  it("does not offer to compact while the agent works", async () => {
+  it("hides the context note while the agent works", async () => {
     state.context = { used: 195_000, window: 200_000 };
     state.status = "running";
     render(
       <ChatWorkspace chat={state} active reviewerAvailable {...handlers} />,
     );
-    const note = (await screen.findByText(/The context is 98% full, and/))
-      .parentElement!;
-    const compact = within(note).getByRole("button", { name: "Compact" });
-    expect(compact).toBeDisabled();
-    expect(compact).toHaveAttribute(
-      "title",
-      "Wait for the agent to finish first",
-    );
+    await screen.findByRole("button", { name: /Stop response/ });
+    expect(screen.queryByText(/The context is/)).not.toBeInTheDocument();
   });
 
   it("shows a guided task's steps above its conversation", async () => {

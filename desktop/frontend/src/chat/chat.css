@@ -914,6 +914,14 @@
 .holder-note .text-button {
   margin: 0;
 }
+/* The note's buttons stay together, wrapping below the text as one group. */
+.holder-note .note-actions {
+  display: inline-flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+}
 .holder-note .icon-button {
   width: 24px;
   height: 24px;
