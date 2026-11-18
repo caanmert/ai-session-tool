@@ -1,7 +1,7 @@
 import AgentMark from "../AgentMark";
 import Icon from "../Icon";
 import { toolLabel, type AgentUsage, type Tool } from "../api";
-import { age } from "../ui/format";
+import { when } from "../ui/format";
 import { resetClock, resetText, useNow } from "./limits";
 import UsageHistorySection from "./UsageHistory";
 
@@ -134,7 +134,7 @@ export default function UsagePage({
           {loading
             ? "Reading limits…"
             : readAt
-              ? `Updated ${age(readAt).toLowerCase()}`
+              ? `Updated ${when(readAt, { inline: true })}`
               : ""}
         </p>
         <button

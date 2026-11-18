@@ -9,7 +9,7 @@ import {
   type GitHubPull,
   type Project,
 } from "../api";
-import { age } from "../ui/format";
+import { when } from "../ui/format";
 
 const reviewWords: Record<string, { text: string; tone: string }> = {
   APPROVED: { text: "Approved", tone: "good" },
@@ -282,7 +282,8 @@ export default function IssuesPage({
                             />
                           ))}
                           <span>
-                            {issue.author} · updated {age(issue.updatedAt)}
+                            {issue.author} · updated{" "}
+                            {when(issue.updatedAt, { inline: true })}
                           </span>
                         </span>
                       </div>
@@ -350,7 +351,8 @@ export default function IssuesPage({
                             )}
                             <code title={pull.branch}>{pull.branch}</code>
                             <span>
-                              {pull.author} · updated {age(pull.updatedAt)}
+                              {pull.author} · updated{" "}
+                              {when(pull.updatedAt, { inline: true })}
                             </span>
                           </span>
                         </div>
