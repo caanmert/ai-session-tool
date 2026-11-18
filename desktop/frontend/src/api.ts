@@ -490,6 +490,10 @@ export type ChatState = {
   handedFrom?: string;
   /** Conversations that continue this one with the other agent. */
   handedTo?: string[];
+  /** The conversation this one continues with the same agent, afresh. */
+  continuedFrom?: string;
+  /** Conversations that continue this one with the same agent. */
+  continuedIn?: string[];
   /** Set when the conversation works in its own copy of the project. */
   copy?: WorkCopy;
   review?: ReviewState;
@@ -672,6 +676,11 @@ export interface Backend {
   /** Opens a conversation with the other agent in the same project and
    * drafts its first message from this one. Sends nothing. */
   HandOffChat(chatId: string): Promise<HandOff>;
+  /** Opens a new conversation with the same agent and drafts its first
+   * message from this one, so the work goes on with an empty context. */
+  ContinueChat(chatId: string): Promise<HandOff>;
+  /** Asks the agent to summarize its history to free context. Starts a turn. */
+  CompactChat(chatId: string): Promise<void>;
   /** The commands the conversation's project offers. Only reads. */
   ProjectCommands(chatId: string): Promise<ProjectCommand[]>;
   /** Runs a command the user chose in the project folder. */
@@ -815,6 +824,8 @@ export const api: Backend = {
   GitHubPull: async (project, number) => backend().GitHubPull(project, number),
   SearchMessages: async (query) => backend().SearchMessages(query),
   HandOffChat: async (chatId) => backend().HandOffChat(chatId),
+  ContinueChat: async (chatId) => backend().ContinueChat(chatId),
+  CompactChat: async (chatId) => backend().CompactChat(chatId),
   NewChatInCopy: async (project, tool) =>
     backend().NewChatInCopy(project, tool),
   CopyChanges: async (chatId) => backend().CopyChanges(chatId),

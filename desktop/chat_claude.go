@@ -144,6 +144,10 @@ func (m *chatManager) runClaude(ctx context.Context, c *chatSession, state ChatS
 				if str(v["subtype"]) == "init" {
 					c.reportModel(str(v["model"]))
 				}
+				if str(v["subtype"]) == "compact_boundary" {
+					markSessionStarted()
+					c.compacted(str(v["uuid"]), int64Of(object(v["compact_metadata"])["pre_tokens"]))
+				}
 				if id := str(v["session_id"]); id != "" {
 					c.sessionID(id)
 				}

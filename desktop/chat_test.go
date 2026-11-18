@@ -123,6 +123,18 @@ func TestAgentProcess(t *testing.T) {
 			require(false, "web search must not be set unless chosen")
 		}
 		emit(map[string]any{"id": 2, "result": map[string]any{"model": model, "thread": map[string]any{"id": "native-thread"}}})
+		if mode == "compact" {
+			request := read()
+			require(str(request["method"]) == "thread/compact/start" && str(object(request["params"])["threadId"]) == "native-thread", "expected a compaction of the thread")
+			emit(map[string]any{"id": 3, "result": map[string]any{}})
+			emit(map[string]any{"method": "turn/started", "params": map[string]any{"threadId": "native-thread", "turn": map[string]any{"id": "compact-turn"}}})
+			emit(map[string]any{"method": "item/started", "params": map[string]any{"threadId": "native-thread", "item": map[string]any{"id": "compaction", "type": "contextCompaction"}}})
+			emit(map[string]any{"method": "item/completed", "params": map[string]any{"threadId": "native-thread", "item": map[string]any{"id": "compaction", "type": "contextCompaction"}}})
+			emit(map[string]any{"method": "turn/completed", "params": map[string]any{"turn": map[string]any{"id": "compact-turn", "status": "completed"}}})
+			for {
+				time.Sleep(time.Second)
+			}
+		}
 		turnRequest := read()
 		require(str(turnRequest["method"]) == "turn/start", "expected turn start")
 		if mode == "image" {
@@ -231,6 +243,14 @@ func TestAgentProcess(t *testing.T) {
 		}
 		if mode == "resume" {
 			require(strings.Contains(cliArgs, "--resume native-thread"), "expected saved Claude session")
+		}
+		if mode == "compact" {
+			require(str(content) == "/compact" && strings.Contains(cliArgs, "--resume native-thread"), "expected /compact in the saved session")
+			emit(map[string]any{"type": "system", "subtype": "compact_boundary", "uuid": "boundary", "session_id": "native-thread", "compact_metadata": map[string]any{"trigger": "manual", "pre_tokens": 184000}})
+			emit(map[string]any{"type": "result", "is_error": false, "result": ""})
+			for {
+				time.Sleep(time.Second)
+			}
 		}
 		if mode == "review" {
 			require(strings.Contains(cliArgs, "--tools  --strict-mcp-config"), "review tools must be disabled")

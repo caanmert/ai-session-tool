@@ -81,6 +81,10 @@ type ChatState struct {
 	// agent; see chat_handoff.go.
 	HandedFrom string   `json:"handedFrom,omitempty"`
 	HandedTo   []string `json:"handedTo,omitempty"`
+	// ContinuedFrom and ContinuedIn link a conversation continued with the
+	// same agent in a new one, for a fresh context.
+	ContinuedFrom string   `json:"continuedFrom,omitempty"`
+	ContinuedIn   []string `json:"continuedIn,omitempty"`
 	// Copy is set when the conversation works in its own copy of the
 	// project; see chat_copy.go.
 	Copy *WorkCopy `json:"copy,omitempty"`
@@ -538,6 +542,12 @@ func (m *chatManager) send(id, text string) error { return m.sendWith(id, text, 
 
 // sendWith starts a turn with a message and, optionally, attached images.
 func (m *chatManager) sendWith(id, text string, images []ChatImage) error {
+	return m.start(id, text, images, false)
+}
+
+// start begins a turn. A compacting turn sends no message of the user's: the
+// agent summarizes its own history; see chat_compact.go.
+func (m *chatManager) start(id, text string, images []ChatImage, compact bool) error {
 	if strings.TrimSpace(text) == "" || len(text) > reviewLimit+8192 {
 		return errors.New("enter a message of up to 200,000 bytes")
 	}
@@ -584,6 +594,13 @@ func (m *chatManager) sendWith(id, text string, images []ChatImage) error {
 		c.mu.Unlock()
 		m.mu.Unlock()
 		return errImagesInReview
+	}
+	if compact {
+		if err := compactable(c.state); err != nil {
+			c.mu.Unlock()
+			m.mu.Unlock()
+			return err
+		}
 	}
 	// Check and store attachments before the turn starts, so a bad image
 	// rejects the message instead of failing a running response.
@@ -632,7 +649,7 @@ func (m *chatManager) sendWith(id, text string, images []ChatImage) error {
 		defer cancel()
 		// Keep the files as they are before the agent starts, so this turn
 		// can be undone. A project outside Git simply has no checkpoint.
-		if state.Review == nil {
+		if state.Review == nil && !compact {
 			_, _ = m.addCheckpoint(ctx, c, state.Project, userMessage, "turn")
 		}
 		var result string
@@ -643,7 +660,7 @@ func (m *chatManager) sendWith(id, text string, images []ChatImage) error {
 		}
 		if err == nil {
 			if state.Tool == "codex" {
-				result, err = m.runCodex(ctx, c, state, text, attached)
+				result, err = m.runCodex(ctx, c, state, text, attached, compact)
 			} else {
 				result, err = m.runClaude(ctx, c, state, text, attached)
 			}

@@ -20,7 +20,7 @@ import { fillPrompt } from "./chat/savedPrompts";
 import { conversationStatus, requestSummary } from "./chat/conversation";
 import FindBar from "./chat/FindBar";
 import { useQueuedMessage } from "./chat/queuedMessage";
-import ContextMeter from "./chat/ContextMeter";
+import ContextMeter, { contextFill } from "./chat/ContextMeter";
 import Popover from "./ui/Popover";
 import { revealAround } from "./ui/Foldable";
 import { useNarrow } from "./ui/useNarrow";
@@ -41,6 +41,7 @@ import {
   toolLabel,
   type ChatState,
   type ChatApproval,
+  type HandOff,
   type Session,
   type ReviewDraft,
   type Checkpoint,
@@ -506,11 +507,28 @@ export default function ChatWorkspace({
         ? "Wait for the agent to finish first"
         : "";
   async function handOff() {
-    const handed = await api.HandOffChat(state.id);
+    openHandOff(await api.HandOffChat(state.id));
+  }
+  async function continueFresh() {
+    openHandOff(await api.ContinueChat(state.id));
+  }
+  async function openHandOff(handed: HandOff) {
     // Without draft storage, the summary goes to the clipboard.
     if (!storeDraft(handed.chat.id, handed.prompt))
       await navigator.clipboard?.writeText(handed.prompt).catch(() => {});
     onOpen(handed.chat);
+  }
+  // When the context fills up, offer to compact it or to continue afresh.
+  const fill = contextFill(state.context);
+  const [contextDismissed, setContextDismissed] = useState("");
+  const contextBlocked = busy
+    ? "Wait for the agent to finish first"
+    : !state.sessionId
+      ? "Send a message first; there is nothing to compact yet"
+      : "";
+  const compactTitle = `${toolLabel(state.tool)} summarizes the conversation so far and carries on from the summary. The messages here stay.`;
+  function compact() {
+    void perform(() => api.CompactChat(state.id));
   }
   // Add the paths of chosen files to the message. The agent opens them itself;
   // nothing is uploaded or copied.
@@ -619,6 +637,24 @@ export default function ChatWorkspace({
                   onClick={() => onSelect(state.handedFrom!)}
                 >
                   Continued from {toolLabel(other)} ↗
+                </button>
+              )}
+              {state.continuedFrom && (
+                <button
+                  className="text-button chat-link"
+                  title="Open the conversation this one continues"
+                  onClick={() => onSelect(state.continuedFrom!)}
+                >
+                  Continues an earlier conversation ↗
+                </button>
+              )}
+              {!!state.continuedIn?.length && (
+                <button
+                  className="text-button chat-link"
+                  title="Open the conversation that continues this one"
+                  onClick={() => onSelect(state.continuedIn!.at(-1)!)}
+                >
+                  Continued in a new conversation ↗
                 </button>
               )}
               {!!state.handedTo?.length && (
@@ -1004,6 +1040,51 @@ export default function ChatWorkspace({
               </div>
             </div>
           )}
+          {!state.review &&
+            fill &&
+            fill.level !== "normal" &&
+            contextDismissed !== fill.level && (
+              <div className="holder-note context-note" role="status">
+                <Icon name="alert" size={13} />
+                <span>
+                  The context is {fill.percent}% full
+                  {fill.level === "full"
+                    ? `, and ${toolLabel(state.tool)} will soon lose earlier work from it.`
+                    : "."}{" "}
+                  Compact it, or continue in a new conversation.
+                </span>
+                <button
+                  type="button"
+                  className="text-button"
+                  disabled={!!contextBlocked || working}
+                  title={contextBlocked || compactTitle}
+                  onClick={compact}
+                >
+                  Compact
+                </button>
+                <button
+                  type="button"
+                  className="text-button"
+                  disabled={!!contextBlocked || working}
+                  title={
+                    contextBlocked ||
+                    `Open a new ${toolLabel(state.tool)} conversation with a summary of this one to edit and send`
+                  }
+                  onClick={() => void perform(continueFresh)}
+                >
+                  Continue in a new conversation
+                </button>
+                <button
+                  type="button"
+                  className="icon-button"
+                  aria-label="Dismiss"
+                  title="Hide this until the context fills further"
+                  onClick={() => setContextDismissed(fill.level)}
+                >
+                  <Icon name="close" size={13} />
+                </button>
+              </div>
+            )}
           {!state.review && holder && (
             <div className="holder-note" role="status">
               <Icon name="alert" size={13} />
@@ -1366,6 +1447,15 @@ export default function ChatWorkspace({
             state.review
               ? undefined
               : { to: other, blocked: handOffBlocked, run: handOff }
+          }
+          context={
+            state.review
+              ? undefined
+              : {
+                  blocked: contextBlocked || (working ? "Working…" : ""),
+                  compact: () => api.CompactChat(state.id),
+                  continueFresh,
+                }
           }
           onDraft={state.review ? undefined : draftAppend}
           onCopyRemoved={() => onClosed?.([state.id])}
