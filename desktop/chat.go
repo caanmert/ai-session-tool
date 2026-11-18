@@ -85,6 +85,8 @@ type ChatState struct {
 	// same agent in a new one, for a fresh context.
 	ContinuedFrom string   `json:"continuedFrom,omitempty"`
 	ContinuedIn   []string `json:"continuedIn,omitempty"`
+	// Pipeline ties the conversation to a guided task; see pipeline.go.
+	Pipeline *PipelineLink `json:"pipeline,omitempty"`
 	// Schedule names the scheduled task that opened the conversation.
 	Schedule string `json:"schedule,omitempty"`
 	// Copy is set when the conversation works in its own copy of the

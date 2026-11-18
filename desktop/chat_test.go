@@ -130,7 +130,7 @@ func TestAgentProcess(t *testing.T) {
 		}
 		if mode == "plan" {
 			require(str(params["sandbox"]) == "read-only" && str(params["approvalPolicy"]) == "on-request", "plan mode must be read-only")
-		} else if mode != "review" {
+		} else if mode != "review" && mode != "pipeline" {
 			require(str(params["sandbox"]) == "workspace-write", "default sandbox")
 		}
 		model := "model-a"
@@ -164,6 +164,12 @@ func TestAgentProcess(t *testing.T) {
 		}
 		turnRequest := read()
 		require(str(turnRequest["method"]) == "turn/start", "expected turn start")
+		if mode == "pipeline" {
+			text := str(object(array(object(turnRequest["params"])["input"])[0])["text"])
+			planning := strings.HasPrefix(text, "Plan this task.") && str(params["sandbox"]) == "read-only"
+			building := strings.HasPrefix(text, "Implement this plan.") && strings.Contains(text, "EDITED") && str(params["sandbox"]) == "workspace-write"
+			require(planning || building, "a guided task plans read-only, or builds the edited plan")
+		}
 		if mode == "image" {
 			input := array(object(turnRequest["params"])["input"])
 			require(len(input) == 2 && str(object(input[0])["type"]) == "text" && str(object(input[1])["type"]) == "localImage", "expected text and one local image")
@@ -299,7 +305,14 @@ func TestAgentProcess(t *testing.T) {
 				require(str(object(response["updatedInput"])["content"]) == "example", "must preserve tool input")
 			}
 		}
-		if mode == "plan" {
+		if mode == "pipeline" && strings.HasPrefix(str(content), "Plan this task.") {
+			require(strings.Contains(cliArgs, "--permission-mode plan"), "a plan is made in plan mode")
+			emit(map[string]any{"type": "control_request", "request_id": "leave-plan", "request": map[string]any{"subtype": "can_use_tool", "tool_name": "ExitPlanMode", "input": map[string]any{"plan": "1. Add retries\n2. Test them"}}})
+			response := object(object(read()["response"])["response"])
+			require(str(response["behavior"]) == "deny", "the planner must not leave plan mode")
+		} else if mode == "pipeline" {
+			require(strings.HasPrefix(str(content), "Implement this plan.") && strings.Contains(str(content), "EDITED") && strings.Contains(cliArgs, "--permission-mode default"), "the builder gets the edited plan in the default mode")
+		} else if mode == "plan" {
 			require(strings.Contains(cliArgs, "--permission-mode plan"), "missing plan mode")
 			emit(map[string]any{"type": "control_request", "request_id": "plan", "request": map[string]any{"subtype": "can_use_tool", "tool_name": "ExitPlanMode", "input": map[string]any{"plan": "1. Add retries"},
 				"permission_suggestions": []any{map[string]any{"type": "setMode", "mode": "acceptEdits", "destination": "session"}}}})

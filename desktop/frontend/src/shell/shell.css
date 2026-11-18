@@ -835,3 +835,15 @@ button.search:hover {
   line-height: 1.45;
   color: var(--muted);
 }
+.new-task-planner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 12px;
+  font-size: var(--text-md);
+  color: var(--muted);
+}
+.new-task-planner select {
+  flex: 1;
+  min-width: 0;
+}
