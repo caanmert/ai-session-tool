@@ -7,7 +7,7 @@ import {
   type GitHubPullDetail,
 } from "../api";
 import { SafeMarkdown } from "../ui/SafeMarkdown";
-import { age } from "../ui/format";
+import { when } from "../ui/format";
 
 /** A GitHub label colour as a dot; anything unexpected shows no colour. */
 export const labelColor = (color?: string) =>
@@ -106,9 +106,9 @@ export default function GitHubDetail({
           </span>
           #{item.number}
           {item.author && <> · {item.author} opened</>}
-          {item.createdAt && <> {age(item.createdAt).toLowerCase()}</>}
+          {item.createdAt && <> {when(item.createdAt, { inline: true })}</>}
           {item.updatedAt && (
-            <> · updated {age(item.updatedAt).toLowerCase()}</>
+            <> · updated {when(item.updatedAt, { inline: true })}</>
           )}
         </p>
         <h2>{item.title}</h2>
@@ -196,7 +196,7 @@ export default function GitHubDetail({
           <li key={i}>
             <p className="gh-comment-meta">
               <strong>{comment.author || "someone"}</strong>{" "}
-              {comment.createdAt && age(comment.createdAt).toLowerCase()}
+              {comment.createdAt && when(comment.createdAt, { inline: true })}
             </p>
             <div className="markdown">
               <SafeMarkdown

@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import Icon from "../Icon";
 import ConfirmDialog from "../ui/ConfirmDialog";
-import { basename } from "../ui/format";
+import { basename, when } from "../ui/format";
 import {
   api,
   errorText,
@@ -36,24 +36,17 @@ function modeLabel(task: Pick<Schedule, "mode" | "tool">) {
 }
 
 function stamp(value: string) {
-  return new Date(value).toLocaleString("en-US", {
-    weekday: "short",
-    day: "numeric",
-    month: "short",
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: false,
-  });
+  return when(value, { inline: true });
 }
 
 /** What came of the latest scheduled time, in words. */
 export function lastText(task: Schedule) {
   if (!task.lastAt || !task.lastResult) return "";
-  const when = stamp(task.lastAt);
-  if (task.lastResult === "started") return `Ran ${when}`;
+  const at = stamp(task.lastAt);
+  if (task.lastResult === "started") return `Ran ${at}`;
   if (task.lastResult === "missed")
-    return `Missed ${when}: ${task.lastNote || ""}`.trim();
-  return `Skipped ${when}: ${task.lastNote || ""}`.trim();
+    return `Missed ${at}: ${task.lastNote || ""}`.trim();
+  return `Skipped ${at}: ${task.lastNote || ""}`.trim();
 }
 
 type Draft = Omit<Schedule, "enabled"> & { enabled?: boolean };
@@ -334,7 +327,7 @@ export default function SchedulesSection({
                       {basename(task.project)} · {modeLabel(task)}
                     </span>
                     {task.enabled && task.next && (
-                      <span>Next: {stamp(task.next)}</span>
+                      <span>Next: {when(task.next)}</span>
                     )}
                     {lastText(task) && (
                       <span
