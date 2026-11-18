@@ -6,7 +6,7 @@ import SavedWorkspace from "./SavedWorkspace";
 import { useAppearance } from "./Appearance";
 import { storeDraft } from "./useChatDraft";
 import { lastAgent, rememberAgent } from "./shell/lastAgent";
-import Settings from "./settings/Settings";
+import Settings, { SETTINGS_SECTIONS } from "./settings/Settings";
 import Board from "./board/Board";
 import IssuesPage from "./github/IssuesPage";
 import UsagePage from "./usage/UsagePage";
@@ -270,6 +270,11 @@ export default function App() {
   const [busy, setBusy] = useState(false);
   const [showNew, setShowNew] = useState(false);
   const [showLibrary, setShowLibrary] = useState(false);
+  // A Settings section chosen from ⌘K, scrolled to when Settings shows.
+  const [settingsSection, setSettingsSection] = useState<{
+    id: string;
+    at: number;
+  }>();
   const [closingChat, setClosingChat] = useState("");
   const closingOperation = useRef(false);
   const [newProject, setNewProject] = useState("");
@@ -637,7 +642,7 @@ export default function App() {
       {
         id: "usage",
         group: "Actions",
-        label: "Usage limits",
+        label: "Usage",
         icon: "gauge",
         run: () => {
           setActiveChat("");
@@ -654,10 +659,21 @@ export default function App() {
           setPage("settings");
         },
       },
+      ...SETTINGS_SECTIONS.map(([section, name]) => ({
+        id: `settings-${section}`,
+        group: "Actions",
+        label: `Settings: ${name}`,
+        icon: "settings" as const,
+        run: () => {
+          setActiveChat("");
+          setPage("settings");
+          setSettingsSection({ id: section, at: Date.now() });
+        },
+      })),
       {
         id: "saved",
         group: "Actions",
-        label: "Saved workspace",
+        label: "Saved work",
         icon: "folder",
         run: () => setShowLibrary(true),
       },
@@ -1120,7 +1136,7 @@ export default function App() {
               {page === "settings"
                 ? "Settings"
                 : page === "usage"
-                  ? "Usage limits"
+                  ? "Usage"
                   : page === "github"
                     ? "Issues and pull requests"
                     : page === "board"
@@ -1135,7 +1151,7 @@ export default function App() {
               {page === "settings"
                 ? "Appearance, agents and shortcuts for this Mac."
                 : page === "usage"
-                  ? "How much of each agent's plan limits you have used, and when they reset."
+                  ? "Each agent's plan limits and when they reset, and how much the agents worked in ais."
                   : page === "github"
                     ? "Open issues and pull requests on GitHub. Start a task from an issue."
                     : page === "board"
@@ -1296,6 +1312,7 @@ export default function App() {
             projects={snapshot?.projects || []}
             project={project}
             onOpenChat={(chatId) => openFromBanner.current(chatId)}
+            focusSection={settingsSection}
             onCheck={() => {
               void refresh();
               checkHealth();

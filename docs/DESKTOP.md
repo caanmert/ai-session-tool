@@ -96,8 +96,8 @@ They demonstrate the layout, not output from a live model run.
 
 - **Top bar**: the project switcher (with a button to add a project folder) and
   the search field, which opens the command palette.
-- **Sidebar**: **New task**, then **History**, **Agents board**, **Parallel runs**,
-  **Saved workspace** and **Settings**; the two agents with how many of their
+- **Sidebar**: **New task**, then **History**, **Agents board**, **Issues & PRs**,
+  **Usage**, **Parallel runs**, **Saved work** and **Settings**; the two agents with how many of their
   conversations are running or waiting; and your open conversations grouped by
   project. A conversation that needs you is marked with an icon and warning text,
   and the Dock icon shows how many are waiting. While ais is in the background, a
@@ -106,6 +106,13 @@ They demonstrate the layout, not output from a live model run.
   macOS asks for permission the first time. **Settings › Notifications** turns
   the banners off, or limits them to when an agent needs you (an approval, a
   question or an error).
+- **Settings** lists its sections at the top: Look, Notifications, Agents,
+  Skills, Saved prompts, Scheduled tasks, Keyboard shortcuts and Your data. The
+  list stays in view and marks the section on screen. In ⌘K, "Settings:" and a
+  section's name opens it there.
+- **Dates** read the same everywhere: "12m ago" or "3h ago" for the last hours,
+  "Today 09:30", "Yesterday 18:00" or "Tue 18:00" within a week, and "Nov 4"
+  beyond.
 - **Command palette** (**⌘K**): jump to an action, an open conversation, a project
   or any saved conversation. Choosing a saved conversation only shows it in
   History; it never starts an agent.
@@ -132,20 +139,28 @@ They demonstrate the layout, not output from a live model run.
   A simple approval can be allowed once or denied on its card; requests with
   questions are answered in the conversation. Tasks of the four newest parallel
   runs appear in the same columns: an outlined chip gives the process state
-  (Running, Exited) and a separate filled chip marks an agent event or a task
-  that has gone quiet. Choosing a run task opens it on the Parallel runs page.
+  (Running, Finished, or Ended with an error and its code) and a separate
+  filled chip marks an agent alert or a task with no output for a while.
+  Choosing a run task opens it on the Parallel runs page.
   The board only reads run state; it never starts or stops a run. Each agent's
   card at the top shows its limit closest to running out, such as "88% of week ·
   resets 17:29" (amber near a limit, red when one is used up), and opens
-  **Usage limits**. An agent whose limits could not be read shows no bar.
+  **Usage**. An agent whose limits could not be read shows no bar.
 - **Session** (below Changes): the model, turns, tokens and, where the model has
   a known price, what the usage would cost at API list prices. That figure is an
-  equivalent: a subscription is not billed this way. **Show in Finder** opens the
-  project folder and **Copy as Markdown** copies the conversation without tool
-  output. **File an issue…** opens the same New issue dialog for the
-  conversation's project, starting from its title and the agent's latest reply
-  for you to edit. Pull requests are opened from **Pull request…** under the
-  changed files.
+  equivalent: a subscription is not billed this way. Run, Agent tools and
+  Session fold with the arrow by their names, and stay as you left them. The
+  less frequent actions are in two menus under them. **Continue** holds handing
+  the work to the other agent, continuing in a new conversation, and compacting
+  the context. **More…** holds the rest:
+  - **Show in Finder** opens the project folder.
+  - **Copy as Markdown** copies the conversation without tool output.
+  - **File an issue…** opens the same New issue dialog for the conversation's
+    project, starting from its title and the agent's latest reply for you to
+    edit.
+  - **Project instructions…** (see below).
+
+  Pull requests are opened from **Pull request…** under the changed files.
 - **Changes** (right of a conversation; the **Changes** button or **⌘\\** hides
   and shows it, and opens it as a drawer in a narrow window; a hidden panel stays
   hidden until you show it again): the project's uncommitted files against the last commit, with
@@ -191,7 +206,7 @@ They demonstrate the layout, not output from a live model run.
   A strip above each of these conversations shows the steps, links them, and
   says what the task is waiting for. Committing and opening a pull request
   stay yours.
-- **Continue with Codex / Claude Code** (in the details panel) opens a new
+- **Continue with Codex / Claude Code** (in the details panel's **Continue** menu) opens a new
   conversation with the other agent in the same project. Its message box holds
   a summary of this one, ready to edit: your messages, the agent's last reply
   and the files changed but not committed. Nothing is sent until you send it.
@@ -219,7 +234,7 @@ They demonstrate the layout, not output from a live model run.
 
   In the conversation, a step that used an MCP tool reads as "MCP server ›
   tool".
-- **Project instructions…** (in Session) lists the instruction files each agent
+- **Project instructions…** (in the details panel's **More…** menu) lists the instruction files each agent
   reads for the project: `CLAUDE.md`, `.claude/CLAUDE.md` and `CLAUDE.local.md`
   for Claude Code and `AGENTS.md` for Codex, at the repository root, plus your
   own `~/.claude/CLAUDE.md` and `~/.codex/AGENTS.md`. Project files open in an
@@ -290,9 +305,9 @@ They demonstrate the layout, not output from a live model run.
   instead. Pushes are never forced, and nothing is merged. Without `gh`, on the
   default branch, or with nothing to propose, the dialog explains why.
 
-## Usage limits
+## Usage
 
-**Usage limits** in the sidebar shows how much of each agent's plan limits you have
+**Usage** in the sidebar shows how much of each agent's plan limits you have
 used and when each limit resets, as the agents report them for the account they are
 signed in to: the same figures as Claude Code's `/usage` and Codex's `/status`.
 
@@ -402,7 +417,8 @@ or committed and pushed are lost.
    lists the same figure as **Context**.
 
    From 80%, a note above the message box offers two ways to free the context.
-   Both run only when you click them, and both are also in the details panel.
+   Both run only when you click them, and both are also in the details panel's
+   **Continue** menu.
    - **Compact**: the agent summarizes the conversation so far and carries on
      from the summary. Claude Code runs its `/compact`, and Codex its own
      compaction. This is a turn, shown as `/compact` and then a "Compacted"
@@ -412,7 +428,8 @@ or committed and pushed are lost.
      agent, its message box holding a summary like **Continue with…**. Nothing
      is sent. The two link to each other under the title.
 
-   Dismissing the note hides it until the context passes 95%.
+   The note is hidden while the agent works. Dismissing it hides it until the
+   context passes 95%.
 
    While the agent works, **Enter** (or **Queue**) queues your message instead:
    it shows above the box and is sent when the response ends normally. More
@@ -523,7 +540,7 @@ Open conversations and review metadata persist across restarts. Closing a
 conversation hides it and retains its local record. Normal provider conversations can be reopened from
 History; a review can also reopen its original conversation.
 
-Choose **Saved workspace** in the sidebar to find desktop conversations and independent reviews, including closed ones and fresh
+Choose **Saved work** in the sidebar to find desktop conversations and independent reviews, including closed ones and fresh
 conversations that have not sent a message yet. Filter by project or type, or
 search titles, project paths and agents. The list includes review completion,
 finding/sent counts and file counts.
@@ -633,9 +650,9 @@ a changed file. The dashboard shows the pane's process state, exit code, current
 branch, worktree path, changed files and separate event/silence alerts. Missing
 worktrees are reported per task; Git review remains available when tmux cannot
 be inspected. Status refreshes every five seconds while the dashboard is open,
-preserving task and file selection. **Refresh runs** also reloads saved manifests.
+preserving task and file selection. **Refresh now** also reloads saved manifests.
 
-**Copy attach command** copies a tmux command for the selected task when its
+**Copy terminal command** copies a tmux command for the selected task when its
 pane is available. Paste it into a new terminal outside an existing tmux session
 to answer questions or approvals in the agent's normal UI. The ais CLI is not
 required. Copying does not execute the command or start another agent.
