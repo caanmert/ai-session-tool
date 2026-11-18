@@ -1067,6 +1067,7 @@ export default function ChatWorkspace({
             </div>
           )}
           {!state.review &&
+            !busy &&
             fill &&
             fill.level !== "normal" &&
             contextDismissed !== fill.level && (
@@ -1079,36 +1080,38 @@ export default function ChatWorkspace({
                     : "."}{" "}
                   Compact it, or continue in a new conversation.
                 </span>
-                <button
-                  type="button"
-                  className="text-button"
-                  disabled={!!contextBlocked || working}
-                  title={contextBlocked || compactTitle}
-                  onClick={compact}
-                >
-                  Compact
-                </button>
-                <button
-                  type="button"
-                  className="text-button"
-                  disabled={!!contextBlocked || working}
-                  title={
-                    contextBlocked ||
-                    `Open a new ${toolLabel(state.tool)} conversation with a summary of this one to edit and send`
-                  }
-                  onClick={() => void perform(continueFresh)}
-                >
-                  Continue in a new conversation
-                </button>
-                <button
-                  type="button"
-                  className="icon-button"
-                  aria-label="Dismiss"
-                  title="Hide this until the context fills further"
-                  onClick={() => setContextDismissed(fill.level)}
-                >
-                  <Icon name="close" size={13} />
-                </button>
+                <span className="note-actions">
+                  <button
+                    type="button"
+                    className="text-button"
+                    disabled={!!contextBlocked || working}
+                    title={contextBlocked || compactTitle}
+                    onClick={compact}
+                  >
+                    Compact
+                  </button>
+                  <button
+                    type="button"
+                    className="text-button"
+                    disabled={!!contextBlocked || working}
+                    title={
+                      contextBlocked ||
+                      `Open a new ${toolLabel(state.tool)} conversation with a summary of this one to edit and send`
+                    }
+                    onClick={() => void perform(continueFresh)}
+                  >
+                    Continue in a new conversation
+                  </button>
+                  <button
+                    type="button"
+                    className="icon-button"
+                    aria-label="Dismiss"
+                    title="Hide this until the context fills further"
+                    onClick={() => setContextDismissed(fill.level)}
+                  >
+                    <Icon name="close" size={13} />
+                  </button>
+                </span>
               </div>
             )}
           {!state.review && holder && (
