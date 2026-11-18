@@ -198,6 +198,12 @@ let backend: Record<string, ReturnType<typeof vi.fn>>;
 beforeEach(() => {
   backend = {
     UsageLimits: vi.fn().mockResolvedValue({ agents: [claude(), codex()] }),
+    UsageHistory: vi.fn().mockResolvedValue({
+      days: [],
+      projects: [],
+      agents: [],
+      total: { turns: 0, ms: 0, tokens: 0, costUsd: 0 },
+    }),
   };
   window.go = { main: { App: backend as unknown as Backend } };
 });

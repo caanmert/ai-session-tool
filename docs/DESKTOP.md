@@ -265,6 +265,19 @@ a while, just after a limit's reset time, and when you choose **Refresh**. A rea
 reused for a minute. If an agent can't report limits, for example when it is signed
 in with an API key or is an older version, the page says why.
 
+**History**, below the limits, adds up the turns run in ais over the last 7 or 30
+days:
+- turns, time worked, tokens and estimated cost, with a bar per day (hover a day
+  for its figures);
+- tables by project and by agent.
+
+It counts from what ais saved with each turn (the line that ends it, such as
+"Worked 2m 14s · 48k tokens"), in closed conversations too, so it reads nothing
+from the agents and turns from before ais recorded them are not included.
+- Tokens are what each agent reported, cached input included.
+- Cost is Claude Code's own estimate at API prices. It is not a charge on a
+  subscription, and Codex reports none.
+
 ## Compare two agents
 
 With both agents installed, choose **Both, compared** in New task and describe the

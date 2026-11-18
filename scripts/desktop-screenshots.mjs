@@ -257,6 +257,67 @@ try {
               },
             ],
           }),
+          UsageHistory: async (days) => {
+            const day = (back) => {
+              const d = new Date();
+              d.setDate(d.getDate() - back);
+              return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+            };
+            const minutes = [42, 0, 18, 65, 30, 0, 12, 50, 74, 20];
+            const list = Array.from({ length: days }, (_, i) => {
+              const ms = minutes[(days - 1 - i) % minutes.length] * 60_000;
+              return {
+                day: day(days - 1 - i),
+                turns: ms ? Math.round(ms / 240_000) + 1 : 0,
+                ms,
+                tokens: ms * 3,
+                costUsd: 0,
+              };
+            });
+            const sum = (key) => list.reduce((n, d) => n + d[key], 0);
+            const total = {
+              turns: sum("turns"),
+              ms: sum("ms"),
+              tokens: sum("tokens"),
+              costUsd: 3.86,
+            };
+            return {
+              days: list,
+              projects: [
+                {
+                  key: "/Users/demo/shop-app",
+                  ...total,
+                  turns: total.turns - 4,
+                  ms: total.ms - 3_600_000,
+                  costUsd: 2.1,
+                },
+                {
+                  key: "/Users/demo/docs-site-with-a-rather-long-folder-name",
+                  turns: 4,
+                  ms: 3_600_000,
+                  tokens: 820_000,
+                  costUsd: 1.76,
+                },
+              ],
+              agents: [
+                {
+                  key: "codex",
+                  turns: total.turns - 6,
+                  ms: total.ms - 5_400_000,
+                  tokens: total.tokens - 1_200_000,
+                  costUsd: 0,
+                },
+                {
+                  key: "claude",
+                  turns: 6,
+                  ms: 5_400_000,
+                  tokens: 1_200_000,
+                  costUsd: 3.86,
+                },
+              ],
+              total,
+            };
+          },
           UsageLimits: async () => {
             const later = (hours) =>
               new Date(Date.now() + hours * 3_600_000).toISOString();
@@ -1021,6 +1082,16 @@ try {
   await page.getByRole("meter", { name: "Codex: Weekly" }).waitFor();
   await checkContrast();
   await page.screenshot({ path: `${screenshots}/desktop-usage${suffix}.png` });
+  // History, below the limits: the week by day, project and agent.
+  const usageHistory = page.getByRole("region", { name: "History" });
+  await usageHistory.getByRole("table", { name: "By agent" }).waitFor();
+  await usageHistory.scrollIntoViewIfNeeded();
+  await usageHistory.locator(".usage-bar").nth(4).hover();
+  await usageHistory.getByText("Last 7 days").waitFor({ state: "detached" });
+  await checkContrast();
+  await page.screenshot({
+    path: `${screenshots}/desktop-usage-history${suffix}.png`,
+  });
   await resize(960, 640);
   await page.screenshot({
     path: join(tmpdir(), `ais-usage-small${suffix}.png`),

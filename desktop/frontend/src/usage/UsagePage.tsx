@@ -3,6 +3,7 @@ import Icon from "../Icon";
 import { toolLabel, type AgentUsage, type Tool } from "../api";
 import { age } from "../ui/format";
 import { resetClock, resetText, useNow } from "./limits";
+import UsageHistorySection from "./UsageHistory";
 
 function percentText(percent: number) {
   return `${Math.round(percent)}%`;
@@ -165,6 +166,7 @@ export default function UsagePage({
         turn. ais reads them again just after a limit resets, and every ten
         minutes while it is in front.
       </p>
+      <UsageHistorySection />
     </div>
   );
 }
