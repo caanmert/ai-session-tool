@@ -914,6 +914,11 @@
 .holder-note .text-button {
   margin: 0;
 }
+.holder-note .icon-button {
+  width: 24px;
+  height: 24px;
+  margin: -4px -6px -4px 0;
+}
 .queue-note {
   margin: 0 0 6px;
   font-size: var(--text-sm);

@@ -604,6 +604,86 @@ describe("graphical conversations", () => {
     expect(backend.SendChat).not.toHaveBeenCalled();
   });
 
+  it("offers to compact or continue afresh once the context is 80% full", async () => {
+    state.context = { used: 150_000, window: 200_000 };
+    const view = render(
+      <ChatWorkspace chat={state} active reviewerAvailable {...handlers} />,
+    );
+    // 75% is not yet worth a notice.
+    expect(screen.queryByText(/The context is/)).not.toBeInTheDocument();
+    view.unmount();
+    state.context = { used: 172_000, window: 200_000 };
+    state.version = 2;
+    backend.CompactChat = vi.fn().mockResolvedValue(undefined);
+    const next: ChatState = {
+      ...initial,
+      id: "next",
+      continuedFrom: "chat",
+      title: "New conversation",
+    };
+    backend.ContinueChat = vi
+      .fn()
+      .mockResolvedValue({ chat: next, prompt: "Where it stands" });
+    render(
+      <ChatWorkspace chat={state} active reviewerAvailable {...handlers} />,
+    );
+    const note = (await screen.findByText(/The context is 86% full\./))
+      .parentElement!;
+    await userEvent.click(
+      within(note).getByRole("button", { name: "Compact" }),
+    );
+    await waitFor(() =>
+      expect(backend.CompactChat).toHaveBeenCalledWith("chat"),
+    );
+    await userEvent.click(
+      within(note).getByRole("button", {
+        name: "Continue in a new conversation",
+      }),
+    );
+    await waitFor(() => expect(handlers.onOpen).toHaveBeenCalledWith(next));
+    expect(window.localStorage.getItem("ais:chat-draft:v1:next")).toBe(
+      "Where it stands",
+    );
+    expect(backend.SendChat).not.toHaveBeenCalled();
+    // Dismissed, it stays away until the context is nearly full.
+    await userEvent.click(
+      within(note).getByRole("button", { name: "Dismiss" }),
+    );
+    expect(screen.queryByText(/The context is/)).not.toBeInTheDocument();
+  });
+
+  it("does not offer to compact while the agent works", async () => {
+    state.context = { used: 195_000, window: 200_000 };
+    state.status = "running";
+    render(
+      <ChatWorkspace chat={state} active reviewerAvailable {...handlers} />,
+    );
+    const note = (await screen.findByText(/The context is 98% full, and/))
+      .parentElement!;
+    const compact = within(note).getByRole("button", { name: "Compact" });
+    expect(compact).toBeDisabled();
+    expect(compact).toHaveAttribute(
+      "title",
+      "Wait for the agent to finish first",
+    );
+  });
+
+  it("links a conversation continued afresh both ways", async () => {
+    state.continuedFrom = "earlier";
+    state.continuedIn = ["later"];
+    render(
+      <ChatWorkspace chat={state} active reviewerAvailable {...handlers} />,
+    );
+    await userEvent.click(
+      screen.getByRole("button", { name: /Continues an earlier conversation/ }),
+    );
+    expect(handlers.onSelect).toHaveBeenCalledWith("earlier");
+    await userEvent.click(
+      screen.getByRole("button", { name: /Continued in a new conversation/ }),
+    );
+    expect(handlers.onSelect).toHaveBeenCalledWith("later");
+  });
+
   it("links a conversation and its continuation both ways", async () => {
     window.localStorage.setItem("ais:chat-draft:v1:next", "Summary to edit");
     const next: ChatState = {

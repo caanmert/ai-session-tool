@@ -9,7 +9,9 @@ import (
 	"time"
 )
 
-func (m *chatManager) runCodex(ctx context.Context, c *chatSession, state ChatState, text string, images []savedImage) (string, error) {
+// runCodex runs one turn. A compacting turn asks Codex to summarize the
+// conversation instead of sending a message.
+func (m *chatManager) runCodex(ctx context.Context, c *chatSession, state ChatState, text string, images []savedImage, compact bool) (string, error) {
 	settings := state.Settings
 	if settings.Configured {
 		project := state.Project
@@ -123,6 +125,12 @@ func (m *chatManager) runCodex(ctx context.Context, c *chatSession, state ChatSt
 					c.sessionID(thread)
 					c.reportModel(str(result["model"]))
 					m.saveOrWarn(c)
+					if compact {
+						if err = rpc(3, "thread/compact/start", map[string]any{"threadId": thread}); err != nil {
+							return "", err
+						}
+						continue
+					}
 					// Codex reads attached images from the files saved with the conversation.
 					input := []any{map[string]any{"type": "text", "text": text}}
 					for _, image := range images {
@@ -194,6 +202,10 @@ func (m *chatManager) runCodex(ctx context.Context, c *chatSession, state ChatSt
 					c.message(ChatMessage{ID: id, Role: "assistant", Kind: "tool", Name: str(item["command"]), Text: str(item["aggregatedOutput"]), Status: status}, false)
 				case "fileChange":
 					c.message(ChatMessage{ID: id, Role: "assistant", Kind: "tool", Name: "File changes", Text: pretty(item["changes"]), Status: status}, false)
+				case "contextCompaction":
+					if method == "item/completed" {
+						c.compacted(id, 0)
+					}
 				case "mcpToolCall", "dynamicToolCall", "webSearch":
 					c.message(ChatMessage{ID: id, Role: "assistant", Kind: "tool", Name: kind, Text: pretty(params["item"]), Status: status}, false)
 				}

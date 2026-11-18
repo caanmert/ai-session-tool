@@ -53,7 +53,7 @@ func TestHandOff(t *testing.T) {
 	t.Cleanup(m.close)
 	ctx := context.Background()
 	state := createChat(t, m, repo.dir, "codex", "")
-	if _, err := m.handOff(ctx, state.ID); err == nil || !strings.Contains(err.Error(), "nothing to hand over") {
+	if _, err := m.handOff(ctx, state.ID, ""); err == nil || !strings.Contains(err.Error(), "nothing to hand over") {
 		t.Fatalf("empty: %v", err)
 	}
 	c, _ := m.get(state.ID)
@@ -61,7 +61,7 @@ func TestHandOff(t *testing.T) {
 	c.state.Messages = []ChatMessage{{ID: "u", Role: "user", Kind: "text", Text: "Fix a.txt"}, {ID: "a", Role: "assistant", Kind: "text", Text: "Done."}}
 	c.mu.Unlock()
 	repo.write("a.txt", "changed\n")
-	out, err := m.handOff(ctx, state.ID)
+	out, err := m.handOff(ctx, state.ID, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -98,7 +98,7 @@ func TestHandOff(t *testing.T) {
 	c.mu.Lock()
 	c.state.Status = "running"
 	c.mu.Unlock()
-	if _, err := m.handOff(ctx, state.ID); err == nil || !strings.Contains(err.Error(), "wait for the agent") {
+	if _, err := m.handOff(ctx, state.ID, ""); err == nil || !strings.Contains(err.Error(), "wait for the agent") {
 		t.Fatalf("busy: %v", err)
 	}
 }

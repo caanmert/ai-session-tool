@@ -162,3 +162,15 @@ test("a Codex web search reads as a web step with its query", () => {
   });
   expect([step.verb, step.target]).toEqual(["Web", "codex web_search modes"]);
 });
+
+test("reads a compaction as one step with its note", () => {
+  const view = describeToolStep(
+    step("Conversation compacted", "The agent summarized the conversation."),
+  );
+  expect([view.icon, view.verb, view.target, view.output]).toEqual([
+    "gauge",
+    "Compacted",
+    "the context",
+    "The agent summarized the conversation.",
+  ]);
+});

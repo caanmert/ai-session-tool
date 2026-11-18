@@ -341,6 +341,19 @@ or committed and pushed are lost.
    nothing is shown until the agent has reported it. **Session** in the details
    lists the same figure as **Context**.
 
+   From 80%, a note above the message box offers two ways to free the context.
+   Both run only when you click them, and both are also in the details panel.
+   - **Compact**: the agent summarizes the conversation so far and carries on
+     from the summary. Claude Code runs its `/compact`, and Codex its own
+     compaction. This is a turn, shown as `/compact` and then a "Compacted"
+     step. Every message stays in ais; only the agent's context shrinks, and
+     the ring is blank until the agent reports again.
+   - **Continue in a new conversation**: opens a new conversation with the same
+     agent, its message box holding a summary like **Continue with…**. Nothing
+     is sent. The two link to each other under the title.
+
+   Dismissing the note hides it until the context passes 95%.
+
    While the agent works, **Enter** (or **Queue**) queues your message instead:
    it shows above the box and is sent when the response ends normally. More
    messages join it. If the response is stopped or ends with an error, it is held

@@ -99,6 +99,7 @@ export default function DetailsPanel({
   onRefresh,
   onClose,
   handOff,
+  context: contextActions,
   onDraft,
   onCopyRemoved,
 }: {
@@ -112,6 +113,12 @@ export default function DetailsPanel({
   onClose: () => void;
   /** Continue this conversation with the other agent. */
   handOff?: { to: ToolName; blocked: string; run: () => Promise<void> };
+  /** Free context: compact it, or continue in a new conversation. */
+  context?: {
+    blocked: string;
+    compact: () => Promise<void>;
+    continueFresh: () => Promise<void>;
+  };
   /** Puts text in the message box, after anything already there. */
   onDraft?: (text: string) => void;
   /** The conversation closed because its copy was removed. */
@@ -144,6 +151,18 @@ export default function DetailsPanel({
   const context = contextFill(chat.context);
   const [revealError, setRevealError] = useState("");
   const [handingOff, setHandingOff] = useState(false);
+  const [freeing, setFreeing] = useState<"compact" | "continue">();
+  function freeContext(how: "compact" | "continue") {
+    if (!contextActions) return;
+    setFreeing(how);
+    setRevealError("");
+    (how === "compact"
+      ? contextActions.compact()
+      : contextActions.continueFresh()
+    )
+      .catch((e) => setRevealError(errorText(e)))
+      .finally(() => setFreeing(undefined));
+  }
   // Comments on changed lines, and the diff they are checked against.
   const lineComments = useLineComments(chat.id);
   const [editing, setEditing] = useState<{ id: string; note: string }>();
@@ -558,6 +577,36 @@ export default function DetailsPanel({
             <Icon name="message" size={14} />
             {handingOff ? "Opening…" : `Continue with ${toolLabel(handOff.to)}`}
           </button>
+        )}
+        {contextActions && (
+          <>
+            <button
+              className="button secondary reveal"
+              disabled={!!contextActions.blocked || !!freeing}
+              title={
+                contextActions.blocked ||
+                `${toolLabel(chat.tool)} summarizes the conversation so far to free context and carries on from the summary. The messages here stay.`
+              }
+              onClick={() => freeContext("compact")}
+            >
+              <Icon name="gauge" size={14} />
+              {freeing === "compact" ? "Starting…" : "Compact the context"}
+            </button>
+            <button
+              className="button secondary reveal"
+              disabled={!!contextActions.blocked || !!freeing}
+              title={
+                contextActions.blocked ||
+                `Open a new ${toolLabel(chat.tool)} conversation with a summary of this one to edit and send`
+              }
+              onClick={() => freeContext("continue")}
+            >
+              <Icon name="plus" size={14} />
+              {freeing === "continue"
+                ? "Opening…"
+                : "Continue in a new conversation"}
+            </button>
+          </>
         )}
         <button
           className="button secondary reveal"

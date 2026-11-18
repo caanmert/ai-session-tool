@@ -1164,13 +1164,26 @@ try {
     throw new Error(`unexpected turn line: ${await turnLine.textContent()}`);
   await checkContrast();
   await page.screenshot({ path: `${screenshots}/desktop-turn${suffix}.png` });
+  // The context is 84% full: a note offers to compact it or continue afresh.
+  const contextNote = page
+    .getByRole("region", { name: "Codex conversation" })
+    .locator(".context-note");
+  await contextNote.getByRole("button", { name: "Compact" }).waitFor();
+  if (!(await contextNote.textContent()).includes("The context is 84% full."))
+    throw new Error(
+      `unexpected context note: ${await contextNote.textContent()}`,
+    );
+  await checkContrast();
+  await page.screenshot({
+    path: `${screenshots}/desktop-context${suffix}.png`,
+  });
   // Another Codex program has the conversation open: the notice above the
   // message box says so. The check runs again when the window comes back.
   await page.evaluate(() => {
     window.__aisHolder = "the Codex app";
     window.dispatchEvent(new Event("focus"));
   });
-  const holderNote = page.locator(".holder-note");
+  const holderNote = page.locator(".holder-note:not(.context-note)");
   await holderNote.waitFor();
   await checkContrast();
   await page.screenshot({ path: `${screenshots}/desktop-holder${suffix}.png` });

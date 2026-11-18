@@ -135,6 +135,8 @@ export function describeToolStep(
   if (/^(websearch|webfetch)$/.test(key))
     return view("search", "Web", text(input?.query) || text(input?.url));
   if (key === "file changes") return view("pencil", "Edit", "files");
+  if (key === "conversation compacted")
+    return view("gauge", "Compacted", "the context");
   // A single word is a tool name; anything else is a command line (Codex).
   if (/^[a-z][\w.-]*$/i.test(name))
     return view("code", name, text(input?.description));

@@ -101,8 +101,10 @@ func handOffPrompt(state ChatState, changes ChangeSummary) string {
 	return b.String()
 }
 
-// handOff starts the other agent's conversation and links the two.
-func (m *chatManager) handOff(ctx context.Context, id string) (HandOff, error) {
+// handOff starts a conversation with tool, the other agent or the same one,
+// and links the two. With the same agent it continues the work with a fresh
+// context.
+func (m *chatManager) handOff(ctx context.Context, id, tool string) (HandOff, error) {
 	c, err := m.get(id)
 	if err != nil {
 		return HandOff{}, err
@@ -127,7 +129,11 @@ func (m *chatManager) handOff(ctx context.Context, id string) (HandOff, error) {
 		return HandOff{}, errors.New("there is nothing to hand over yet")
 	}
 	changes := summarizeChanges(ctx, state.Project)
-	next, err := m.create(state.Project, otherTool(state.Tool), "", "", nil)
+	if tool == "" {
+		tool = otherTool(state.Tool)
+	}
+	same := tool == state.Tool
+	next, err := m.create(state.Project, tool, "", "", nil)
 	if err != nil {
 		return HandOff{}, err
 	}
@@ -136,13 +142,21 @@ func (m *chatManager) handOff(ctx context.Context, id string) (HandOff, error) {
 		return HandOff{}, err
 	}
 	n.mu.Lock()
-	n.state.HandedFrom = id
+	if same {
+		n.state.ContinuedFrom = id
+	} else {
+		n.state.HandedFrom = id
+	}
 	n.change()
 	next = cloneState(n.state)
 	n.mu.Unlock()
 	m.saveOrWarn(n)
 	c.mu.Lock()
-	c.state.HandedTo = append(c.state.HandedTo, next.ID)
+	if same {
+		c.state.ContinuedIn = append(c.state.ContinuedIn, next.ID)
+	} else {
+		c.state.HandedTo = append(c.state.HandedTo, next.ID)
+	}
 	c.change()
 	c.mu.Unlock()
 	m.saveOrWarn(c)
@@ -153,6 +167,17 @@ func (m *chatManager) handOff(ctx context.Context, id string) (HandOff, error) {
 // conversation in the same project and drafts its first message. Nothing is
 // sent.
 func (a *App) HandOffChat(id string) (HandOff, error) {
+	return a.continueWith(id, true)
+}
+
+// ContinueChat continues a conversation in a new one with the same agent, so
+// the work goes on with an empty context. Its first message is drafted, not
+// sent.
+func (a *App) ContinueChat(id string) (HandOff, error) {
+	return a.continueWith(id, false)
+}
+
+func (a *App) continueWith(id string, other bool) (HandOff, error) {
 	if err := a.chatReady(); err != nil {
 		return HandOff{}, err
 	}
@@ -163,7 +188,10 @@ func (a *App) HandOffChat(id string) (HandOff, error) {
 	c.mu.Lock()
 	project, tool := c.state.Project, c.state.Tool
 	c.mu.Unlock()
-	cmd, err := a.service.NewSession(otherTool(tool), project)
+	if other {
+		tool = otherTool(tool)
+	}
+	cmd, err := a.service.NewSession(tool, project)
 	if err != nil {
 		return HandOff{}, err
 	}
@@ -172,5 +200,5 @@ func (a *App) HandOffChat(id string) (HandOff, error) {
 	}
 	ctx, cancel := context.WithTimeout(a.ctx, 30*time.Second)
 	defer cancel()
-	return a.chats.handOff(ctx, id)
+	return a.chats.handOff(ctx, id, tool)
 }
